@@ -12,9 +12,18 @@ npm run dev
 
 Then open `http://localhost:4317`.
 
-The prototype is framework-free. The world view loads published Natural Earth geometry through `d3-geo` and `topojson-client`; if that network request is unavailable, it falls back to a geographic globe grid while preserving all interactions.
+The prototype is framework-free.
 
 The Munich edition opens on a Google Maps basemap of Munich with the culinary world topology overlaid on the city. It includes 16 sourced restaurants with latitude/longitude data in `restaurants.js`; the final layer resolves those coordinates into Web Mercator-projected restaurant markers.
+
+## Recommended v2 interaction direction
+
+1. Open with a tile index of metropolitan cities—no map yet.
+2. Selecting a city reveals its topological world of culinary origins.
+3. Semantic zoom expands an origin into country and regional cuisine traditions.
+4. The physical map appears only at the final layer, where traditions resolve into real restaurant addresses.
+
+This keeps the concept editorial at the entrance, makes the topology the main discovery interface, and reserves Google Maps for the moment exact location becomes useful.
 
 ## Optional interactive Google Maps
 
