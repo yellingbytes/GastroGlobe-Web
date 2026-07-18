@@ -1,636 +1,775 @@
-import { countries, cuisinesForCountry, googleMapsUrl, restaurants } from "./restaurants.js";
+import { buildAtlasHierarchy, datasetMeta, googleMapsUrl, metropolitanEditions, restaurants } from "./restaurants.js";
 
-const munich = { name: "Munich", country: "Germany", lat: 48.1351, lon: 11.582 };
-const levels = ["world", "country", "map"];
-const continentLinks = [
-  ["mexico", "peru"],
-  ["italy", "georgia"],
-  ["italy", "turkey"],
-  ["georgia", "turkey"],
-  ["turkey", "lebanon"],
-  ["lebanon", "ethiopia"],
-  ["turkey", "afghanistan"],
-  ["afghanistan", "india"],
-  ["afghanistan", "china"],
-  ["india", "china"],
-  ["india", "vietnam"],
-  ["china", "korea"],
-  ["china", "vietnam"],
-  ["china", "japan"],
-  ["korea", "japan"],
-];
-
-const state = {
-  level: "world",
-  country: countries.find((country) => country.id === "china"),
-  cuisine: null,
-  restaurant: null,
-  maxLevel: 0,
-};
+const D3_URL = "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
+const PACK_SIZE = 1000;
 
 const scene = document.querySelector("#scene");
 const selectionCard = document.querySelector("#selection-card");
 const railContent = document.querySelector("#rail-content");
+const coordinates = document.querySelector("#coordinates");
 const cursorLabel = document.querySelector("#cursor-label");
-const mapsDialog = document.querySelector("#maps-dialog");
-const mapsForm = document.querySelector("#maps-form");
-const mapsKeyInput = document.querySelector("#maps-key");
 
-let mapInstance = null;
-let mapOverlays = [];
+const state = {
+  mode: "pack",
+  focusId: "atlas-root",
+  selectedNode: null,
+  selectedRestaurant: null,
+};
+
+let d3;
+let root;
+let focus;
+let view;
+let svg;
+let circles;
+let labels;
+let nodeById = new Map();
 let mapResizeObserver = null;
-let googleMapsPromise = null;
-let navigationLocked = false;
 
-function formatNumber(value) {
-  return new Intl.NumberFormat("en-US").format(value);
-}
-
-function setTransitionOrigin(trigger) {
-  const stageRect = document.querySelector(".visual-stage").getBoundingClientRect();
-  const triggerRect = trigger?.getBoundingClientRect?.();
-  const x = triggerRect ? triggerRect.left + triggerRect.width / 2 - stageRect.left : stageRect.width / 2;
-  const y = triggerRect ? triggerRect.top + triggerRect.height / 2 - stageRect.top : stageRect.height / 2;
-  document.documentElement.style.setProperty("--zoom-origin-x", `${Math.max(0, x)}px`);
-  document.documentElement.style.setProperty("--zoom-origin-y", `${Math.max(0, y)}px`);
-}
-
-function commitLevel(level, direction = "forward", trigger = null) {
-  if (navigationLocked || state.level === level) return;
-  const index = levels.indexOf(level);
-  setTransitionOrigin(trigger);
-  document.documentElement.dataset.zoomDirection = direction;
-  state.level = level;
-  state.maxLevel = Math.max(state.maxLevel, index);
-  navigationLocked = true;
-
-  const update = () => render();
-  if (document.startViewTransition && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    const transition = document.startViewTransition(update);
-    transition.finished.finally(() => {
-      navigationLocked = false;
-    });
-  } else {
-    update();
-    window.setTimeout(() => {
-      navigationLocked = false;
-    }, 420);
+async function initialize() {
+  scene.innerHTML = `<div class="pack-loading">Packing the atlas…</div>`;
+  try {
+    d3 = await import(D3_URL);
+    buildPackedHierarchy();
+    renderPack(false);
+  } catch (error) {
+    console.error(error);
+    scene.innerHTML = `
+      <div class="pack-error" role="alert">
+        <strong>The atlas could not load.</strong>
+        <span>Check the network connection and reload this page.</span>
+      </div>
+    `;
   }
 }
 
-function activeRestaurants() {
-  if (state.cuisine) return state.cuisine.restaurants;
-  if (state.country) return state.country.restaurants;
-  return restaurants;
+function buildPackedHierarchy() {
+  root = d3.hierarchy(buildAtlasHierarchy());
+  root.sum((datum) => datum.layoutValue ?? 0);
+  sortChildrenGeographically(root);
+  d3.pack().size([PACK_SIZE, PACK_SIZE]).padding((node) => Math.max(3, 10 - node.depth * 1.4))(root);
+  orientHierarchyGeographically(root);
+  nodeById = new Map(root.descendants().map((node) => [node.data.id, node]));
+  focus = nodeById.get(state.focusId) ?? root;
 }
 
-function render() {
+function sortChildrenGeographically(node) {
+  node.eachBefore((parent) => {
+    if (!parent.children?.length) return;
+    const origin = geographicOrigin(parent);
+    parent.children.sort((a, b) => geographicAngle(a, origin) - geographicAngle(b, origin));
+  });
+}
+
+function geographicOrigin(node) {
+  if (Number.isFinite(node.data.lat) && Number.isFinite(node.data.lng)) return node.data;
+  const children = node.children ?? [];
+  return {
+    lat: d3.mean(children, (child) => child.data.lat) ?? 0,
+    lng: d3.mean(children, (child) => child.data.lng) ?? 0,
+  };
+}
+
+function geographicAngle(node, origin) {
+  const latitude = node.data.lat ?? origin.lat;
+  const longitude = node.data.lng ?? origin.lng;
+  const x = (longitude - origin.lng) * Math.cos((origin.lat * Math.PI) / 180);
+  const y = -(latitude - origin.lat);
+  return Math.atan2(y, x);
+}
+
+function orientHierarchyGeographically(parent) {
+  const children = parent.children ?? [];
+  if (children.length > 1) {
+    const origin = geographicOrigin(parent);
+    const candidates = [false, true].map((mirror) => bestOrientation(parent, children, origin, mirror));
+    const best = candidates.sort((a, b) => a.error - b.error)[0];
+    children.forEach((child) => transformSubtree(child, parent.x, parent.y, best.mirror, best.angle));
+  }
+  children.forEach(orientHierarchyGeographically);
+}
+
+function bestOrientation(parent, children, origin, mirror) {
+  const pairs = children.map((child) => {
+    const dx = (mirror ? -1 : 1) * (child.x - parent.x);
+    const dy = child.y - parent.y;
+    const currentLength = Math.hypot(dx, dy) || 1;
+    const longitudeScale = Math.cos((origin.lat * Math.PI) / 180);
+    const gx = ((child.data.lng ?? origin.lng) - origin.lng) * longitudeScale;
+    const gy = -((child.data.lat ?? origin.lat) - origin.lat);
+    const geoLength = Math.hypot(gx, gy) || 1;
+    return { cx: dx / currentLength, cy: dy / currentLength, gx: gx / geoLength, gy: gy / geoLength };
+  });
+
+  const dot = d3.sum(pairs, (pair) => pair.cx * pair.gx + pair.cy * pair.gy);
+  const cross = d3.sum(pairs, (pair) => pair.cx * pair.gy - pair.cy * pair.gx);
+  const angle = Math.atan2(cross, dot);
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  const error = d3.sum(pairs, (pair) => {
+    const x = pair.cx * cosine - pair.cy * sine;
+    const y = pair.cx * sine + pair.cy * cosine;
+    return 1 - (x * pair.gx + y * pair.gy);
+  });
+  return { mirror, angle, error };
+}
+
+function transformSubtree(node, cx, cy, mirror, angle) {
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  node.each((descendant) => {
+    const dx = (mirror ? -1 : 1) * (descendant.x - cx);
+    const dy = descendant.y - cy;
+    descendant.x = cx + dx * cosine - dy * sine;
+    descendant.y = cy + dx * sine + dy * cosine;
+  });
+}
+
+function renderPack(animate = true) {
   cleanupMap();
+  state.mode = "pack";
+  scene.innerHTML = `
+    <div class="pack-shell semantic-layer">
+      <svg class="pack-svg" viewBox="-500 -500 1000 1000" role="img" aria-labelledby="pack-title pack-description">
+        <title id="pack-title">Zoomable metropolitan food hierarchy</title>
+        <desc id="pack-description">Circle area represents loaded restaurant records. Circle orientation follows geographic bearing at every hierarchy level.</desc>
+      </svg>
+      <div class="pack-compass" aria-hidden="true"><span>N</span><span>E</span><span>S</span><span>W</span></div>
+    </div>
+  `;
+
+  svg = d3.select(scene.querySelector(".pack-svg"));
+  const descendants = root.descendants().slice(1);
+  const nodeLayer = svg.append("g").attr("class", "pack-node-layer");
+
+  circles = nodeLayer
+    .selectAll("circle")
+    .data(descendants)
+    .join("circle")
+    .attr("class", (node) => circleClass(node))
+    .attr("role", "button")
+    .attr("aria-label", (node) => nodeAriaLabel(node))
+    .attr("tabindex", -1)
+    .on("click", (event, node) => {
+      event.stopPropagation();
+      handleNodeActivation(node);
+    })
+    .on("keydown", (event, node) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handleNodeActivation(node);
+      }
+    })
+    .on("pointerenter", (event, node) => showCursorLabel(event, hoverText(node)))
+    .on("pointermove", (event) => moveCursorLabel(event))
+    .on("pointerleave", hideCursorLabel);
+
+  labels = svg
+    .append("g")
+    .attr("class", "pack-label-layer")
+    .attr("text-anchor", "middle")
+    .attr("pointer-events", "none")
+    .selectAll("text")
+    .data(descendants)
+    .join("text")
+    .attr("class", (node) => labelClass(node))
+    .style("display", "none")
+    .style("fill-opacity", 0);
+
+  labels
+    .append("tspan")
+    .attr("class", "pack-label-name")
+    .attr("x", 0)
+    .attr("dy", "-0.1em")
+    .text((node) => shortLabel(node.data.name));
+
+  labels
+    .append("tspan")
+    .attr("class", "pack-label-count")
+    .attr("x", 0)
+    .attr("dy", "1.45em")
+    .text((node) => nodeCountLabel(node));
+
+  svg.on("click", () => {
+    if (focus.parent) zoomToNode(focus.parent);
+  });
+
+  view = undefined;
+  zoomToNode(focus, animate);
+}
+
+function circleClass(node) {
+  const classes = ["pack-circle", `kind-${node.data.kind}`];
+  const continent = node.ancestors().find((ancestor) => ancestor.data.kind === "continent");
+  if (continent) classes.push(`series-${continent.data.name.toLowerCase()}`);
+  if (node.data.planned) classes.push("is-planned");
+  return classes.join(" ");
+}
+
+function labelClass(node) {
+  const classes = ["pack-label", `kind-${node.data.kind}`];
+  const continent = node.ancestors().find((ancestor) => ancestor.data.kind === "continent");
+  if (continent) classes.push(`series-${continent.data.name.toLowerCase()}`);
+  return classes.join(" ");
+}
+
+function nodeAriaLabel(node) {
+  if (node.data.planned) return `${node.data.name}, planned metropolitan edition`;
+  if (node.data.kind === "restaurant") return `${node.data.name}, ${node.data.cuisine}, ${node.data.address}`;
+  const next = node.children?.[0]?.data.kind ?? "restaurant";
+  return `Zoom into ${node.data.name}, ${node.data.available} loaded restaurants, next layer ${next}`;
+}
+
+function nodeCountLabel(node) {
+  if (node.data.planned) return "planned";
+  if (node.data.kind === "restaurant") return node.data.cuisine;
+  return `${node.data.available} ${node.data.available === 1 ? "place" : "places"}`;
+}
+
+function shortLabel(name) {
+  return name.length > 20 ? `${name.slice(0, 18)}…` : name;
+}
+
+function hoverText(node) {
+  if (node.data.planned) return `${node.data.name} · edition planned`;
+  if (node.data.kind === "restaurant") return `${node.data.name} · ${node.data.cuisine}`;
+  return `${node.data.name} · ${node.data.available} loaded`;
+}
+
+function handleNodeActivation(node) {
+  if (node.data.planned) {
+    state.selectedNode = node;
+    state.selectedRestaurant = null;
+    updateInterface();
+    return;
+  }
+  if (node.data.kind === "restaurant") {
+    state.selectedRestaurant = node;
+    state.selectedNode = node;
+    updateInterface();
+    return;
+  }
+  zoomToNode(node);
+}
+
+function zoomToNode(node, animate = true) {
+  if (!node) return;
+  focus = node;
+  state.focusId = node.data.id;
+  state.selectedNode = null;
+  state.selectedRestaurant = null;
+
+  const target = [focus.x, focus.y, focus.r * 2.08];
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!view || !animate || reducedMotion) {
+    zoomTo(target);
+    updateLabelVisibility(false);
+    updateInteractivity();
+    updateInterface();
+    return;
+  }
+
+  const transition = svg
+    .transition()
+    .duration(760)
+    .ease(d3.easeCubicInOut)
+    .tween("zoom", () => {
+      const interpolate = d3.interpolateZoom(view, target);
+      return (time) => zoomTo(interpolate(time));
+    });
+
+  labels
+    .filter(function filterLabel(labelNode) {
+      return labelNode.parent === focus || this.style.display === "inline";
+    })
+    .transition(transition)
+    .style("fill-opacity", (labelNode) => (labelNode.parent === focus ? 1 : 0))
+    .on("start", function showLabel(labelNode) {
+      if (labelNode.parent === focus) this.style.display = "inline";
+    })
+    .on("end", function hideLabel(labelNode) {
+      if (labelNode.parent !== focus) this.style.display = "none";
+    });
+
+  transition.on("end", () => {
+    updateLabelVisibility(false);
+    updateInteractivity();
+    updateInterface();
+  });
+  updateInterface();
+}
+
+function zoomTo(nextView) {
+  const scale = PACK_SIZE / nextView[2];
+  view = nextView;
+  circles
+    .attr("transform", (node) => `translate(${(node.x - nextView[0]) * scale},${(node.y - nextView[1]) * scale})`)
+    .attr("r", (node) => node.r * scale);
+  labels.attr("transform", (node) => `translate(${(node.x - nextView[0]) * scale},${(node.y - nextView[1]) * scale})`);
+}
+
+function updateLabelVisibility(transitioned = false) {
+  if (transitioned) return;
+  labels
+    .style("display", (node) => (labelVisible(node) ? "inline" : "none"))
+    .style("fill-opacity", (node) => (labelVisible(node) ? 1 : 0));
+}
+
+function labelVisible(node) {
+  if (node.parent !== focus || !view) return false;
+  const radius = node.r * (PACK_SIZE / view[2]);
+  return radius >= (node.data.kind === "restaurant" ? 25 : 18);
+}
+
+function updateInteractivity() {
+  circles
+    .attr("tabindex", (node) => (node.parent === focus ? 0 : -1))
+    .style("pointer-events", (node) => (node.parent === focus ? "auto" : "none"))
+    .classed("is-focus-child", (node) => node.parent === focus)
+    .classed("is-muted", (node) => node.parent !== focus && !isAncestor(node, focus));
+}
+
+function isAncestor(candidate, node) {
+  return node.ancestors().includes(candidate);
+}
+
+function updateInterface() {
   updateCopy();
-  updateStageIndex();
+  updateDepthPath();
   updateRail();
   updateSelectionCard();
-
-  if (state.level === "world") renderWorld();
-  if (state.level === "country") renderCuisineTopology();
-  if (state.level === "map") renderPhysicalMap();
+  updateControls();
 }
 
 function updateCopy() {
-  const visible = activeRestaurants();
-  const copy = {
-    world: {
-      kicker: "Munich world map · 01",
-      title: "The world,<br>over Munich.",
-      intro: "A topological world of culinary origins sits directly on the physical city. Select a country to move closer.",
-      caption: `${countries.length} origins over Munich · ${restaurants.length} restaurants`,
-      key: "World topology over Google Maps",
-    },
-    country: {
-      kicker: `${state.country.name} in Munich · 02`,
-      title: "One country,<br>many cuisines.",
-      intro: "The country expands in place; its cuisine traditions become the next geographic layer.",
-      caption: `${state.country.restaurants.length} mapped ${state.country.restaurants.length === 1 ? "restaurant" : "restaurants"} · ${state.country.name}`,
-      key: "Select a cuisine",
-    },
-    map: {
-      kicker: `${state.cuisine?.name ?? state.country?.name ?? "All cultures"} · 03`,
-      title: "Culture finds<br>its address.",
-      intro: "Cuisine symbols resolve into verified restaurants at their real coordinates on the physical city.",
-      caption: `${visible.length} verified ${visible.length === 1 ? "location" : "locations"} · Munich`,
-      key: "Exact restaurant coordinates",
-    },
-  }[state.level];
+  let copy;
+  if (state.mode === "map") {
+    const count = mapRestaurants().length;
+    copy = {
+      kicker: `${focus.data.name} · physical layer`,
+      title: "Cuisine,<br>at street level.",
+      intro: `Every visible point is an OpenStreetMap restaurant coordinate for ${focus.data.name} inside Munich.`,
+      caption: `${count} sourced ${count === 1 ? "location" : "locations"} · Munich`,
+      key: "OSM restaurant coordinates",
+    };
+  } else {
+    const copies = {
+      root: {
+        kicker: "Metropolitan atlas · 01",
+        title: "Cities,<br>packed by food.",
+        intro: "Choose a metropolitan edition, then move through continents, countries, and culinary regions.",
+        caption: `${metropolitanEditions.length} metropolitan editions · Munich ${datasetMeta.includedRestaurants.toLocaleString("en")} live`,
+        key: "Area = food available",
+      },
+      metropolitan: {
+        kicker: `${focus.data.name} · continents`,
+        title: "A city becomes<br>a world of food.",
+        intro: "Continents are packed by loaded restaurants and oriented by their real geographic bearing.",
+        caption: `${focus.children?.length ?? 0} continents · ${focus.data.available} restaurants`,
+        key: "Position = geographic bearing",
+      },
+      continent: {
+        kicker: `${focus.data.name} · countries`,
+        title: "A continent,<br>through Munich.",
+        intro: "Country bubbles preserve their geographic relationship while their area reveals local availability.",
+        caption: `${focus.children?.length ?? 0} countries · ${focus.data.available} restaurants`,
+        key: "Area = restaurants in Munich",
+      },
+      country: {
+        kicker: `${focus.data.name} · regions`,
+        title: "A country opens<br>into traditions.",
+        intro: "Open the national cuisine layer and any unambiguous regional or style traditions, or map the whole country cuisine directly.",
+        caption: `${focus.children?.length ?? 0} regions · ${focus.data.available} restaurants`,
+        key: "Position = regional origin",
+      },
+      region: {
+        kicker: `${focus.data.name} · restaurants`,
+        title: "A region finds<br>its restaurants.",
+        intro: "The deepest circles are named Munich restaurants carrying this country-specific OSM cuisine tag.",
+        caption: `${focus.children?.length ?? 0} ${focus.children?.length === 1 ? "restaurant" : "restaurants"} · select for details`,
+        key: "Position = Munich address",
+      },
+    };
+    copy = copies[focus.data.kind] ?? copies.root;
+  }
 
   document.querySelector("#view-kicker").textContent = copy.kicker;
   document.querySelector("#view-title").innerHTML = copy.title;
   document.querySelector("#view-intro").textContent = copy.intro;
   document.querySelector("#stage-caption").textContent = copy.caption;
   document.querySelector("#key-label").textContent = copy.key;
-  document.querySelector("[data-action='back']").hidden = state.level === "world";
-  document.querySelector("[data-action='zoom-out']").disabled = state.level === "world";
-  document.querySelector("[data-action='zoom-in']").disabled = state.level === "map";
 }
 
-function updateStageIndex() {
-  const currentIndex = levels.indexOf(state.level);
-  document.querySelectorAll("[data-level]").forEach((button, index) => {
-    button.toggleAttribute("disabled", index > state.maxLevel);
-    if (index === currentIndex) button.setAttribute("aria-current", "step");
-    else button.removeAttribute("aria-current");
-  });
+function updateDepthPath() {
+  const path = focus.ancestors().reverse();
+  const pathNode = document.querySelector("#depth-path");
+  pathNode.innerHTML = path
+    .map((node, index) => {
+      const label = node === root ? "Metropolitans" : node.data.name;
+      const current = node === focus ? ` aria-current="step"` : "";
+      return `<li><button type="button" data-focus-id="${node.data.id}"${current}><span>${String(index + 1).padStart(2, "0")}</span>${label}</button></li>`;
+    })
+    .join("");
 }
 
 function updateRail() {
-  const coordinateNode = document.querySelector("#coordinates");
-  const visible = activeRestaurants();
-
-  if (state.level === "map" && state.restaurant) {
-    const selectedCountry = countries.find((country) => country.id === state.restaurant.countryId);
-    coordinateNode.innerHTML = `${state.restaurant.lat.toFixed(5)}° N<br>${state.restaurant.lng.toFixed(5)}° E`;
+  const selected = state.selectedRestaurant?.data ?? null;
+  if (selected) {
+    coordinates.innerHTML = coordinateMarkup(selected.lat, selected.lng);
     railContent.innerHTML = `
-      <p class="place-number place-number-small">${state.restaurant.symbol}</p>
+      <p class="place-number place-number-small">${selected.symbol}</p>
       <div class="metric-block">
         <p class="metric-label">Selected restaurant</p>
-        <p class="metric-row metric-row-wrap"><span>${state.restaurant.name}</span></p>
-        <p class="rail-address">${state.restaurant.address}</p>
-        <a class="rail-source" href="${state.restaurant.source}" target="_blank" rel="noreferrer">Restaurant source ↗</a>
+        <p class="metric-row metric-row-wrap"><span>${escapeHtml(selected.name)}</span></p>
+        <p class="rail-address">${escapeHtml(selected.address)}</p>
+        <a class="rail-source" href="${selected.source}" target="_blank" rel="noreferrer">Restaurant source ↗</a>
       </div>
       <div class="metric-block">
-        <p class="metric-label">Culinary origin</p>
-        <p class="metric-row"><span>${state.restaurant.cuisine}</span><span>${selectedCountry?.flag ?? ""}</span></p>
+        <p class="metric-label">Origin hierarchy</p>
+        <p class="metric-row"><span>${escapeHtml(selected.region)}</span><span>${escapeHtml(selected.cuisine)}</span></p>
       </div>
     `;
     return;
   }
 
-  coordinateNode.innerHTML = `${munich.lat.toFixed(4)}° N<br>${munich.lon.toFixed(4)}° E`;
-  const primaryValue = state.level === "world" ? countries.length : state.level === "country" ? state.country.restaurants.length : visible.length;
-  const suffix = "";
-  const label = state.level === "world" ? "Culinary origins over Munich" : state.level === "country" ? "Restaurants mapped" : "Locations visible";
+  if (Number.isFinite(focus.data.lat) && Number.isFinite(focus.data.lng)) coordinates.innerHTML = coordinateMarkup(focus.data.lat, focus.data.lng);
+  else coordinates.innerHTML = `Geographic<br>bearings`;
+
+  const children = focus.children ?? [];
+  const childKind = children[0]?.data.kind ?? "restaurant";
   railContent.innerHTML = `
-    <p class="place-number">${primaryValue}<sup>${suffix}</sup></p>
+    <p class="place-number">${focus.data.available ?? 0}</p>
     <div class="metric-block">
-      <p class="metric-label">${label}</p>
-      <p class="metric-row"><span>Munich edition</span><span>${restaurants.length} places</span></p>
+      <p class="metric-label">Loaded food records</p>
+      <p class="metric-row"><span>${focus.data.name}</span><span>${focus.data.kind}</span></p>
     </div>
     <div class="metric-block">
-      <p class="metric-label">Dataset</p>
-      <p class="metric-row"><span>Coordinates</span><span>Verified</span></p>
-      <p class="metric-row"><span>Updated</span><span>Jul 2026</span></p>
+      <p class="metric-label">Next layer</p>
+      <p class="metric-row"><span>${children.length} ${pluralize(childKind, children.length)}</span><span>Geo-oriented</span></p>
+      <p class="metric-row"><span>Circle area</span><span>Record count</span></p>
     </div>
   `;
 }
 
 function updateSelectionCard() {
-  if (state.level === "world") {
+  const selected = state.selectedRestaurant?.data ?? null;
+  if (selected) {
+    const contextMapAction = state.mode === "pack"
+      ? `<button class="map-settings-action" type="button" data-action="map-focus">Map this cuisine tradition</button>`
+      : "";
     selectionCard.innerHTML = `
       <div>
-        <div class="selection-name"><strong>Munich</strong><span>${countries.length} world origins</span></div>
-        <p class="selection-copy">The schematic world is overlaid on the real city. Select a country, or reveal every sourced address.</p>
-      </div>
-      <button class="primary-action" type="button" data-action="reveal-all"><span>Reveal all ${restaurants.length}</span><span aria-hidden="true">＋</span></button>
-    `;
-  }
-
-  if (state.level === "country") {
-    selectionCard.innerHTML = `
-      <div>
-        <div class="selection-name"><strong>${state.country.name}</strong><span>${state.country.restaurants.length} mapped</span></div>
-        <p class="selection-copy">Select a cuisine symbol, or project this entire country layer onto Munich.</p>
-      </div>
-      <button class="primary-action" type="button" data-action="reveal-country"><span>Reveal ${state.country.name}</span><span aria-hidden="true">＋</span></button>
-    `;
-  }
-
-  if (state.level === "map") {
-    const selected = state.restaurant ?? activeRestaurants()[0];
-    state.restaurant = selected;
-    selectionCard.innerHTML = `
-      <div>
-        <div class="selection-name"><strong>${selected.name}</strong><span>${selected.cuisine}</span></div>
-        <p class="selection-copy">${selected.address}</p>
+        <div class="selection-name"><strong>${escapeHtml(selected.name)}</strong><span>${escapeHtml(selected.region)}</span></div>
+        <p class="selection-copy">${escapeHtml(selected.address)} · ${escapeHtml(selected.cuisine)}</p>
       </div>
       <div class="map-actions">
-        <button class="map-settings-action" type="button" data-action="map-settings">Google Maps setup</button>
+        ${contextMapAction}
         <a class="primary-action" href="${googleMapsUrl(selected)}" target="_blank" rel="noreferrer"><span>Open in Google Maps</span><span aria-hidden="true">↗</span></a>
       </div>
     `;
+    return;
   }
-}
 
-function renderWorld() {
-  const iframeUrl = `https://www.google.com/maps?ll=${munich.lat},${munich.lon}&z=12&output=embed`;
-  scene.innerHTML = `
-    <div class="world-topology-map semantic-layer" aria-label="World culinary topology over Google Maps in Munich">
-      <iframe class="google-map-iframe" src="${iframeUrl}" loading="eager" referrerpolicy="no-referrer-when-downgrade" title="Google Maps basemap of Munich" tabindex="-1"></iframe>
-      <div class="topology-atlas topology-map-overlay" role="group" aria-label="Geographic topology of international restaurant origins in Munich">
-        <div class="continent-field continent-field-americas" aria-hidden="true"><span>Americas</span></div>
-        <div class="continent-field continent-field-europe" aria-hidden="true"><span>Europe</span></div>
-        <div class="continent-field continent-field-africa" aria-hidden="true"><span>Africa</span></div>
-        <div class="continent-field continent-field-asia" aria-hidden="true"><span>Asia</span></div>
-        <svg class="topology-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          ${continentLinks.map(([fromId, toId]) => {
-            const from = countries.find((country) => country.id === fromId);
-            const to = countries.find((country) => country.id === toId);
-            return `<line x1="${from.topo[0]}" y1="${from.topo[1]}" x2="${to.topo[0]}" y2="${to.topo[1]}"></line>`;
-          }).join("")}
-        </svg>
-        <div class="munich-anchor" aria-hidden="true"><strong>Munich</strong><span>${restaurants.length} mapped</span></div>
-        ${countries.map(countryTopologyMarkup).join("")}
+  if (state.selectedNode?.data.planned) {
+    const edition = state.selectedNode.data;
+    selectionCard.innerHTML = `
+      <div>
+        <div class="selection-name"><strong>${edition.name}</strong><span>${edition.country}</span></div>
+        <p class="selection-copy">This metropolitan edition is positioned geographically and reserved for a future verified dataset.</p>
       </div>
-      <div class="map-source-strip">
-        <span>Google Maps · Munich</span>
-        <span>World topology overlay</span>
-      </div>
+      <span class="planned-status">Edition planned</span>
+    `;
+    return;
+  }
+
+  const next = [...(focus.children ?? [])]
+    .filter((node) => !node.data.planned)
+    .sort((a, b) => b.value - a.value)[0];
+  const canMap = ["continent", "country", "region"].includes(focus.data.kind) && restaurantLeaves(focus).length > 0;
+  const mapCount = restaurantLeaves(focus).length;
+  const actions = canMap
+    ? `<div class="map-actions">
+        ${["continent", "country"].includes(focus.data.kind) && next ? `<button class="map-settings-action" type="button" data-action="zoom-forward">Open ${escapeHtml(next.data.name)}</button>` : ""}
+        <button class="primary-action" type="button" data-action="map-focus"><span>Map ${mapCount} ${mapCount === 1 ? "restaurant" : "restaurants"}</span><span aria-hidden="true">↗</span></button>
+      </div>`
+    : next
+      ? `<button class="primary-action" type="button" data-action="zoom-forward"><span>Zoom into ${escapeHtml(next.data.name)}</span><span aria-hidden="true">＋</span></button>`
+      : "";
+  selectionCard.innerHTML = `
+    <div>
+      <div class="selection-name"><strong>${focus.data.name}</strong><span>${focus.data.available ?? 0} loaded</span></div>
+      <p class="selection-copy">${selectionInstruction()}</p>
     </div>
-  `;
-
-  scene.querySelectorAll(".topology-country").forEach((node) => {
-    node.addEventListener("click", () => {
-      state.country = countries.find((country) => country.id === node.dataset.country);
-      state.cuisine = cuisinesForCountry(state.country.id)[0] ?? null;
-      state.restaurant = null;
-      commitLevel("country", "forward", node);
-    });
-    bindHoverLabel(node, `Zoom into ${node.dataset.name}`);
-  });
-}
-
-function countryTopologyMarkup(country, index) {
-  const count = country.restaurants.length;
-  const size = 61 + Math.min(38, count * 13);
-  const radiusVariant = ["44% 56% 51% 49%", "54% 46% 58% 42%", "48% 52% 43% 57%"][index % 3];
-  return `
-    <button class="topology-country continent-${country.continent.toLowerCase()}" type="button" data-country="${country.id}" data-name="${country.name}" style="left:${country.topo[0]}%;top:${country.topo[1]}%;--country-size:${size}px;--country-radius:${radiusVariant}" aria-label="Zoom into ${country.name}, ${count} mapped ${count === 1 ? "restaurant" : "restaurants"}">
-      <span class="topology-flag" aria-hidden="true">${country.flag}</span>
-      <strong>${country.name}</strong>
-      <small>${count}</small>
-    </button>
+    ${actions}
   `;
 }
 
-function renderCuisineTopology() {
-  const cuisines = cuisinesForCountry(state.country.id);
-  if (!cuisines.some((cuisine) => cuisine.id === state.cuisine?.id)) state.cuisine = cuisines[0];
-  const positions = cuisinePositions(cuisines.length);
-  const iframeUrl = `https://www.google.com/maps?ll=${munich.lat},${munich.lon}&z=13&output=embed`;
-  scene.innerHTML = `
-    <div class="cuisine-map-layer semantic-layer" aria-label="${state.country.name} cuisine topology over Google Maps in Munich">
-      <iframe class="google-map-iframe" src="${iframeUrl}" loading="eager" referrerpolicy="no-referrer-when-downgrade" title="Google Maps basemap of Munich" tabindex="-1"></iframe>
-      <div class="cuisine-topology cuisine-map-overlay" role="group" aria-label="Cuisine traditions from ${state.country.name} in Munich">
-        <svg class="cuisine-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          ${positions.map(([x, y]) => `<line x1="50" y1="50" x2="${x}" y2="${y}"></line>`).join("")}
-        </svg>
-        <div class="country-focus continent-${state.country.continent.toLowerCase()}">
-          <span>${state.country.flag}</span>
-          <strong>${state.country.name}</strong>
-          <small>${state.country.restaurants.length} in Munich</small>
-        </div>
-        ${cuisines.map((cuisine, index) => cuisineNodeMarkup(cuisine, positions[index])).join("")}
-      </div>
-      <div class="map-source-strip"><span>Google Maps · Munich</span><span>${state.country.name} cuisine layer</span></div>
-    </div>
-  `;
-
-  scene.querySelectorAll(".cuisine-zoom-node").forEach((node) => {
-    node.addEventListener("click", () => {
-      state.cuisine = cuisines.find((cuisine) => cuisine.id === node.dataset.cuisine);
-      state.restaurant = state.cuisine.restaurants[0];
-      commitLevel("map", "forward", node);
-    });
-    bindHoverLabel(node, `Reveal ${node.dataset.name} on the map`);
-  });
+function selectionInstruction() {
+  if (focus === root) return "Select a metropolitan circle. Munich is the live edition; smaller rings mark planned cities.";
+  if (focus.data.kind === "continent") return "Zoom into a country, or reveal every qualifying restaurant from this continent directly on the Munich map.";
+  if (focus.data.kind === "country") return "Zoom into a cuisine tradition, or reveal every qualifying restaurant for this country directly on the Munich map.";
+  if (focus.data.kind === "region") return "Select a restaurant circle for its sourced address, or reveal this cuisine tradition on the physical map.";
+  return `Select a ${focus.children?.[0]?.data.kind ?? "circle"} to continue the geographic zoom.`;
 }
 
-function cuisinePositions(count) {
-  if (count === 1) return [[76, 50]];
-  if (count === 2) return [[27, 49], [76, 49]];
-  if (count === 3) return [[28, 32], [78, 35], [56, 77]];
-  return Array.from({ length: count }, (_, index) => {
-    const angle = -Math.PI / 2 + (index / count) * Math.PI * 2;
-    return [50 + Math.cos(angle) * 33, 50 + Math.sin(angle) * 33];
-  });
+function updateControls() {
+  const isRoot = focus === root && state.mode === "pack";
+  document.querySelector("[data-action='back']").hidden = isRoot;
+  document.querySelector("[data-action='zoom-out']").disabled = isRoot;
+  document.querySelector("[data-action='zoom-in']").disabled = state.mode === "map" || !focus.children?.length;
 }
 
-function cuisineNodeMarkup(cuisine, position) {
-  const [x, y] = position;
-  return `
-    <button class="cuisine-zoom-node" type="button" data-cuisine="${cuisine.id}" data-name="${cuisine.name}" style="left:${x}%;top:${y}%" aria-label="Reveal ${cuisine.name}, ${cuisine.restaurants.length} ${cuisine.restaurants.length === 1 ? "restaurant" : "restaurants"} on the map">
-      <span class="cuisine-zoom-symbol" aria-hidden="true">${cuisine.symbol}</span>
-      <strong>${cuisine.name}</strong>
-      <small>${cuisine.restaurants.length} ${cuisine.restaurants.length === 1 ? "place" : "places"}</small>
-    </button>
-  `;
+function coordinateMarkup(lat, lng) {
+  const latitude = `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? "N" : "S"}`;
+  const longitude = `${Math.abs(lng).toFixed(4)}° ${lng >= 0 ? "E" : "W"}`;
+  return `${latitude}<br>${longitude}`;
+}
+
+function pluralize(kind, count) {
+  if (count === 1) return kind;
+  if (kind === "country") return "countries";
+  return `${kind}s`;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
+function restaurantLeaves(node) {
+  return node.leaves().filter((leaf) => leaf.data.kind === "restaurant");
+}
+
+function mapRestaurants() {
+  return restaurantLeaves(focus).map((leaf) => leaf.data);
 }
 
 function renderPhysicalMap() {
-  const visible = activeRestaurants();
-  if (!state.restaurant || !visible.some((restaurant) => restaurant.id === state.restaurant.id)) state.restaurant = visible[0];
-  const view = mapViewFor(visible);
-  const mapLabel = state.cuisine?.name ?? state.country?.name ?? "international restaurants";
-  const iframeUrl = `https://www.google.com/maps?ll=${view.center.lat},${view.center.lng}&z=${view.zoom}&output=embed`;
+  const visible = mapRestaurants();
+  if (!visible.length) return;
+  cleanupMap();
+  state.mode = "map";
+  const mapView = mapViewFor(visible);
+  if (!state.selectedRestaurant || !visible.some((restaurant) => restaurant.id === state.selectedRestaurant.data.id)) {
+    state.selectedRestaurant = nodeById.get(visible[0].id);
+  }
+  const iframeUrl = googleMapEmbedUrl(mapView);
 
   scene.innerHTML = `
-    <div class="physical-map semantic-layer" aria-label="Google map of ${mapLabel} in Munich">
-      <div class="google-map-host" id="google-map" aria-hidden="true"></div>
+    <div class="physical-map semantic-layer" aria-label="Google map of ${escapeHtml(focus.data.name)} restaurants in Munich">
       <iframe class="google-map-iframe" src="${iframeUrl}" loading="eager" referrerpolicy="no-referrer-when-downgrade" title="Google Maps basemap centered on Munich" tabindex="-1"></iframe>
-      <div class="coordinate-overlay" role="group" aria-label="Verified restaurant locations">
-        ${visible.map((restaurant) => fallbackMarkerMarkup(restaurant, view)).join("")}
-      </div>
-      <div class="map-source-strip">
-        <span>Google Maps</span>
-        <span>${visible.length} sourced coordinates</span>
-        <button type="button" data-action="map-settings">Enable interactive map</button>
-      </div>
+      <div class="coordinate-overlay" role="group" aria-label="Sourced restaurant locations"></div>
+      <div class="map-source-strip"><span>Google Maps</span><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a><span class="map-cluster-status">${visible.length} restaurants</span></div>
     </div>
   `;
 
-  scene.querySelectorAll(".coordinate-marker").forEach((marker) => {
-    marker.addEventListener("click", () => selectRestaurant(marker.dataset.restaurant));
-    bindHoverLabel(marker, marker.dataset.name);
-  });
-
-  const key = getGoogleMapsKey();
-  if (key) initInteractiveGoogleMap(key, visible);
-
   const overlay = scene.querySelector(".coordinate-overlay");
-  const refreshFallback = () => positionFallbackMarkers(overlay, visible, view);
-  requestAnimationFrame(refreshFallback);
-  mapResizeObserver = new ResizeObserver(refreshFallback);
+  const iframe = scene.querySelector(".google-map-iframe");
+  const refresh = () => renderClusteredMarkers(overlay, visible, mapView, iframe);
+  requestAnimationFrame(refresh);
+  mapResizeObserver = new ResizeObserver(refresh);
   mapResizeObserver.observe(overlay);
+  updateInterface();
+}
+
+function googleMapEmbedUrl(mapView) {
+  return `https://www.google.com/maps?ll=${mapView.center.lat},${mapView.center.lng}&z=${mapView.zoom}&output=embed`;
 }
 
 function mapViewFor(list) {
   const center = list.length === 1
     ? { lat: list[0].lat, lng: list[0].lng }
     : {
-        lat: list.reduce((sum, restaurant) => sum + restaurant.lat, 0) / list.length,
-        lng: list.reduce((sum, restaurant) => sum + restaurant.lng, 0) / list.length,
+        lat: d3.mean(list, (restaurant) => restaurant.lat),
+        lng: d3.mean(list, (restaurant) => restaurant.lng),
       };
   return { center, zoom: list.length === 1 ? 15 : list.length <= 3 ? 14 : 12 };
 }
 
-function fallbackMarkerMarkup(restaurant, view) {
+function restaurantMarkerMarkup(restaurant, x, y) {
+  const active = restaurant.id === state.selectedRestaurant?.data.id ? " is-active" : "";
   return `
-    <button class="coordinate-marker ${restaurant.id === state.restaurant?.id ? "is-active" : ""}" type="button" data-restaurant="${restaurant.id}" data-name="${restaurant.name}" data-lat="${restaurant.lat}" data-lng="${restaurant.lng}" aria-label="Select ${restaurant.name}">
-      <span aria-hidden="true">${restaurant.symbol}</span>
-      <strong>${restaurant.name}</strong>
+    <button class="coordinate-marker marker-${restaurant.markerKind}${active}" style="left:${x}px;top:${y}px" type="button" data-restaurant="${restaurant.id}" data-name="${escapeHtml(restaurant.name)}" aria-label="Select ${escapeHtml(restaurant.name)}">
+      <span aria-hidden="true">${restaurant.symbol}</span><strong>${escapeHtml(restaurant.name)}</strong>
     </button>
   `;
 }
 
-function positionFallbackMarkers(container, list, view) {
-  if (!container?.isConnected) return;
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  if (!width || !height) return;
-  const centerPoint = worldPixel(view.center.lat, view.center.lng, view.zoom);
-  list.forEach((restaurant) => {
-    const point = worldPixel(restaurant.lat, restaurant.lng, view.zoom);
-    const marker = container.querySelector(`[data-restaurant="${restaurant.id}"]`);
-    if (!marker) return;
-    marker.style.left = `${width / 2 + point.x - centerPoint.x}px`;
-    marker.style.top = `${height / 2 + point.y - centerPoint.y}px`;
+function clusterMarkerMarkup(cluster, index, x, y) {
+  const count = cluster.restaurants.length;
+  return `
+    <button class="coordinate-marker coordinate-cluster" style="left:${x}px;top:${y}px" type="button" data-cluster="${index}" data-name="${count} restaurants nearby" aria-label="Zoom into ${count} nearby restaurants">
+      <span aria-hidden="true">${count}</span><strong>${count} restaurants nearby</strong>
+    </button>
+  `;
+}
+
+function renderClusteredMarkers(container, list, mapView, iframe) {
+  if (!container?.isConnected || !container.clientWidth || !container.clientHeight) return;
+  const centerPoint = worldPixel(mapView.center.lat, mapView.center.lng, mapView.zoom);
+  const clusters = clusterRestaurants(list, mapView.zoom);
+  container.innerHTML = clusters.map((cluster, index) => {
+    const x = container.clientWidth / 2 + cluster.x - centerPoint.x;
+    const y = container.clientHeight / 2 + cluster.y - centerPoint.y;
+    return cluster.restaurants.length === 1
+      ? restaurantMarkerMarkup(cluster.restaurants[0], x, y)
+      : clusterMarkerMarkup(cluster, index, x, y);
+  }).join("");
+
+  const status = scene.querySelector(".map-cluster-status");
+  if (status) status.textContent = `${clusters.length} markers · ${list.length} restaurants`;
+
+  container.querySelectorAll(".coordinate-marker").forEach((marker) => {
+    marker.addEventListener("click", () => {
+      if (marker.dataset.restaurant) {
+        selectMapRestaurant(marker.dataset.restaurant);
+        return;
+      }
+      const cluster = clusters[Number(marker.dataset.cluster)];
+      if (!cluster) return;
+      mapView.center = { lat: cluster.lat, lng: cluster.lng };
+      mapView.zoom = Math.min(mapView.zoom + 2, 17);
+      iframe.src = googleMapEmbedUrl(mapView);
+      renderClusteredMarkers(container, list, mapView, iframe);
+    });
+    marker.addEventListener("pointerenter", (event) => showCursorLabel(event, marker.dataset.name));
+    marker.addEventListener("pointermove", moveCursorLabel);
+    marker.addEventListener("pointerleave", hideCursorLabel);
   });
+}
+
+function clusterRestaurants(list, zoom) {
+  const threshold = zoom >= 15 ? 12 : zoom >= 13 ? 18 : 24;
+  const clusters = [];
+  list.forEach((restaurant) => {
+    const point = worldPixel(restaurant.lat, restaurant.lng, zoom);
+    let nearest = null;
+    let nearestDistance = Infinity;
+    clusters.forEach((cluster) => {
+      const distance = Math.hypot(point.x - cluster.x, point.y - cluster.y);
+      if (distance <= threshold && distance < nearestDistance) {
+        nearest = cluster;
+        nearestDistance = distance;
+      }
+    });
+    if (!nearest) {
+      clusters.push({ x: point.x, y: point.y, lat: restaurant.lat, lng: restaurant.lng, restaurants: [restaurant] });
+      return;
+    }
+    const count = nearest.restaurants.length;
+    nearest.x = (nearest.x * count + point.x) / (count + 1);
+    nearest.y = (nearest.y * count + point.y) / (count + 1);
+    nearest.lat = (nearest.lat * count + restaurant.lat) / (count + 1);
+    nearest.lng = (nearest.lng * count + restaurant.lng) / (count + 1);
+    nearest.restaurants.push(restaurant);
+  });
+  return clusters;
 }
 
 function worldPixel(lat, lng, zoom) {
   const scale = 256 * 2 ** zoom;
-  const sin = Math.sin((Math.min(Math.max(lat, -85), 85) * Math.PI) / 180);
+  const sine = Math.sin((Math.min(Math.max(lat, -85), 85) * Math.PI) / 180);
   return {
     x: ((lng + 180) / 360) * scale,
-    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
+    y: (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)) * scale,
   };
 }
 
-function getGoogleMapsKey() {
-  return window.GASTROGLOBE_CONFIG?.googleMapsApiKey || localStorage.getItem("gastroglobe.googleMapsApiKey") || "";
+function selectMapRestaurant(id) {
+  state.selectedRestaurant = nodeById.get(id) ?? state.selectedRestaurant;
+  scene.querySelectorAll(".coordinate-marker").forEach((marker) => marker.classList.toggle("is-active", marker.dataset.restaurant === id));
+  updateRail();
+  updateSelectionCard();
 }
-
-function loadGoogleMaps(key) {
-  if (window.google?.maps) return Promise.resolve(window.google.maps);
-  if (googleMapsPromise) return googleMapsPromise;
-  googleMapsPromise = new Promise((resolve, reject) => {
-    const callbackName = "__gastroGlobeGoogleMapsReady";
-    const timeout = window.setTimeout(() => reject(new Error("Google Maps timed out")), 15000);
-    window[callbackName] = () => {
-      window.clearTimeout(timeout);
-      resolve(window.google.maps);
-      delete window[callbackName];
-    };
-    window.gm_authFailure = () => {
-      window.clearTimeout(timeout);
-      reject(new Error("Google Maps authentication failed"));
-    };
-    const script = document.createElement("script");
-    script.id = "google-maps-script";
-    script.async = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=${callbackName}&v=weekly`;
-    script.onerror = () => reject(new Error("Google Maps could not load"));
-    document.head.append(script);
-  });
-  return googleMapsPromise;
-}
-
-async function initInteractiveGoogleMap(key, visible) {
-  const host = scene.querySelector("#google-map");
-  if (!host) return;
-  try {
-    await loadGoogleMaps(key);
-    if (state.level !== "map" || !host.isConnected) return;
-    const view = mapViewFor(visible);
-    mapInstance = new google.maps.Map(host, {
-      center: view.center,
-      zoom: view.zoom,
-      disableDefaultUI: true,
-      zoomControl: true,
-      gestureHandling: "greedy",
-      clickableIcons: false,
-      backgroundColor: "#e8e3d8",
-      styles: googleMapStyles,
-    });
-    host.removeAttribute("aria-hidden");
-    host.classList.add("is-ready");
-    scene.querySelector(".google-map-iframe")?.classList.add("is-hidden");
-    scene.querySelector(".coordinate-overlay")?.classList.add("is-hidden");
-    scene.querySelector(".map-source-strip span:first-child").textContent = "Google Maps · Interactive";
-
-    if (visible.length > 1) {
-      const bounds = new google.maps.LatLngBounds();
-      visible.forEach((restaurant) => bounds.extend({ lat: restaurant.lat, lng: restaurant.lng }));
-      mapInstance.fitBounds(bounds, 64);
-    }
-
-    const RestaurantMapOverlay = createRestaurantMapOverlayClass();
-    mapOverlays = visible.map((restaurant) => new RestaurantMapOverlay(restaurant, mapInstance));
-  } catch (error) {
-    const source = scene.querySelector(".map-source-strip");
-    if (source) source.dataset.error = "Google Maps key needs attention";
-  }
-}
-
-function createRestaurantMapOverlayClass() {
-  return class RestaurantMapOverlay extends google.maps.OverlayView {
-    constructor(restaurant, map) {
-      super();
-      this.restaurant = restaurant;
-      this.button = null;
-      this.setMap(map);
-    }
-
-    onAdd() {
-      this.button = document.createElement("button");
-      this.button.type = "button";
-      this.button.dataset.restaurant = this.restaurant.id;
-      this.button.className = `google-restaurant-marker ${this.restaurant.id === state.restaurant?.id ? "is-active" : ""}`;
-      this.button.setAttribute("aria-label", `Select ${this.restaurant.name}`);
-      this.button.innerHTML = `<span aria-hidden="true">${this.restaurant.symbol}</span><strong>${this.restaurant.name}</strong>`;
-      this.button.addEventListener("click", () => selectRestaurant(this.restaurant.id));
-      this.getPanes().overlayMouseTarget.append(this.button);
-    }
-
-    draw() {
-      const point = this.getProjection().fromLatLngToDivPixel(new google.maps.LatLng(this.restaurant.lat, this.restaurant.lng));
-      if (!point || !this.button) return;
-      this.button.style.left = `${point.x}px`;
-      this.button.style.top = `${point.y}px`;
-    }
-
-    onRemove() {
-      this.button?.remove();
-      this.button = null;
-    }
-  };
-}
-
-const googleMapStyles = [
-  { elementType: "geometry", stylers: [{ color: "#e8e3d8" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#5f625e" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#f2efe8" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#f4f1ea" }] },
-  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#ded8cc" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#d1cabc" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#aab8bd" }] },
-];
 
 function cleanupMap() {
   mapResizeObserver?.disconnect();
   mapResizeObserver = null;
-  mapOverlays.forEach((overlay) => overlay.setMap?.(null));
-  mapOverlays = [];
-  mapInstance = null;
 }
 
-function selectRestaurant(id) {
-  state.restaurant = restaurants.find((restaurant) => restaurant.id === id) ?? state.restaurant;
-  document.querySelectorAll(".coordinate-marker, .google-restaurant-marker").forEach((marker) => marker.classList.toggle("is-active", marker.dataset.restaurant === id || marker.getAttribute("aria-label") === `Select ${state.restaurant.name}`));
-  updateSelectionCard();
-  updateRail();
+function transitionScene(update) {
+  if (document.startViewTransition && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.startViewTransition(update);
+  } else {
+    update();
+  }
 }
 
-function bindHoverLabel(element, label) {
-  element.addEventListener("pointerenter", () => {
-    cursorLabel.textContent = label;
-    cursorLabel.classList.add("is-visible");
-  });
-  element.addEventListener("pointermove", (event) => {
-    cursorLabel.style.left = `${event.clientX}px`;
-    cursorLabel.style.top = `${event.clientY}px`;
-  });
-  element.addEventListener("pointerleave", () => cursorLabel.classList.remove("is-visible"));
+function showCursorLabel(event, text) {
+  cursorLabel.textContent = text;
+  cursorLabel.classList.add("is-visible");
+  moveCursorLabel(event);
 }
 
-function goBack(trigger = null) {
-  if (state.level === "map" && !state.country) {
-    commitLevel("world", "back", trigger);
+function moveCursorLabel(event) {
+  cursorLabel.style.left = `${event.clientX}px`;
+  cursorLabel.style.top = `${event.clientY}px`;
+}
+
+function hideCursorLabel() {
+  cursorLabel.classList.remove("is-visible");
+}
+
+function zoomForward() {
+  const child = [...(focus.children ?? [])]
+    .filter((node) => !node.data.planned)
+    .sort((a, b) => b.value - a.value)[0];
+  if (child) handleNodeActivation(child);
+}
+
+function goBack() {
+  if (state.mode === "map") {
+    state.mode = "pack";
+    state.selectedRestaurant = null;
+    transitionScene(() => renderPack(false));
     return;
   }
-  const index = levels.indexOf(state.level);
-  if (index > 0) commitLevel(levels[index - 1], "back", trigger);
-}
-
-function zoomIn(trigger = null) {
-  if (state.level === "world") {
-    state.country ||= countries.find((country) => country.id === "china");
-    state.cuisine = cuisinesForCountry(state.country.id)[0] ?? null;
-    commitLevel("country", "forward", trigger);
-    return;
-  }
-  if (state.level === "country") {
-    state.cuisine ||= cuisinesForCountry(state.country.id)[0] ?? null;
-    state.restaurant = activeRestaurants()[0];
-    commitLevel("map", "forward", trigger);
-  }
+  if (focus.parent) zoomToNode(focus.parent);
 }
 
 document.addEventListener("click", (event) => {
-  const target = event.target.closest("[data-action]");
-  const action = target?.dataset.action;
+  const focusTrigger = event.target.closest("[data-focus-id]");
+  if (focusTrigger) {
+    const node = nodeById.get(focusTrigger.dataset.focusId);
+    if (node && node !== focus) zoomToNode(node);
+    return;
+  }
+
+  const trigger = event.target.closest("[data-action]");
+  const action = trigger?.dataset.action;
   if (!action) return;
   if (action === "home") {
-    commitLevel("world", "back", target);
+    state.mode = "pack";
+    state.focusId = root.data.id;
+    state.selectedNode = null;
+    state.selectedRestaurant = null;
+    transitionScene(() => renderPack(false));
   }
-  if (action === "back" || action === "zoom-out") goBack(target);
-  if (action === "zoom-in") zoomIn(target);
-  if (action === "reveal-all") {
-    state.country = null;
-    state.cuisine = null;
-    state.restaurant = restaurants[0];
-    commitLevel("map", "forward", target);
-  }
-  if (action === "reveal-country") {
-    state.cuisine = null;
-    state.restaurant = state.country.restaurants[0];
-    commitLevel("map", "forward", target);
-  }
+  if (action === "back" || action === "zoom-out") goBack();
+  if (action === "zoom-in" || action === "zoom-forward") zoomForward();
+  if (action === "map-focus") transitionScene(renderPhysicalMap);
   if (action === "about") {
-    const expanded = target.getAttribute("aria-expanded") === "true";
-    target.setAttribute("aria-expanded", String(!expanded));
+    const expanded = trigger.getAttribute("aria-expanded") === "true";
+    trigger.setAttribute("aria-expanded", String(!expanded));
     document.querySelector("#about-drawer").setAttribute("aria-hidden", String(expanded));
   }
-  if (action === "map-settings") {
-    mapsKeyInput.value = getGoogleMapsKey();
-    mapsDialog.showModal();
-    mapsKeyInput.focus();
-  }
-  if (action === "close-maps-dialog") mapsDialog.close();
-});
-
-document.querySelectorAll("[data-level]").forEach((button) => {
-  button.addEventListener("click", () => {
-    const requested = button.dataset.level;
-    if (requested === "country" && !state.country) state.country = countries.find((country) => country.id === "china");
-    if (requested === "map") state.restaurant = activeRestaurants()[0];
-    const direction = levels.indexOf(requested) < levels.indexOf(state.level) ? "back" : "forward";
-    commitLevel(requested, direction, button);
-  });
-});
-
-mapsForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const key = mapsKeyInput.value.trim();
-  if (key) localStorage.setItem("gastroglobe.googleMapsApiKey", key);
-  else localStorage.removeItem("gastroglobe.googleMapsApiKey");
-  mapsDialog.close();
-  cleanupMap();
-  googleMapsPromise = null;
-  document.querySelector("#google-maps-script")?.remove();
-  if (state.level === "map") renderPhysicalMap();
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !mapsDialog.open) {
-    const aboutButton = document.querySelector("[data-action='about']");
-    if (aboutButton.getAttribute("aria-expanded") === "true") {
-      aboutButton.click();
-      aboutButton.focus();
-    } else {
-      goBack();
-    }
+  if (event.key !== "Escape") return;
+  const aboutButton = document.querySelector("[data-action='about']");
+  if (aboutButton.getAttribute("aria-expanded") === "true") {
+    aboutButton.click();
+    aboutButton.focus();
+  } else {
+    goBack();
   }
 });
 
-render();
+initialize();

@@ -3,22 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="GastroGlobe — an interactive cultural atlas of the cuisines living inside cities."
-    />
+    <meta name="description" content="GastroGlobe — a zoomable atlas of the food cultures living inside metropolitan cities." />
     <meta name="theme-color" content="#f2efe8" />
-    <title>GastroGlobe — A cultural atlas</title>
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f2efe8' stroke='%231e211f'/%3E%3Ctext x='16' y='19' text-anchor='middle' font-family='Georgia' font-size='9' fill='%231e211f'%3EGG%3C/text%3E%3C/svg%3E"
-    />
+    <title>GastroGlobe — Metropolitan food atlas</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f2efe8' stroke='%231e211f'/%3E%3Ctext x='16' y='19' text-anchor='middle' font-family='Georgia' font-size='9' fill='%231e211f'%3EGG%3C/text%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=Manrope:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -26,110 +17,74 @@
 
     <div class="app-shell">
       <header class="site-header">
-        <button class="wordmark" type="button" data-action="home" aria-label="Return to world view">
+        <button class="wordmark" type="button" data-action="home" aria-label="Return to metropolitan atlas">
           <span class="wordmark-mark" aria-hidden="true">GG</span>
           <span>GastroGlobe</span>
         </button>
-
-        <p class="edition">Cultural atlas <span>·</span> Web edition 01</p>
-
+        <p class="edition">Metropolitan food atlas <span>·</span> Web edition 02</p>
         <button class="about-button" type="button" data-action="about" aria-expanded="false">
-          <span>About</span>
-          <span class="about-icon" aria-hidden="true">＋</span>
+          <span>About</span><span class="about-icon" aria-hidden="true">＋</span>
         </button>
       </header>
 
       <main id="atlas" class="atlas-layout">
         <aside class="context-panel" aria-label="Atlas context">
           <div>
-            <p class="eyebrow" id="view-kicker">World view · 01</p>
-            <h1 id="view-title">The world,<br />through its cities.</h1>
-            <p class="intro" id="view-intro">
-              Explore how global food cultures gather, adapt, and take root inside metropolitan life.
-            </p>
+            <p class="eyebrow" id="view-kicker">Metropolitan atlas · 01</p>
+            <h1 id="view-title">Cities,<br />packed by food.</h1>
+            <p class="intro" id="view-intro">Choose a metropolitan edition, then move through continents, countries, and culinary regions.</p>
           </div>
-
           <div class="context-footer">
-            <ol class="stage-index" aria-label="Exploration depth">
-              <li><button type="button" data-level="world" aria-current="step"><span>01</span> World</button></li>
-              <li><button type="button" data-level="country" disabled><span>02</span> Cuisine</button></li>
-              <li><button type="button" data-level="map" disabled><span>03</span> Restaurants</button></li>
-            </ol>
-            <p class="data-note">16 sourced restaurants · coordinates verified July 2026.</p>
+            <ol class="stage-index" id="depth-path" aria-label="Current hierarchy"></ol>
+            <p class="data-note">OSM snapshot · 18 Jul 2026<br />Fusion + generic-only excluded<br />Area = qualifying restaurants</p>
           </div>
         </aside>
 
-        <section class="visual-stage" aria-live="polite" aria-label="Interactive culinary atlas">
+        <section class="visual-stage" aria-live="polite" aria-label="Zoomable culinary hierarchy">
           <div class="stage-toolbar">
-            <button class="back-button" type="button" data-action="back" hidden>
-              <span aria-hidden="true">←</span> Back
-            </button>
-            <p class="stage-caption" id="stage-caption">13 origins over Munich · 16 restaurants</p>
-            <div class="zoom-key" aria-label="Map symbol key">
-              <span class="key-ring" aria-hidden="true"></span>
-              <span id="key-label">Culinary diversity</span>
+            <button class="back-button" type="button" data-action="back" hidden><span aria-hidden="true">←</span> Back</button>
+            <p class="stage-caption" id="stage-caption">12 metropolitan editions · Munich live</p>
+            <div class="zoom-key" aria-label="Bubble encoding">
+              <span class="key-ring" aria-hidden="true"></span><span id="key-label">Area = food available</span>
             </div>
-            <div class="semantic-zoom" aria-label="Semantic zoom controls">
+            <div class="semantic-zoom" aria-label="Hierarchy zoom controls">
               <button type="button" data-action="zoom-out" aria-label="Zoom out one level">−</button>
-              <button type="button" data-action="zoom-in" aria-label="Zoom in one level">＋</button>
+              <button type="button" data-action="zoom-in" aria-label="Zoom into the largest available group">＋</button>
             </div>
           </div>
 
           <div class="scene" id="scene"></div>
-
           <div class="selection-card" id="selection-card"></div>
         </section>
 
-        <aside class="metric-rail" aria-label="Selected place metrics">
+        <aside class="metric-rail" aria-label="Focused hierarchy metrics">
           <div class="rail-heading">
-            <p class="eyebrow">Selected place</p>
-            <p class="coordinates" id="coordinates">48.1351° N<br />11.5820° E</p>
+            <p class="eyebrow">Focused layer</p>
+            <p class="coordinates" id="coordinates">15.0000° N<br />10.0000° E</p>
           </div>
           <div class="rail-content" id="rail-content"></div>
         </aside>
       </main>
 
       <footer class="site-footer">
-        <p>Food culture, mapped as a living system.</p>
-        <p>Prototype · 2026</p>
+        <p>1,198 Munich restaurants · 43 country cuisines</p>
+        <p><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors · ODbL</a></p>
       </footer>
     </div>
 
     <div class="about-drawer" id="about-drawer" aria-hidden="true">
       <div class="about-copy">
-        <p class="eyebrow">What is GastroGlobe?</p>
-        <p class="about-statement">
-          Not a restaurant guide. A cultural atlas that reveals how the world’s cuisines live together inside cities.
-        </p>
+        <p class="eyebrow">How to read GastroGlobe</p>
+        <p class="about-statement">Every circle is a place inside a place. Its area records food availability; its position preserves geographic direction.</p>
         <div class="about-columns">
-          <p>Designed for curiosity, comparison, and geographic understanding.</p>
-          <p>Each zoom moves from the world over Munich, to one cuisine culture, to its exact addresses.</p>
+          <p>Zoom from metropolitan cities to continents, countries, and culinary regions. The five ring hues form a GastroGlobe continent palette; positions preserve geographic bearing.</p>
+          <p>At the deepest layer, cuisine traditions resolve into sourced OpenStreetMap restaurant coordinates.</p>
         </div>
       </div>
-      <p class="about-number" aria-hidden="true">∞</p>
+      <p class="about-number" aria-hidden="true">◎</p>
     </div>
 
     <div class="cursor-label" id="cursor-label" aria-hidden="true"></div>
-
-    <dialog class="maps-dialog" id="maps-dialog" aria-labelledby="maps-dialog-title">
-      <form method="dialog" id="maps-form">
-        <div>
-          <p class="eyebrow">Physical map layer</p>
-          <h2 id="maps-dialog-title">Connect Google Maps</h2>
-          <p class="maps-dialog-copy">
-            Add a browser-restricted Maps JavaScript API key for a fully interactive basemap. The key stays in this browser.
-          </p>
-        </div>
-        <label class="maps-key-label" for="maps-key">Google Maps API key</label>
-        <input id="maps-key" name="maps-key" type="password" autocomplete="off" spellcheck="false" />
-        <p class="maps-key-hint">Enable Maps JavaScript API and restrict the key to <code>http://localhost:4317/*</code>.</p>
-        <div class="maps-dialog-actions">
-          <button type="button" class="dialog-secondary" data-action="close-maps-dialog">Cancel</button>
-          <button type="submit" class="dialog-primary">Save & load map</button>
-        </div>
-      </form>
-    </dialog>
-
     <script type="module" src="app.js"></script>
   </body>
 </html>

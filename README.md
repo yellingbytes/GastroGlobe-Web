@@ -14,23 +14,24 @@ Then open `http://localhost:4317`.
 
 The prototype is framework-free.
 
-The Munich edition opens on a Google Maps basemap of Munich with the culinary world topology overlaid on the city. It includes 16 sourced restaurants with latitude/longitude data in `restaurants.js`; the final layer resolves those coordinates into Web Mercator-projected restaurant markers.
+The Munich edition currently includes **1,198 named restaurants across 43 country cuisines** from an OpenStreetMap snapshot dated 18 July 2026. Every included record has sourced latitude/longitude data and links back to its OSM object.
 
-## Recommended v2 interaction direction
+“All” is defined reproducibly as named `amenity=restaurant` features whose `cuisine=*` tag resolves to one country or an unambiguous country-origin tradition inside Munich’s municipal boundary. The normalization pipeline excludes fusion tags, generic-only group labels such as `asian` or `international`, multi-country records, unnamed records, and nearby duplicate features.
 
-1. Open with a tile index of metropolitan cities—no map yet.
-2. Selecting a city reveals its topological world of culinary origins.
-3. Semantic zoom expands an origin into country and regional cuisine traditions.
-4. The physical map appears only at the final layer, where traditions resolve into real restaurant addresses.
+The generated snapshot lives in `data/munich-restaurants.js`; `scripts/normalize-osm.mjs` contains the auditable cuisine taxonomy, municipal-boundary filter, exclusions, and de-duplication rules. Data is © OpenStreetMap contributors and available under the ODbL.
 
-This keeps the concept editorial at the entrance, makes the topology the main discovery interface, and reserves Google Maps for the moment exact location becomes useful.
+## Interaction model
 
-## Optional interactive Google Maps
+The primary interface follows the [D3 zoomable circle-packing pattern](https://observablehq.com/@d3/zoomable-circle-packing):
 
-Select **Google Maps setup** in the restaurant layer and enter a browser-restricted Google Maps JavaScript API key. Enable the Maps JavaScript API and allow the referrer:
+1. Metropolitan editions
+2. Continents inside a selected city
+3. Countries inside a continent
+4. Culinary regions inside a country
+5. Sourced restaurants represented by each cuisine tradition
 
-```text
-http://localhost:4317/*
-```
+Circle area represents the number of loaded restaurant records. At every layer, the packed arrangement is rotated and reflected toward the latitude/longitude bearings of its children, preserving circle containment while making the hierarchy geographically coherent. Exact projected positions would conflict with non-overlapping, count-scaled circles, so direction is geographic while spacing remains packed. Dashed metropolitan rings are planned editions without loaded data.
 
-The key is kept in browser `localStorage`; it is not written into the repository.
+Continents use the five Olympic-ring hues as a GastroGlobe palette: Europe blue, Asia yellow, Africa black, Oceania green, and the Americas red. This color-to-continent mapping is a product convention, not an official Olympic assignment.
+
+Continent, country, and regional/style layers can open directly on the Munich Google Maps basemap. National/general restaurants use their country flag; recognized regional traditions use a representative food emoji. Nearby coordinates collapse into numbered clusters, and selecting a cluster zooms the map until more individual restaurants separate. The plotted points retain the OSM coordinates, and every selected restaurant links to both its OSM source and Google Maps search. No Google Maps API key is needed for the embedded basemap.
