@@ -5,6 +5,12 @@ import {
   restaurants as sourceRestaurants,
 } from "./data/munich-restaurants.js";
 
+const regionalTaxonomyResponse = await fetch(new URL("./data/munich-regional-cuisine-taxonomy.json", import.meta.url));
+if (!regionalTaxonomyResponse.ok) {
+  throw new Error(`Regional cuisine taxonomy could not load (${regionalTaxonomyResponse.status}).`);
+}
+const regionalCuisineTaxonomy = await regionalTaxonomyResponse.json();
+
 const countryById = new Map(countryTaxonomy.map((country) => [country.id, country]));
 const regionById = new Map(regionTaxonomy.map((region) => [`${region.countryId}/${region.id}`, region]));
 const regionalFoodEmoji = {
@@ -17,6 +23,22 @@ const regionalFoodEmoji = {
   "noodle-traditions": "🍜",
   "tapas-tradition": "🫒",
 };
+
+const taxonomyCountryAliases = new Map([
+  ["Korea", "south-korea"],
+]);
+
+const regionalCountryById = new Map(
+  regionalCuisineTaxonomy.continents.flatMap((continent) =>
+    continent.countries.map((country) => {
+      const sourceCountry = countryTaxonomy.find((candidate) =>
+        candidate.name === country.country || candidate.flag === country.emoji,
+      );
+      const countryId = sourceCountry?.id ?? taxonomyCountryAliases.get(country.country);
+      return countryId ? [countryId, country] : null;
+    }).filter(Boolean),
+  ),
+);
 
 function cuisineLabel(value) {
   return value
@@ -91,7 +113,7 @@ export function buildAtlasHierarchy() {
           ...center,
           available: continentCountries.reduce((sum, country) => sum + country.restaurants.length, 0),
           children: continentCountries.map((country) => {
-            const countryRegions = regionTaxonomy.filter((region) => region.countryId === country.id);
+            const regionalCountry = regionalCountryById.get(country.id);
             return {
               id: `country-${country.id}`,
               countryId: country.id,
@@ -101,27 +123,9 @@ export function buildAtlasHierarchy() {
               lat: country.lat,
               lng: country.lng,
               available: country.restaurants.length,
-              children: countryRegions
-                .map((region) => {
-                  const regionRestaurants = country.restaurants.filter((restaurant) => restaurant.regionId === region.id);
-                  if (!regionRestaurants.length) return null;
-                  return {
-                    id: `region-${country.id}-${region.id}`,
-                    name: region.name,
-                    countryId: country.id,
-                    kind: "region",
-                    lat: region.lat,
-                    lng: region.lng,
-                    available: regionRestaurants.length,
-                    children: regionRestaurants.map((restaurant) => ({
-                      ...restaurant,
-                      kind: "restaurant",
-                      available: 1,
-                      layoutValue: 1,
-                    })),
-                  };
-                })
-                .filter(Boolean),
+              children: regionalCountry
+                ? buildRegionalCuisineChildren(country, regionalCountry)
+                : buildLegacyRegionChildren(country),
             };
           }),
         };
@@ -136,7 +140,15 @@ export function buildAtlasHierarchy() {
       kind: "metropolitan",
       planned: true,
       available: 0,
-      layoutValue: 0.65,
+      children: Object.entries(continentCenters).map(([continentName, center]) => ({
+        id: `${edition.id}-continent-${continentName.toLowerCase()}`,
+        name: continentName,
+        kind: "continent",
+        ...center,
+        available: 0,
+        layoutValue: 1,
+        emptyEdition: true,
+      })),
     }));
 
   return {
@@ -146,6 +158,94 @@ export function buildAtlasHierarchy() {
     available: restaurants.length,
     children: [liveMetropolitan, ...plannedMetropolitans],
   };
+}
+
+function buildRegionalCuisineChildren(country, regionalCountry) {
+  const classifiedIds = new Set(
+    regionalCountry.regions.flatMap((region) => region.restaurants.map((restaurant) => restaurant.id)),
+  );
+  const sourceById = new Map(country.restaurants.map((restaurant) => [restaurant.id, restaurant]));
+  const regions = regionalCountry.regions.map((region, index) => {
+    const regionRestaurants = region.restaurants
+      .map((restaurant) => sourceById.get(restaurant.id))
+      .filter(Boolean);
+    return regionalCuisineNode(country, region, regionRestaurants, index);
+  });
+  const unclassifiedRestaurants = country.restaurants.filter((restaurant) => !classifiedIds.has(restaurant.id));
+
+  if (unclassifiedRestaurants.length) {
+    regions.push({
+      id: `region-${country.id}-unclassified`,
+      name: "Unclassified regional identity",
+      emoji: "◌",
+      countryId: country.id,
+      kind: "region",
+      lat: country.lat,
+      lng: country.lng,
+      available: unclassifiedRestaurants.length,
+      unclassified: true,
+      children: unclassifiedRestaurants.map((restaurant) => restaurantNode(restaurant, {
+        name: "Unclassified regional identity",
+        emoji: country.flag,
+      })),
+    });
+  }
+
+  return regions;
+}
+
+function regionalCuisineNode(country, region, restaurantsInRegion, index) {
+  const center = region.geographicCenter ?? { lat: country.lat, lng: country.lng };
+  return {
+    id: `region-${country.id}-taxonomy-${index}`,
+    name: region.name,
+    emoji: region.emoji,
+    countryId: country.id,
+    kind: "region",
+    lat: center.lat,
+    lng: center.lng,
+    available: restaurantsInRegion.length,
+    zeroCountCuisine: restaurantsInRegion.length === 0,
+    children: restaurantsInRegion.map((restaurant) => restaurantNode(restaurant, region)),
+  };
+}
+
+function restaurantNode(restaurant, region) {
+  return {
+    ...restaurant,
+    region: region.name,
+    symbol: region.emoji ?? restaurant.symbol,
+    markerKind: region.emoji ? "food" : restaurant.markerKind,
+    kind: "restaurant",
+    available: 1,
+    layoutValue: 1,
+  };
+}
+
+function buildLegacyRegionChildren(country) {
+  const regions = regionTaxonomy
+    .filter((region) => region.countryId === country.id)
+    .map((region) => {
+      const regionRestaurants = country.restaurants.filter((restaurant) => restaurant.regionId === region.id);
+      if (!regionRestaurants.length) return null;
+      return {
+        id: `region-${country.id}-${region.id}`,
+        name: region.name,
+        countryId: country.id,
+        kind: "region",
+        lat: region.lat,
+        lng: region.lng,
+        available: regionRestaurants.length,
+        children: regionRestaurants.map((restaurant) => restaurantNode(restaurant, region)),
+      };
+    })
+    .filter(Boolean);
+
+  if (regions.length === 1 && regions[0].name === "National cuisine") {
+    return regions[0].children;
+  }
+
+  return regions;
 }
 
 export function googleMapsUrl(restaurant) {

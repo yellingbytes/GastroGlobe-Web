@@ -1,0 +1,376 @@
+{
+  "schemaVersion": "1.0.0",
+  "city": "Munich",
+  "country": "Germany",
+  "datasetSnapshot": "2026-07-18",
+  "generatedAt": "2026-07-19",
+  "sourceDataset": "data/munich-restaurants.js",
+  "hierarchy": ["World", "Continent", "Country", "Regional Cuisine", "Restaurant"],
+  "methodology": {
+    "purpose": "Represent culinary diversity rather than political geography.",
+    "classificationRule": "A restaurant is assigned to exactly one regional cuisine only when its own website, menu, public structured cuisine tag, or an unusually explicit specialist name supports that assignment. Dish formats alone do not establish regional identity.",
+    "exclusions": ["generic Asian", "fusion", "buffet", "pan-Asian", "pan-national restaurant without a dominant regional identity"],
+    "zeroCounts": "Taxonomically meaningful regional cuisines remain present when no dedicated Munich restaurant could be verified.",
+    "unclassified": "Restaurants that are nationally tagged but lack adequate regional evidence remain outside regional counts. They are not evidence that the regional tradition is absent, only that it is not verified in this snapshot.",
+    "politicalGeographyNote": "Culinary regions may cross modern borders. The Fujian–Taiwan culinary family is grouped for analytical continuity and makes no sovereignty claim.",
+    "evidenceLevels": {
+      "high": "First-party restaurant website or menu explicitly names the regional cuisine.",
+      "medium": "Structured public cuisine metadata or an explicit specialist identity supports the region, but first-party regional wording was unavailable."
+    }
+  },
+  "continents": [
+    {
+      "name": "Asia",
+      "countries": [
+        {
+          "country": "China",
+          "emoji": "🇨🇳",
+          "sourceRestaurantCount": 63,
+          "classifiedRestaurantCount": 5,
+          "unclassifiedRestaurantCount": 58,
+          "regions": [
+            {
+              "name": "Sichuan",
+              "emoji": "🌶️",
+              "geographicCenter": {"lat": 30.65, "lng": 104.07},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-5081218862",
+                  "name": "Sichuan Ecke",
+                  "evidenceLevel": "high",
+                  "evidence": "The first-party restaurant identity explicitly names Sichuan.",
+                  "sourceUrls": ["https://sichuan-ecke.eatbu.com/?lang=en", "https://www.openstreetmap.org/node/5081218862"]
+                }
+              ]
+            },
+            {"name": "Hunan", "emoji": "🥘", "geographicCenter": {"lat": 28.23, "lng": 112.94}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Cantonese / Guangdong",
+              "emoji": "🥢",
+              "geographicCenter": {"lat": 23.13, "lng": 113.26},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-1788814868",
+                  "name": "yā | The Mandarin Room",
+                  "evidenceLevel": "medium",
+                  "evidence": "The source record explicitly carries a Cantonese cuisine tag.",
+                  "sourceUrls": ["https://www.openstreetmap.org/node/1788814868"]
+                }
+              ]
+            },
+            {"name": "Jiangsu / Zhejiang", "emoji": "🍜", "geographicCenter": {"lat": 31.2, "lng": 120.6}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Northern China / Beijing", "emoji": "🥟", "geographicCenter": {"lat": 39.9, "lng": 116.4}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Northeast / Dongbei", "emoji": "🍲", "geographicCenter": {"lat": 43.9, "lng": 125.3}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Yunnan", "emoji": "🍄", "geographicCenter": {"lat": 25.04, "lng": 102.72}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Fujian / Taiwan culinary family", "emoji": "🐟", "geographicCenter": {"lat": 24.8, "lng": 119.1}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Xinjiang / Uyghur",
+              "emoji": "🐑",
+              "geographicCenter": {"lat": 43.82, "lng": 87.62},
+              "restaurantCount": 3,
+              "restaurants": [
+                {
+                  "id": "osm-node-13638405713",
+                  "name": "Karwan",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website describes authentic Uyghur cuisine and names lagman and plov.",
+                  "sourceUrls": ["https://www.karwan-muenchen.de/", "https://www.openstreetmap.org/node/13638405713"]
+                },
+                {
+                  "id": "osm-node-305717986",
+                  "name": "Taklamakan Restaurant",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website and menu explicitly present Uyghur cuisine and hand-pulled noodles.",
+                  "sourceUrls": ["https://taklamakan-restaurant.de/taklamakan-restaurant-muenchen/", "https://taklamakan-restaurant.de/wp-content/uploads/2023/11/Speisekarte-Taklamakan_2023.pdf", "https://www.openstreetmap.org/node/305717986"]
+                },
+                {
+                  "id": "osm-node-1091413931",
+                  "name": "Tengri Tagh",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site explicitly advertises authentic Uyghur specialties.",
+                  "sourceUrls": ["https://www.tengritagh-uyghur.de/en/reservierungen", "https://www.openstreetmap.org/node/1091413931"]
+                }
+              ]
+            },
+            {"name": "Tibetan", "emoji": "🏔️", "geographicCenter": {"lat": 29.65, "lng": 91.12}, "restaurantCount": 0, "restaurants": []}
+          ]
+        },
+        {
+          "country": "Japan",
+          "emoji": "🇯🇵",
+          "sourceRestaurantCount": 91,
+          "classifiedRestaurantCount": 0,
+          "unclassifiedRestaurantCount": 91,
+          "regions": [
+            {"name": "Tokyo / Edo", "emoji": "🍣", "geographicCenter": {"lat": 35.68, "lng": 139.76}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Kansai / Kyoto–Osaka", "emoji": "🍱", "geographicCenter": {"lat": 34.9, "lng": 135.6}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Hokkaido", "emoji": "🦀", "geographicCenter": {"lat": 43.06, "lng": 141.35}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Tohoku", "emoji": "🍲", "geographicCenter": {"lat": 38.27, "lng": 140.87}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Kyushu", "emoji": "🍜", "geographicCenter": {"lat": 33.59, "lng": 130.4}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Okinawa / Ryukyu", "emoji": "🌺", "geographicCenter": {"lat": 26.21, "lng": 127.68}, "restaurantCount": 0, "restaurants": []}
+          ]
+        },
+        {
+          "country": "India",
+          "emoji": "🇮🇳",
+          "sourceRestaurantCount": 94,
+          "classifiedRestaurantCount": 1,
+          "unclassifiedRestaurantCount": 93,
+          "regions": [
+            {"name": "Punjabi", "emoji": "🫓", "geographicCenter": {"lat": 31.15, "lng": 75.34}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Delhi / Western Uttar Pradesh", "emoji": "🍢", "geographicCenter": {"lat": 28.61, "lng": 77.21}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Awadhi / Lucknow", "emoji": "🍚", "geographicCenter": {"lat": 26.85, "lng": 80.95}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Gujarati", "emoji": "🥗", "geographicCenter": {"lat": 23.02, "lng": 72.57}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Rajasthani", "emoji": "🌾", "geographicCenter": {"lat": 26.91, "lng": 75.79}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Bengali", "emoji": "🐟", "geographicCenter": {"lat": 22.57, "lng": 88.36}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Odisha / Bihar", "emoji": "🍲", "geographicCenter": {"lat": 22.5, "lng": 85.5}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Tamil Nadu / Chettinad",
+              "emoji": "🌶️",
+              "geographicCenter": {"lat": 10.07, "lng": 78.78},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-305717980",
+                  "name": "Anjappar",
+                  "evidenceLevel": "high",
+                  "evidence": "The Munich restaurant's official site identifies it as a Chettinad restaurant rooted in Chennai and the Nattukottai Chettiar tradition.",
+                  "sourceUrls": ["https://anjapparmunich.de/about-us/", "https://anjapparmunich.de/wp-content/uploads/2023/12/Anjappar-Menu-Final-Print-File.pdf", "https://www.openstreetmap.org/node/305717980"]
+                }
+              ]
+            },
+            {"name": "Karnataka", "emoji": "🥞", "geographicCenter": {"lat": 12.97, "lng": 77.59}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Kerala / Malabar", "emoji": "🥥", "geographicCenter": {"lat": 10.0, "lng": 76.3}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Hyderabadi / Telangana", "emoji": "🍗", "geographicCenter": {"lat": 17.39, "lng": 78.49}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Goan / Konkan", "emoji": "🦐", "geographicCenter": {"lat": 15.49, "lng": 73.83}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Kashmiri", "emoji": "🏔️", "geographicCenter": {"lat": 34.08, "lng": 74.8}, "restaurantCount": 0, "restaurants": []}
+          ]
+        },
+        {
+          "country": "Thailand",
+          "emoji": "🇹🇭",
+          "sourceRestaurantCount": 27,
+          "classifiedRestaurantCount": 0,
+          "unclassifiedRestaurantCount": 27,
+          "regions": [
+            {"name": "Central / Bangkok", "emoji": "🍜", "geographicCenter": {"lat": 13.76, "lng": 100.5}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Northern / Lanna", "emoji": "🍛", "geographicCenter": {"lat": 18.79, "lng": 98.99}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Southern", "emoji": "🥥", "geographicCenter": {"lat": 7.0, "lng": 100.5}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Isan / Northeast", "emoji": "🌶️", "geographicCenter": {"lat": 16.43, "lng": 102.83}, "restaurantCount": 0, "restaurants": []}
+          ]
+        },
+        {
+          "country": "Türkiye",
+          "emoji": "🇹🇷",
+          "sourceRestaurantCount": 26,
+          "classifiedRestaurantCount": 0,
+          "unclassifiedRestaurantCount": 26,
+          "regions": [
+            {"name": "Istanbul / Ottoman urban", "emoji": "🕌", "geographicCenter": {"lat": 41.01, "lng": 28.98}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Aegean", "emoji": "🫒", "geographicCenter": {"lat": 38.42, "lng": 27.14}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Southeastern / Gaziantep–Urfa", "emoji": "🌶️", "geographicCenter": {"lat": 37.07, "lng": 37.38}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Black Sea", "emoji": "🐟", "geographicCenter": {"lat": 41.0, "lng": 37.5}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Central Anatolia", "emoji": "🥟", "geographicCenter": {"lat": 39.0, "lng": 33.0}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Mediterranean / Adana–Hatay", "emoji": "🍢", "geographicCenter": {"lat": 36.5, "lng": 35.5}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Eastern Anatolia", "emoji": "🍖", "geographicCenter": {"lat": 39.0, "lng": 41.0}, "restaurantCount": 0, "restaurants": []}
+          ]
+        },
+        {
+          "country": "Korea",
+          "emoji": "🇰🇷",
+          "sourceRestaurantCount": 20,
+          "classifiedRestaurantCount": 0,
+          "unclassifiedRestaurantCount": 20,
+          "regions": [
+            {"name": "Seoul / Gyeonggi", "emoji": "🍲", "geographicCenter": {"lat": 37.57, "lng": 126.98}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Jeolla", "emoji": "🍚", "geographicCenter": {"lat": 35.82, "lng": 127.15}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Gyeongsang", "emoji": "🐟", "geographicCenter": {"lat": 35.18, "lng": 129.08}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Gangwon", "emoji": "🥔", "geographicCenter": {"lat": 37.82, "lng": 128.16}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Jeju", "emoji": "🐖", "geographicCenter": {"lat": 33.5, "lng": 126.53}, "restaurantCount": 0, "restaurants": []}
+          ]
+        },
+        {
+          "country": "Vietnam",
+          "emoji": "🇻🇳",
+          "sourceRestaurantCount": 105,
+          "classifiedRestaurantCount": 1,
+          "unclassifiedRestaurantCount": 104,
+          "regions": [
+            {
+              "name": "Hanoi / Northern",
+              "emoji": "🍜",
+              "geographicCenter": {"lat": 21.03, "lng": 105.85},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-4906046269",
+                  "name": "HA Vietnamese Cuisine",
+                  "evidenceLevel": "high",
+                  "evidence": "The restaurant's official description explicitly emphasizes North Vietnamese cooking tradition.",
+                  "sourceUrls": ["https://www.ha-vietnamesecuisine.de/ueber-uns/?lang=en", "https://www.openstreetmap.org/node/4906046269"]
+                }
+              ]
+            },
+            {"name": "Central Vietnam / Huế–Quảng Nam", "emoji": "🌶️", "geographicCenter": {"lat": 16.05, "lng": 108.2}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Saigon / Southern", "emoji": "🥖", "geographicCenter": {"lat": 10.78, "lng": 106.7}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Mekong Delta", "emoji": "🐟", "geographicCenter": {"lat": 10.05, "lng": 105.75}, "restaurantCount": 0, "restaurants": []}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Europe",
+      "countries": [
+        {
+          "country": "Italy",
+          "emoji": "🇮🇹",
+          "sourceRestaurantCount": 407,
+          "classifiedRestaurantCount": 4,
+          "unclassifiedRestaurantCount": 403,
+          "regions": [
+            {"name": "Piedmont", "emoji": "🍄", "geographicCenter": {"lat": 45.07, "lng": 7.69}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Liguria", "emoji": "🌿", "geographicCenter": {"lat": 44.41, "lng": 8.93}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Lombardy", "emoji": "🍚", "geographicCenter": {"lat": 45.46, "lng": 9.19}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Veneto", "emoji": "🐟", "geographicCenter": {"lat": 45.44, "lng": 12.32}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Friuli-Venezia Giulia", "emoji": "🥘", "geographicCenter": {"lat": 46.06, "lng": 13.24}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Emilia-Romagna", "emoji": "🍝", "geographicCenter": {"lat": 44.49, "lng": 11.34}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Tuscany", "emoji": "🍷", "geographicCenter": {"lat": 43.77, "lng": 11.25}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Rome / Lazio", "emoji": "🧀", "geographicCenter": {"lat": 41.9, "lng": 12.5}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Naples / Campania",
+              "emoji": "🍕",
+              "geographicCenter": {"lat": 40.85, "lng": 14.27},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-2283339405",
+                  "name": "60 seconds to napoli",
+                  "evidenceLevel": "high",
+                  "evidence": "The official Munich page explicitly describes the restaurant as Neapolitan pizza specialization.",
+                  "sourceUrls": ["https://60secondstonapoli.de/standort/muenchen-restaurant/", "https://www.openstreetmap.org/node/2283339405"]
+                }
+              ]
+            },
+            {
+              "name": "Puglia / Salento",
+              "emoji": "🫒",
+              "geographicCenter": {"lat": 40.35, "lng": 18.17},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-3900500866",
+                  "name": "Dal Salentino",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site explicitly says its cuisine is rooted in Puglia and specifically Salento.",
+                  "sourceUrls": ["https://dal-salentino.de/", "https://www.openstreetmap.org/node/3900500866"]
+                }
+              ]
+            },
+            {
+              "name": "Sicily",
+              "emoji": "🍋",
+              "geographicCenter": {"lat": 37.6, "lng": 14.02},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-way-66749893",
+                  "name": "Dal Siciliano",
+                  "evidenceLevel": "medium",
+                  "evidence": "The specialist name explicitly identifies a Sicilian identity; a public restaurant description corroborates Sicilian cooking, but no first-party site was located.",
+                  "sourceUrls": ["https://dal-siciliano.menu-world.com/", "https://www.openstreetmap.org/way/66749893"]
+                }
+              ]
+            },
+            {
+              "name": "Sardinia",
+              "emoji": "🐑",
+              "geographicCenter": {"lat": 40.12, "lng": 9.01},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-9233307560",
+                  "name": "Casa Sarda",
+                  "evidenceLevel": "medium",
+                  "evidence": "The specialist name explicitly identifies Sardinia and public descriptions corroborate Sardinian food; no first-party site was located.",
+                  "sourceUrls": ["https://www.tripadvisor.de/Restaurant_Review-g187309-d27271646-Reviews-Casa_Sarda-Munich_Upper_Bavaria_Bavaria.html", "https://www.openstreetmap.org/node/9233307560"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "country": "France",
+          "emoji": "🇫🇷",
+          "sourceRestaurantCount": 15,
+          "classifiedRestaurantCount": 1,
+          "unclassifiedRestaurantCount": 14,
+          "regions": [
+            {"name": "Paris / Île-de-France", "emoji": "🥐", "geographicCenter": {"lat": 48.86, "lng": 2.35}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Provence / Mediterranean",
+              "emoji": "🌿",
+              "geographicCenter": {"lat": 43.53, "lng": 5.45},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-1404517835",
+                  "name": "Le Refuge",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site explicitly describes cuisine provençale and Provençal country cooking.",
+                  "sourceUrls": ["https://le-refuge.de/en/le-refuge/", "https://www.openstreetmap.org/node/1404517835"]
+                }
+              ]
+            },
+            {"name": "Lyon / Rhône", "emoji": "🥩", "geographicCenter": {"lat": 45.76, "lng": 4.84}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Alsace", "emoji": "🥨", "geographicCenter": {"lat": 48.58, "lng": 7.75}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Brittany", "emoji": "🥞", "geographicCenter": {"lat": 48.12, "lng": -1.68}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Normandy", "emoji": "🍎", "geographicCenter": {"lat": 49.18, "lng": -0.37}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Southwest / Gascony–Basque France", "emoji": "🦆", "geographicCenter": {"lat": 43.65, "lng": 0.59}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Burgundy / Franche-Comté", "emoji": "🍷", "geographicCenter": {"lat": 47.32, "lng": 5.04}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Loire / Atlantic", "emoji": "🐟", "geographicCenter": {"lat": 47.22, "lng": -1.55}, "restaurantCount": 0, "restaurants": []}
+          ]
+        },
+        {
+          "country": "Spain",
+          "emoji": "🇪🇸",
+          "sourceRestaurantCount": 20,
+          "classifiedRestaurantCount": 0,
+          "unclassifiedRestaurantCount": 20,
+          "regions": [
+            {"name": "Basque", "emoji": "🐟", "geographicCenter": {"lat": 43.26, "lng": -2.93}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Catalan", "emoji": "🍅", "geographicCenter": {"lat": 41.39, "lng": 2.17}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Andalusian", "emoji": "🫒", "geographicCenter": {"lat": 37.39, "lng": -5.98}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Galician", "emoji": "🐙", "geographicCenter": {"lat": 42.88, "lng": -8.54}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Valencian", "emoji": "🥘", "geographicCenter": {"lat": 39.47, "lng": -0.38}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Madrid / Castilian", "emoji": "🍲", "geographicCenter": {"lat": 40.42, "lng": -3.7}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Asturian / Cantabrian", "emoji": "🍎", "geographicCenter": {"lat": 43.36, "lng": -5.85}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Canary Islands", "emoji": "🥔", "geographicCenter": {"lat": 28.29, "lng": -16.63}, "restaurantCount": 0, "restaurants": []}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Americas",
+      "countries": [
+        {
+          "country": "Mexico",
+          "emoji": "🇲🇽",
+          "sourceRestaurantCount": 15,
+          "classifiedRestaurantCount": 0,
+          "unclassifiedRestaurantCount": 15,
+          "regions": [
+            {"name": "Oaxaca", "emoji": "🌶️", "geographicCenter": {"lat": 17.06, "lng": -96.72}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Yucatán", "emoji": "🍊", "geographicCenter": {"lat": 20.97, "lng": -89.62}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Jalisco / Western Mexico", "emoji": "🌮", "geographicCenter": {"lat": 20.67, "lng": -103.35}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Mexico City / Central", "emoji": "🌽", "geographicCenter": {"lat": 19.43, "lng": -99.13}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Baja California", "emoji": "🐟", "geographicCenter": {"lat": 32.52, "lng": -117.02}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Puebla / Tlaxcala", "emoji": "🍫", "geographicCenter": {"lat": 19.04, "lng": -98.2}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Veracruz / Gulf Coast", "emoji": "🦐", "geographicCenter": {"lat": 19.17, "lng": -96.13}, "restaurantCount": 0, "restaurants": []}
+          ]
+        }
+      ]
+    }
+  ]
+}
