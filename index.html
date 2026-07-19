@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=Manrope:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -31,7 +32,7 @@
         <aside class="context-panel" aria-label="Atlas context">
           <div>
             <p class="eyebrow" id="view-kicker">Metropolitan atlas · 01</p>
-            <h1 id="view-title">Cities,<br />packed by food.</h1>
+            <h1 id="view-title">A city becomes<br />a world of food.</h1>
             <p class="intro" id="view-intro">Choose a metropolitan edition, then move through continents, countries, and culinary regions.</p>
           </div>
           <div class="context-footer">
@@ -44,8 +45,8 @@
           <div class="stage-toolbar">
             <button class="back-button" type="button" data-action="back" hidden><span aria-hidden="true">←</span> Back</button>
             <p class="stage-caption" id="stage-caption">12 metropolitan editions · Munich live</p>
-            <div class="zoom-key" aria-label="Bubble encoding">
-              <span class="key-ring" aria-hidden="true"></span><span id="key-label">Area = food available</span>
+            <div class="zoom-key" aria-label="Treemap encoding">
+              <span class="key-ring" aria-hidden="true"></span><span id="key-label">Color = continent · Area = restaurants</span>
             </div>
             <div class="semantic-zoom" aria-label="Hierarchy zoom controls">
               <button type="button" data-action="zoom-out" aria-label="Zoom out one level">−</button>
@@ -75,9 +76,9 @@
     <div class="about-drawer" id="about-drawer" aria-hidden="true">
       <div class="about-copy">
         <p class="eyebrow">How to read GastroGlobe</p>
-        <p class="about-statement">Every circle is a place inside a place. Its area records food availability; its position preserves geographic direction.</p>
+        <p class="about-statement">Every rectangle is a place inside a place. Its area records food availability; neighboring tiles follow geographic origin.</p>
         <div class="about-columns">
-          <p>Zoom from metropolitan cities to continents, countries, and culinary regions. The five ring hues form a GastroGlobe continent palette; positions preserve geographic bearing.</p>
+          <p>Zoom from metropolitan cities to continents, countries, and culinary regions. The five hues form a consistent GastroGlobe continent palette across every level.</p>
           <p>At the deepest layer, cuisine traditions resolve into sourced OpenStreetMap restaurant coordinates.</p>
         </div>
       </div>
@@ -85,6 +86,7 @@
     </div>
 
     <div class="cursor-label" id="cursor-label" aria-hidden="true"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script type="module" src="app.js"></script>
   </body>
 </html>
