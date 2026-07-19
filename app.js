@@ -603,13 +603,18 @@ function updateBreadcrumbs() {
     const options = siblings.map((sibling) => `
       <option value="${escapeHtml(sibling.data.id)}"${sibling === node ? " selected" : ""}>${escapeHtml(displayNameWithEmoji(sibling))}</option>
     `).join("");
+    const currentAttribute = node === focus ? ` aria-current="page"` : "";
     return `
       <span class="breadcrumb-separator" aria-hidden="true">/</span>
-      <label class="breadcrumb-level">
-        <select class="breadcrumb-select" data-breadcrumb-level="${node.depth}" aria-label="Choose ${breadcrumbLevelLabel(node)}">
+      <span class="breadcrumb-level">
+        <button class="breadcrumb-link" type="button" data-breadcrumb-target="${escapeHtml(node.data.id)}"${currentAttribute} aria-label="Go to ${escapeHtml(displayNameWithEmoji(node))}">
+          ${escapeHtml(displayNameWithEmoji(node))}
+        </button>
+        <select class="breadcrumb-select" data-breadcrumb-level="${node.depth}" aria-label="Choose another ${breadcrumbLevelLabel(node)}">
           ${options}
         </select>
-      </label>
+        <span class="breadcrumb-chevron" aria-hidden="true">⌄</span>
+      </span>
     `;
   }).join("");
   breadcrumbs.innerHTML = `
@@ -1077,6 +1082,19 @@ document.addEventListener("click", (event) => {
   if (focusTrigger) {
     const node = nodeById.get(focusTrigger.dataset.focusId);
     if (node && node !== focus) zoomToNode(node);
+    return;
+  }
+
+  const breadcrumbTarget = event.target.closest("[data-breadcrumb-target]");
+  if (breadcrumbTarget) {
+    const node = nodeById.get(breadcrumbTarget.dataset.breadcrumbTarget);
+    if (!node || node === focus) return;
+    if (node.data.kind === "metropolitan") {
+      openMetropolitan(node.data.id);
+      return;
+    }
+    const isDirectDrill = node.parent === focus || focus.parent === node;
+    zoomToNode(node, isDirectDrill);
     return;
   }
 
