@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A geographic, zoomable treemap atlas of metropolitan food cultures.",
+  "description": "An interactive emoji-led world map of metropolitan food cultures.",
   "scripts": {
     "dev": "python3 -m http.server 4317 --bind 127.0.0.1",
     "start": "python3 -m http.server 4317 --bind 127.0.0.1"

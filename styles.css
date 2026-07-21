@@ -1290,3 +1290,754 @@ body {
     padding: 8px;
   }
 }
+
+/* Emoji map edition */
+.atlas-loading,
+.atlas-error {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.atlas-error span { color: var(--ink-soft); }
+
+.emoji-gallery {
+  grid-template-columns: repeat(4, minmax(240px, 1fr));
+  grid-auto-rows: minmax(214px, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.world-card {
+  border-color: rgba(29, 33, 31, 0.24);
+  background: #ebe7de;
+}
+
+.world-card.is-live {
+  border-color: var(--ink);
+}
+
+.world-thumbnail {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.72), transparent 68%),
+    var(--paper-deep);
+}
+
+.thumbnail-land path {
+  fill: rgba(29, 33, 31, 0.08);
+  stroke: none;
+}
+
+.thumbnail-borders {
+  fill: none;
+  stroke: rgba(29, 33, 31, 0.18);
+  stroke-width: 0.45px;
+  vector-effect: non-scaling-stroke;
+}
+
+.thumbnail-flags text {
+  paint-order: stroke;
+  stroke: rgba(242, 239, 232, 0.88);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.culinary-map {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.8), transparent 65%),
+    var(--paper);
+}
+
+.world-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+.world-map:active { cursor: grabbing; }
+
+.map-heading {
+  position: absolute;
+  z-index: 12;
+  top: 66px;
+  left: 22px;
+  max-width: min(540px, calc(100% - 44px));
+  pointer-events: none;
+}
+
+.map-heading p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(25px, 3vw, 48px);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.map-heading p strong { font-weight: 500; }
+
+.map-heading > span {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.map-breadcrumbs {
+  position: absolute;
+  z-index: 30;
+  top: 12px;
+  left: 12px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  background: rgba(242, 239, 232, 0.94);
+  box-shadow: 0 6px 20px rgba(29, 33, 31, 0.14);
+}
+
+.map-breadcrumbs button {
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.map-breadcrumbs button:hover,
+.map-breadcrumbs button:focus-visible,
+.map-breadcrumbs button[aria-current="page"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.map-breadcrumbs span {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.country-shape {
+  fill: rgba(29, 33, 31, 0.035);
+  stroke: none;
+}
+
+.country-shape.has-cuisine {
+  fill: rgba(29, 33, 31, var(--density));
+  cursor: pointer;
+  transition: fill 160ms ease;
+}
+
+.country-shape.has-cuisine:hover,
+.country-shape.has-cuisine:focus-visible {
+  fill: rgba(29, 33, 31, 0.62);
+  outline: none;
+}
+
+.country-borders {
+  fill: none;
+  stroke: rgba(29, 33, 31, 0.28);
+  stroke-width: 0.65px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.country-flag {
+  cursor: pointer;
+  outline: none;
+}
+
+.country-flag circle {
+  fill: rgba(242, 239, 232, 0.82);
+  stroke: rgba(29, 33, 31, 0.4);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  transition: fill 160ms ease, stroke-width 160ms ease;
+}
+
+.country-flag:hover circle,
+.country-flag:focus-visible circle {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 3px;
+}
+
+.flag-glyph {
+  paint-order: stroke;
+  stroke: rgba(242, 239, 232, 0.86);
+  stroke-width: 1.5px;
+  pointer-events: none;
+}
+
+.flag-count {
+  fill: var(--ink);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+.map-legend {
+  position: absolute;
+  z-index: 14;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 10px;
+  border-top: 1px solid var(--line-strong);
+  background: rgba(242, 239, 232, 0.9);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.legend-flag { font-size: 21px; }
+.legend-action { margin-left: auto; color: var(--ink-soft); }
+
+.country-detail-map {
+  cursor: default;
+}
+
+.country-focus-shape path {
+  fill: rgba(29, 33, 31, 0.075);
+  stroke: rgba(29, 33, 31, 0.48);
+  stroke-width: 1.25px;
+  vector-effect: non-scaling-stroke;
+}
+
+.cuisine-marker {
+  cursor: pointer;
+  outline: none;
+}
+
+.cuisine-marker circle {
+  fill: rgba(242, 239, 232, 0.9);
+  stroke: var(--ink);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  transition: fill 160ms ease, stroke-width 160ms ease;
+}
+
+.cuisine-marker.is-empty circle {
+  fill: rgba(242, 239, 232, 0.5);
+  stroke-dasharray: 5 4;
+}
+
+.cuisine-marker:hover circle,
+.cuisine-marker:focus-visible circle,
+.cuisine-marker.is-selected circle {
+  fill: #f4c300;
+  stroke-width: 4px;
+}
+
+.cuisine-glyph {
+  pointer-events: none;
+}
+
+.cuisine-name,
+.cuisine-count {
+  fill: var(--ink);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.cuisine-count {
+  fill: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cuisine-drawer {
+  position: absolute;
+  z-index: 25;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-height: 42%;
+  display: none;
+  overflow: hidden;
+  border: 1px solid var(--ink);
+  background: rgba(242, 239, 232, 0.97);
+  box-shadow: 0 -8px 28px rgba(29, 33, 31, 0.16);
+}
+
+.cuisine-drawer.is-open { display: block; }
+
+.cuisine-drawer-heading {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 8px 10px 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cuisine-drawer-heading p {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.cuisine-drawer-heading p > span { font-size: 30px; }
+.cuisine-drawer-heading strong { font-family: var(--serif); font-size: 24px; font-weight: 500; }
+.cuisine-drawer-heading small { color: var(--ink-soft); font-family: var(--mono); font-size: 8px; text-transform: uppercase; }
+
+.cuisine-drawer-heading button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  cursor: pointer;
+  font-size: 23px;
+}
+
+.cuisine-drawer-heading button:hover,
+.cuisine-drawer-heading button:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.restaurant-ribbon {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(190px, 260px);
+  gap: 1px;
+  overflow-x: auto;
+  background: var(--line);
+}
+
+.restaurant-ribbon a {
+  min-height: 88px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 2px 9px;
+  align-content: center;
+  padding: 10px 12px;
+  background: var(--paper);
+  text-decoration: none;
+}
+
+.restaurant-ribbon a:hover,
+.restaurant-ribbon a:focus-visible { background: var(--paper-deep); }
+.restaurant-ribbon a > span { grid-row: 1 / 3; align-self: center; font-size: 25px; }
+.restaurant-ribbon strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.restaurant-ribbon small { overflow: hidden; color: var(--ink-soft); font-family: var(--mono); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+
+.empty-cuisine {
+  margin: 0;
+  padding: 18px 16px;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 16px;
+}
+
+.dev-visualization-menu {
+  position: absolute;
+  z-index: 80;
+  right: 14px;
+  bottom: 64px;
+  display: grid;
+  grid-template-columns: auto minmax(190px, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px 5px 9px;
+  border: 1px solid var(--ink);
+  background: rgba(29, 33, 31, 0.94);
+  color: var(--paper);
+  box-shadow: 0 5px 18px rgba(29, 33, 31, 0.2);
+}
+
+.emoji-gallery > .dev-visualization-menu { bottom: 14px; }
+
+.dev-visualization-menu > span {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dev-visualization-menu select {
+  min-height: 34px;
+  padding: 5px 30px 5px 8px;
+  border: 1px solid rgba(242, 239, 232, 0.45);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.interactive-treemap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.dev-treemap {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.dev-treemap-cell {
+  cursor: zoom-in;
+  outline: none;
+}
+
+.dev-treemap-cell rect {
+  fill: color-mix(in srgb, var(--tree-color) 84%, var(--paper));
+  stroke: var(--paper);
+  stroke-width: 2px;
+  transition: filter 160ms ease, stroke-width 160ms ease;
+}
+
+.dev-treemap-cell.kind-country rect { fill: color-mix(in srgb, var(--tree-color) 72%, var(--paper)); }
+.dev-treemap-cell.kind-region rect { fill: color-mix(in srgb, var(--tree-color) 60%, var(--paper)); }
+.dev-treemap-cell.kind-restaurant rect { fill: color-mix(in srgb, var(--tree-color) 42%, var(--paper)); }
+.dev-treemap-cell.is-empty rect { fill-opacity: 0.42; stroke: var(--ink-soft); stroke-dasharray: 5 4; }
+
+.dev-treemap-cell:hover rect,
+.dev-treemap-cell:focus-visible rect {
+  filter: brightness(1.08) saturate(0.9);
+  stroke: var(--ink);
+  stroke-width: 4px;
+}
+
+.dev-treemap-label {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 10px;
+  overflow: hidden;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.dev-treemap-label strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-family: var(--serif);
+  font-size: clamp(13px, 2vw, 31px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.dev-treemap-cell.kind-restaurant .dev-treemap-label strong { font-family: var(--sans); font-size: 11px; }
+
+.dev-treemap-label span {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tree-breadcrumbs {
+  max-width: calc(100% - 290px);
+  overflow-x: auto;
+}
+
+.treemap-leaf-drawer {
+  position: absolute;
+  z-index: 40;
+  left: 14px;
+  bottom: 64px;
+  max-width: min(580px, calc(100% - 320px));
+  min-height: 52px;
+  display: none;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink);
+  background: rgba(242, 239, 232, 0.96);
+}
+
+.treemap-leaf-drawer.is-open { display: grid; }
+.treemap-leaf-drawer > span { grid-row: 1 / 3; font-size: 28px; }
+.treemap-leaf-drawer strong { font-family: var(--serif); font-size: 20px; font-weight: 500; }
+.treemap-leaf-drawer small { grid-column: 2; overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+.treemap-leaf-drawer a { grid-column: 3; grid-row: 1 / 3; font-family: var(--mono); font-size: 8px; text-transform: uppercase; }
+
+.cartogram-view,
+.regional-cartogram-view {
+  background: #34465e;
+  color: #f2efe8;
+}
+
+.cartogram-view .map-heading > span,
+.regional-cartogram-view .map-heading > span { color: rgba(242, 239, 232, 0.72); }
+
+.cartogram-view .map-breadcrumbs,
+.regional-cartogram-view .map-breadcrumbs {
+  background: rgba(29, 33, 31, 0.92);
+  color: var(--paper);
+  border-color: rgba(242, 239, 232, 0.55);
+}
+
+.cartogram-view .map-breadcrumbs button,
+.regional-cartogram-view .map-breadcrumbs button,
+.cartogram-view .map-breadcrumbs span,
+.regional-cartogram-view .map-breadcrumbs span { color: var(--paper); }
+
+.cartogram-view .map-breadcrumbs button:hover,
+.cartogram-view .map-breadcrumbs button:focus-visible,
+.regional-cartogram-view .map-breadcrumbs button:hover,
+.regional-cartogram-view .map-breadcrumbs button:focus-visible,
+.regional-cartogram-view .map-breadcrumbs button[aria-current="page"] {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.cartogram-heading { max-width: min(620px, calc(100% - 44px)); }
+
+.cartogram-sphere {
+  fill: none;
+  stroke: rgba(242, 239, 232, 0.16);
+  stroke-width: 1px;
+}
+
+.grid-cartogram-field {
+  fill: url(#world-grid);
+  stroke: rgba(242, 239, 232, 0.2);
+  stroke-width: 1px;
+}
+
+.grid-pattern-line {
+  fill: none;
+  stroke: rgba(242, 239, 232, 0.075);
+  stroke-width: 0.55px;
+}
+
+.grid-cartogram-country {
+  cursor: pointer;
+  outline: none;
+}
+
+.grid-cartogram-country rect {
+  fill: color-mix(in srgb, var(--territory-color) 88%, #f2efe8);
+  stroke: rgba(242, 239, 232, 0.2);
+  stroke-width: 0.45px;
+  vector-effect: non-scaling-stroke;
+  transition: filter 140ms ease;
+}
+
+.grid-country-border {
+  fill: none;
+  stroke: rgba(20, 26, 34, 0.96);
+  stroke-width: 1.4px;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.grid-cartogram-country:hover rect,
+.grid-cartogram-country:focus-visible rect {
+  filter: brightness(1.24) saturate(0.88);
+}
+
+.grid-cartogram-country:hover .grid-country-border,
+.grid-cartogram-country:focus-visible .grid-country-border {
+  stroke: var(--paper);
+  stroke-width: 2.4px;
+}
+
+.grid-cartogram-label {
+  cursor: pointer;
+  outline: none;
+}
+
+.grid-label-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+.grid-cartogram-label text {
+  fill: var(--paper);
+  paint-order: stroke;
+  stroke: rgba(20, 26, 34, 0.9);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.grid-cartogram-flag { font-size: 19px; stroke-width: 1px !important; }
+.grid-cartogram-name { font-family: var(--sans); font-size: 8px; font-weight: 500; }
+.grid-cartogram-count { font-family: var(--mono); font-size: 7px; }
+
+.cartogram-country {
+  cursor: pointer;
+  outline: none;
+}
+
+.cartogram-country path {
+  fill: var(--territory-color);
+  fill-opacity: 0.9;
+  stroke: rgba(242, 239, 232, 0.72);
+  stroke-width: 0.8px;
+  vector-effect: non-scaling-stroke;
+  transition: filter 150ms ease;
+}
+
+.cartogram-country:hover path,
+.cartogram-country:focus-visible path { filter: brightness(1.22); stroke-width: 2.5px; }
+
+.cartogram-label {
+  cursor: pointer;
+  outline: none;
+  pointer-events: all;
+}
+
+.cartogram-label-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+.cartogram-label text {
+  fill: var(--paper);
+  paint-order: stroke;
+  stroke: rgba(29, 33, 31, 0.72);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.cartogram-flag { font-size: 23px; stroke-width: 1px !important; }
+.cartogram-name { font-family: var(--sans); font-size: 9px; font-weight: 500; }
+.cartogram-count { font-family: var(--mono); font-size: 7px; }
+
+.cartogram-view .map-legend,
+.regional-cartogram-view .map-legend {
+  border-color: rgba(242, 239, 232, 0.55);
+  background: rgba(29, 33, 31, 0.9);
+  color: var(--paper);
+}
+
+.cartogram-view .legend-action,
+.regional-cartogram-view .legend-action { color: rgba(242, 239, 232, 0.68); }
+
+.regional-country-silhouette path {
+  fill: rgba(242, 239, 232, 0.04);
+  stroke: rgba(242, 239, 232, 0.18);
+  stroke-width: 1px;
+}
+
+.regional-territory {
+  cursor: pointer;
+  outline: none;
+}
+
+.regional-territory circle {
+  fill: color-mix(in srgb, var(--territory-color) 88%, #f2efe8);
+  stroke: rgba(242, 239, 232, 0.8);
+  stroke-width: 1.5px;
+  transition: filter 160ms ease, stroke-width 160ms ease;
+}
+
+.regional-territory.is-empty circle { fill-opacity: 0.22; stroke-dasharray: 5 4; }
+.regional-territory:hover circle,
+.regional-territory:focus-visible circle { filter: brightness(1.22); stroke-width: 4px; }
+
+.regional-territory text {
+  fill: var(--paper);
+  paint-order: stroke;
+  stroke: rgba(29, 33, 31, 0.7);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.regional-territory-emoji { stroke-width: 1px !important; }
+.regional-territory-name { font-family: var(--sans); font-size: 10px; font-weight: 500; }
+.regional-territory-count { font-family: var(--mono); font-size: 8px; }
+
+.regional-cartogram-view .cuisine-drawer { bottom: 64px; color: var(--ink); }
+
+@media (max-width: 980px) {
+  .emoji-gallery { grid-template-columns: repeat(3, minmax(210px, 1fr)); }
+  .map-heading { top: 70px; }
+}
+
+@media (max-width: 720px) {
+  .emoji-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 220px; }
+  .map-heading { top: 64px; }
+  .map-heading p { font-size: 26px; }
+  .map-heading > span { font-size: 8px; }
+  .map-breadcrumbs { max-width: calc(100% - 24px); overflow-x: auto; }
+  .map-breadcrumbs button { font-size: 10px; }
+  .map-legend { font-size: 8px; }
+  .legend-action { display: none; }
+  .cuisine-drawer-heading small { display: none; }
+  .dev-visualization-menu { right: 8px; bottom: 58px; grid-template-columns: 1fr; gap: 2px; }
+  .dev-visualization-menu > span { display: none; }
+  .dev-visualization-menu select { min-width: 180px; }
+  .tree-breadcrumbs { max-width: calc(100% - 20px); }
+  .treemap-leaf-drawer { right: 8px; left: 8px; bottom: 104px; max-width: none; }
+}
+
+@media (max-width: 440px) {
+  .emoji-gallery { grid-template-columns: 1fr; grid-auto-rows: 240px; }
+  .map-heading p { font-size: 22px; }
+  .map-heading > span { max-width: 280px; }
+  .cuisine-name { font-size: 10px; }
+  .cuisine-drawer-heading strong { font-size: 19px; }
+}
