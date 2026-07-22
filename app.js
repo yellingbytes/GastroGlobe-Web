@@ -699,8 +699,11 @@ function renderCuisineCartogram() {
       .attr("y", (cell) => grid.originY + cell.y * grid.cellSize)
       .attr("width", grid.cellSize)
       .attr("height", grid.cellSize)
-      .style("--territory-color", CONTINENT_COLORS[item.node.parent?.data.name] ?? "#77736b");
+      .style("--territory-color", cartogramCountryColor(item));
   });
+  territories.append("path")
+    .attr("class", "grid-country-separator")
+    .attr("d", (item) => gridBoundaryPath(item, grid));
   territories.append("path")
     .attr("class", "grid-country-border")
     .attr("d", (item) => gridBoundaryPath(item, grid));
@@ -720,9 +723,14 @@ function renderCuisineCartogram() {
       openCountry(item.node.data.countryId);
     });
   labels.append("rect").attr("class", "grid-label-hit").attr("x", -18).attr("y", -18).attr("width", 36).attr("height", 36);
-  labels.append("text").attr("class", "grid-cartogram-flag").attr("text-anchor", "middle").attr("y", -2).text((item) => item.node.data.flag);
+  labels.append("text")
+    .attr("class", "grid-cartogram-flag")
+    .attr("text-anchor", "middle")
+    .attr("y", -2)
+    .style("font-size", (item) => `${clamp(7 + Math.sqrt(item.cells.length) * 0.9, 9, 17)}px`)
+    .text((item) => item.node.data.flag);
   labels.append("text").attr("class", "grid-cartogram-name").attr("text-anchor", "middle").attr("y", 12).text((item) => item.cells.length >= 8 ? item.node.data.name : "");
-  labels.append("text").attr("class", "grid-cartogram-count").attr("text-anchor", "middle").attr("y", 23).text((item) => item.cells.length >= 5 ? item.node.data.available : "");
+  labels.append("text").attr("class", "grid-cartogram-count").attr("text-anchor", "middle").attr("y", 23).text((item) => item.cells.length >= 8 ? item.node.data.available : "");
 
   const zoom = d3.zoom().scaleExtent([0.85, 10]).on("zoom", (event) => svg.select(".grid-cartogram-layer").attr("transform", event.transform));
   svg.call(zoom).on("dblclick.zoom", null);
@@ -740,8 +748,10 @@ function buildGridCartogram(values, width, height) {
   const originY = 116 + Math.max(0, (height - 174 - gridHeight) / 2);
   const projection = d3.geoNaturalEarth1().fitExtent([[2, 2], [columns - 3, rows - 3]], { type: "Sphere" });
   const projectedPath = d3.geoPath(projection);
+  const shapeContext = document.createElement("canvas").getContext("2d");
   const items = values.filter((node) => node.data.available > 0).map((node) => {
     const projected = projection([node.data.lng, node.data.lat]);
+    const anchor = cartogramGeographicAnchor(node, projected, projection);
     const quota = Math.max(4, Math.round(2 + Math.sqrt(node.data.available) * 3));
     const feature = featureForCountry(node);
     const bounds = feature ? projectedPath.bounds(feature) : [[0, 0], [1, 1]];
@@ -749,19 +759,23 @@ function buildGridCartogram(values, width, height) {
     const shapeHeight = Math.max(0.5, bounds[1][1] - bounds[0][1]);
     const shapeArea = feature ? Math.max(0.2, projectedPath.area(feature)) : 1;
     const shapeCenter = feature ? projectedPath.centroid(feature) : projected;
+    const shapeAspect = clamp(shapeWidth / shapeHeight, 0.24, 4.2);
+    const slenderShapeBoost = shapeAspect < 0.8 ? 1.35 : 1;
     return {
       node,
       quota,
-      anchorX: projected[0],
-      anchorY: projected[1],
+      anchorX: anchor[0],
+      anchorY: anchor[1],
       feature,
       shapeCenter,
-      shapeScale: clamp(Math.sqrt(quota / shapeArea), 0.35, 28),
-      shapeAspect: clamp(shapeWidth / shapeHeight, 0.24, 4.2),
+      shapeScale: clamp(Math.sqrt(quota / shapeArea) * 1.45 * slenderShapeBoost, 0.35, 52),
+      shapePath: feature && shapeContext && typeof Path2D !== "undefined" ? new Path2D(projectedPath(feature)) : null,
+      shapeAspect,
       cells: [],
       cellKeys: new Set(),
     };
   });
+  assignCartogramShades(items);
 
   const occupied = new Map();
   [...items].sort((a, b) => a.quota - b.quota).forEach((item) => {
@@ -769,13 +783,12 @@ function buildGridCartogram(values, width, height) {
     addGridCell(item, seed, occupied);
     item.seedX = seed.x;
     item.seedY = seed.y;
-    item.containsTargetCell = item.feature ? (cell) => {
+    item.containsTargetCell = item.shapePath ? (cell) => {
       const sourcePoint = [
         item.shapeCenter[0] + (cell.x - item.seedX) / item.shapeScale,
         item.shapeCenter[1] + (cell.y - item.seedY) / item.shapeScale,
       ];
-      const coordinate = projection.invert(sourcePoint);
-      return coordinate ? d3.geoContains(item.feature, coordinate) : false;
+      return shapeContext.isPointInPath(item.shapePath, sourcePoint[0], sourcePoint[1]);
     } : null;
   });
 
@@ -805,6 +818,37 @@ function buildGridCartogram(values, width, height) {
     item.labelY = item.seedY * 0.72 + centroidY * 0.28;
   });
   return { items, columns, rows, cellSize, gridWidth, gridHeight, originX, originY };
+}
+
+function cartogramGeographicAnchor(node, projected, projection) {
+  if (node.parent?.data.name !== "Europe") return projected;
+  const center = projection([14, 51]);
+  return [
+    center[0] + (projected[0] - center[0]) * 2.45,
+    center[1] + (projected[1] - center[1]) * 2.35,
+  ];
+}
+
+function assignCartogramShades(items) {
+  [...items].sort((a, b) => b.quota - a.quota).forEach((item) => {
+    const nearby = items.filter((other) => other !== item
+      && other.shadeIndex !== undefined
+      && other.node.parent?.data.name === item.node.parent?.data.name
+      && Math.hypot(other.anchorX - item.anchorX, other.anchorY - item.anchorY) < 14);
+    const scores = [0, 1, 2, 3].map((shadeIndex) => d3.sum(nearby, (other) => (
+      other.shadeIndex === shadeIndex
+        ? 1 / Math.max(1, Math.hypot(other.anchorX - item.anchorX, other.anchorY - item.anchorY))
+        : 0
+    )));
+    item.shadeIndex = d3.minIndex(scores);
+  });
+}
+
+function cartogramCountryColor(item) {
+  const base = d3.hsl(CONTINENT_COLORS[item.node.parent?.data.name] ?? "#77736b");
+  const lightnessOffsets = [-0.13, -0.035, 0.07, 0.16];
+  base.l = clamp(base.l + lightnessOffsets[item.shadeIndex ?? 0], 0.25, 0.76);
+  return base.formatHex();
 }
 
 function nearestGridCell(targetX, targetY, occupied, columns, rows) {
@@ -845,7 +889,7 @@ function bestGrowthCell(item, occupied, columns, rows) {
     const deltaY = candidate.y - item.anchorY;
     const shapeDistance = deltaX ** 2 / item.shapeAspect + deltaY ** 2 * item.shapeAspect;
     const seedDistance = (candidate.x - item.seedX) ** 2 + (candidate.y - item.seedY) ** 2;
-    const silhouettePenalty = item.containsTargetCell?.(candidate) ? 0 : Math.max(24, item.quota * 0.18);
+    const silhouettePenalty = item.containsTargetCell?.(candidate) ? 0 : Math.max(180, item.quota * 2.5);
     const score = silhouettePenalty + shapeDistance * 0.72 + seedDistance * 0.12 - friendlyNeighbors * 5.5;
     if (score < bestScore) {
       best = candidate;
