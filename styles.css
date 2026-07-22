@@ -1880,8 +1880,18 @@ body {
 
 .grid-country-border {
   fill: none;
-  stroke: rgba(20, 26, 34, 0.96);
-  stroke-width: 1.4px;
+  stroke: rgba(13, 18, 24, 0.98);
+  stroke-width: 1.15px;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.grid-country-separator {
+  fill: none;
+  stroke: rgba(242, 239, 232, 0.88);
+  stroke-width: 3.1px;
   stroke-linecap: square;
   stroke-linejoin: miter;
   vector-effect: non-scaling-stroke;
@@ -1897,6 +1907,11 @@ body {
 .grid-cartogram-country:focus-visible .grid-country-border {
   stroke: var(--paper);
   stroke-width: 2.4px;
+}
+
+.grid-cartogram-country:hover .grid-country-separator,
+.grid-cartogram-country:focus-visible .grid-country-separator {
+  stroke: rgba(20, 26, 34, 0.96);
 }
 
 .grid-cartogram-label {
