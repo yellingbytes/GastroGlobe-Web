@@ -1849,20 +1849,20 @@ body {
 
 .cartogram-sphere {
   fill: none;
-  stroke: rgba(242, 239, 232, 0.16);
-  stroke-width: 1px;
+  stroke: rgba(242, 239, 232, 0.12);
+  stroke-width: 0.9px;
 }
 
 .grid-cartogram-field {
   fill: url(#world-grid);
-  stroke: rgba(242, 239, 232, 0.2);
-  stroke-width: 1px;
+  stroke: rgba(242, 239, 232, 0.14);
+  stroke-width: 0.65px;
 }
 
 .grid-pattern-line {
   fill: none;
-  stroke: rgba(242, 239, 232, 0.075);
-  stroke-width: 0.55px;
+  stroke: rgba(242, 239, 232, 0.05);
+  stroke-width: 0.45px;
 }
 
 .grid-cartogram-country {
@@ -1871,17 +1871,17 @@ body {
 }
 
 .grid-cartogram-country rect {
-  fill: color-mix(in srgb, var(--territory-color) 88%, #f2efe8);
-  stroke: rgba(242, 239, 232, 0.2);
-  stroke-width: 0.45px;
+  fill: color-mix(in srgb, var(--territory-color) 90%, #f2efe8);
+  stroke: rgba(242, 239, 232, 0.12);
+  stroke-width: 0.35px;
   vector-effect: non-scaling-stroke;
-  transition: filter 140ms ease;
+  transition: filter 140ms ease, opacity 140ms ease;
 }
 
 .grid-country-border {
   fill: none;
-  stroke: rgba(13, 18, 24, 0.98);
-  stroke-width: 1.15px;
+  stroke: rgba(242, 239, 232, 0.34);
+  stroke-width: 0.58px;
   stroke-linecap: square;
   stroke-linejoin: miter;
   vector-effect: non-scaling-stroke;
@@ -1890,8 +1890,8 @@ body {
 
 .grid-country-separator {
   fill: none;
-  stroke: rgba(242, 239, 232, 0.88);
-  stroke-width: 3.1px;
+  stroke: rgba(13, 18, 24, 0.54);
+  stroke-width: 1.35px;
   stroke-linecap: square;
   stroke-linejoin: miter;
   vector-effect: non-scaling-stroke;
@@ -1905,13 +1905,13 @@ body {
 
 .grid-cartogram-country:hover .grid-country-border,
 .grid-cartogram-country:focus-visible .grid-country-border {
-  stroke: var(--paper);
-  stroke-width: 2.4px;
+  stroke: rgba(242, 239, 232, 0.72);
+  stroke-width: 1px;
 }
 
 .grid-cartogram-country:hover .grid-country-separator,
 .grid-cartogram-country:focus-visible .grid-country-separator {
-  stroke: rgba(20, 26, 34, 0.96);
+  stroke: rgba(13, 18, 24, 0.72);
 }
 
 .grid-cartogram-label {
@@ -1928,15 +1928,15 @@ body {
 .grid-cartogram-label text {
   fill: var(--paper);
   paint-order: stroke;
-  stroke: rgba(20, 26, 34, 0.9);
-  stroke-width: 3px;
+  stroke: rgba(20, 26, 34, 0.48);
+  stroke-width: 1.1px;
   stroke-linejoin: round;
   pointer-events: none;
 }
 
 .grid-cartogram-flag { font-size: 19px; stroke-width: 1px !important; }
-.grid-cartogram-name { font-family: var(--sans); font-size: 8px; font-weight: 500; }
-.grid-cartogram-count { font-family: var(--mono); font-size: 7px; }
+.grid-cartogram-name { font-family: var(--sans); font-size: 8.5px; font-weight: 550; letter-spacing: 0.01em; }
+.grid-cartogram-count { font-family: var(--mono); font-size: 7px; opacity: 0.9; }
 
 .cartogram-country {
   cursor: pointer;
@@ -1945,15 +1945,19 @@ body {
 
 .cartogram-country path {
   fill: var(--territory-color);
-  fill-opacity: 0.9;
-  stroke: rgba(242, 239, 232, 0.72);
-  stroke-width: 0.8px;
+  fill-opacity: 0.88;
+  stroke: rgba(242, 239, 232, 0.58);
+  stroke-width: 0.65px;
   vector-effect: non-scaling-stroke;
-  transition: filter 150ms ease;
+  transition: filter 150ms ease, stroke-width 150ms ease, fill-opacity 150ms ease;
 }
 
 .cartogram-country:hover path,
-.cartogram-country:focus-visible path { filter: brightness(1.22); stroke-width: 2.5px; }
+.cartogram-country:focus-visible path {
+  filter: brightness(1.16) saturate(0.96);
+  stroke-width: 1.25px;
+  fill-opacity: 0.95;
+}
 
 .cartogram-label {
   cursor: pointer;
@@ -1970,15 +1974,15 @@ body {
 .cartogram-label text {
   fill: var(--paper);
   paint-order: stroke;
-  stroke: rgba(29, 33, 31, 0.72);
-  stroke-width: 3px;
+  stroke: rgba(29, 33, 31, 0.5);
+  stroke-width: 1.8px;
   stroke-linejoin: round;
   pointer-events: none;
 }
 
 .cartogram-flag { font-size: 23px; stroke-width: 1px !important; }
-.cartogram-name { font-family: var(--sans); font-size: 9px; font-weight: 500; }
-.cartogram-count { font-family: var(--mono); font-size: 7px; }
+.cartogram-name { font-family: var(--sans); font-size: 9.5px; font-weight: 550; letter-spacing: 0.01em; }
+.cartogram-count { font-family: var(--mono); font-size: 7px; opacity: 0.9; }
 
 .cartogram-view .map-legend,
 .regional-cartogram-view .map-legend {

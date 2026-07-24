@@ -727,20 +727,25 @@ function renderCuisineCartogram() {
     .attr("class", "grid-cartogram-flag")
     .attr("text-anchor", "middle")
     .attr("y", -2)
-    .style("font-size", (item) => `${clamp(7 + Math.sqrt(item.cells.length) * 0.9, 9, 17)}px`)
-    .text((item) => item.node.data.flag);
-  labels.append("text").attr("class", "grid-cartogram-name").attr("text-anchor", "middle").attr("y", 12).text((item) => item.cells.length >= 8 ? item.node.data.name : "");
-  labels.append("text").attr("class", "grid-cartogram-count").attr("text-anchor", "middle").attr("y", 23).text((item) => item.cells.length >= 8 ? item.node.data.available : "");
+    .style("font-size", (item) => `${item.labelFontSize}px`)
+    .text((item) => item.hideLabel ? "" : item.node.data.flag);
+  labels.append("text").attr("class", "grid-cartogram-name").attr("text-anchor", "middle").attr("y", 12).text((item) => item.showName ? item.node.data.name : "");
+  labels.append("text").attr("class", "grid-cartogram-count").attr("text-anchor", "middle").attr("y", 23).text((item) => item.showCount ? item.node.data.available : "");
 
-  const zoom = d3.zoom().scaleExtent([0.85, 10]).on("zoom", (event) => svg.select(".grid-cartogram-layer").attr("transform", event.transform));
+  const zoom = d3.zoom().scaleExtent([0.7, 12]).on("zoom", (event) => svg.select(".grid-cartogram-layer").attr("transform", event.transform));
   svg.call(zoom).on("dblclick.zoom", null);
+  svg.call(zoom.transform, gridCartogramFitTransform(grid, width, height));
+  declutterRenderedCartogramLabels(svg.node());
+  document.fonts?.ready.then(() => declutterRenderedCartogramLabels(svg.node()));
   bindBreadcrumbs();
   bindDevMenu();
 }
 
 function buildGridCartogram(values, width, height) {
-  const columns = 150;
-  const rows = 62;
+  const columns = 320;
+  const rows = 132;
+  const resolutionScale = columns / 150;
+  const quotaScale = resolutionScale ** 2;
   const cellSize = Math.min((width - 34) / columns, (height - 174) / rows);
   const gridWidth = columns * cellSize;
   const gridHeight = rows * cellSize;
@@ -752,7 +757,7 @@ function buildGridCartogram(values, width, height) {
   const items = values.filter((node) => node.data.available > 0).map((node) => {
     const projected = projection([node.data.lng, node.data.lat]);
     const anchor = cartogramGeographicAnchor(node, projected, projection);
-    const quota = Math.max(4, Math.round(2 + Math.sqrt(node.data.available) * 3));
+    const quota = Math.max(8, Math.round((2 + Math.sqrt(node.data.available) * 3) * quotaScale));
     const feature = featureForCountry(node);
     const bounds = feature ? projectedPath.bounds(feature) : [[0, 0], [1, 1]];
     const shapeWidth = Math.max(0.5, bounds[1][0] - bounds[0][0]);
@@ -768,14 +773,16 @@ function buildGridCartogram(values, width, height) {
       anchorY: anchor[1],
       feature,
       shapeCenter,
-      shapeScale: clamp(Math.sqrt(quota / shapeArea) * 1.45 * slenderShapeBoost, 0.35, 52),
+      shapeScale: clamp(Math.sqrt(quota / shapeArea) * 1.45 * slenderShapeBoost, 0.35, 96),
       shapePath: feature && shapeContext && typeof Path2D !== "undefined" ? new Path2D(projectedPath(feature)) : null,
       shapeAspect,
+      radius: Math.sqrt(quota / Math.PI) * 0.58 + resolutionScale * 0.42,
       cells: [],
       cellKeys: new Set(),
     };
   });
-  assignCartogramShades(items);
+  relaxCartogramAnchors(items, columns, rows, resolutionScale);
+  assignCartogramShades(items, resolutionScale);
 
   const occupied = new Map();
   [...items].sort((a, b) => a.quota - b.quota).forEach((item) => {
@@ -816,25 +823,248 @@ function buildGridCartogram(values, width, height) {
     const centroidY = center.y / item.cells.length;
     item.labelX = item.seedX * 0.72 + centroidX * 0.28;
     item.labelY = item.seedY * 0.72 + centroidY * 0.28;
+    item.displayArea = item.cells.length / quotaScale;
+    item.showName = item.displayArea >= 7.5;
+    item.showCount = item.displayArea >= 12;
+    item.labelFontSize = clamp(7 + Math.sqrt(item.displayArea) * 0.9, 9, 16);
   });
+  relaxCartogramLabels(items, cellSize, columns, rows);
   return { items, columns, rows, cellSize, gridWidth, gridHeight, originX, originY };
+}
+
+function relaxCartogramAnchors(items, columns, rows, resolutionScale) {
+  compactContinentAnchors(items);
+  const links = cartogramNeighborLinks(items, resolutionScale);
+  items.forEach((item) => {
+    item.x = item.anchorX;
+    item.y = item.anchorY;
+  });
+  const simulation = d3.forceSimulation(items)
+    .force("link", d3.forceLink(links)
+      .id((item) => item.node.data.id)
+      .distance((link) => link.distance)
+      .strength((link) => link.direct ? 0.94 : 0.42)
+      .iterations(5))
+    .force("x", d3.forceX((item) => item.anchorX).strength(0.135))
+    .force("y", d3.forceY((item) => item.anchorY).strength(0.135))
+    .force("collide", d3.forceCollide((item) => item.radius + resolutionScale * 0.08).strength(0.98).iterations(10))
+    .force("charge", d3.forceManyBody().strength(-0.025 * resolutionScale))
+    .stop();
+  for (let tick = 0; tick < 420; tick += 1) simulation.tick();
+  items.forEach((item) => {
+    item.anchorX = clamp(item.x, item.radius + 3, columns - item.radius - 4);
+    item.anchorY = clamp(item.y, item.radius + 3, rows - item.radius - 4);
+  });
+}
+
+function compactContinentAnchors(items) {
+  const compactness = {
+    Americas: 0.72,
+    Europe: 0.78,
+    Africa: 0.68,
+    Asia: 0.69,
+    Oceania: 0.72,
+  };
+  d3.groups(items, (item) => item.node.parent?.data.name).forEach(([continent, group]) => {
+    const centerX = d3.mean(group, (item) => item.anchorX);
+    const centerY = d3.mean(group, (item) => item.anchorY);
+    const scale = compactness[continent] ?? 0.84;
+    group.forEach((item) => {
+      item.anchorX = centerX + (item.anchorX - centerX) * scale;
+      item.anchorY = centerY + (item.anchorY - centerY) * scale;
+    });
+  });
+}
+
+function cartogramNeighborLinks(items, resolutionScale) {
+  const links = [];
+  const linkKeys = new Set();
+  const addLink = (source, target, direct) => {
+    if (!source || !target || source === target) return;
+    const ids = [source.node.data.id, target.node.data.id].sort();
+    const key = ids.join("|");
+    if (linkKeys.has(key)) return;
+    linkKeys.add(key);
+    const anchorDistance = Math.hypot(source.anchorX - target.anchorX, source.anchorY - target.anchorY);
+    const touchingDistance = source.radius + target.radius + resolutionScale * (direct ? 0.05 : 0.25);
+    links.push({
+      source,
+      target,
+      direct,
+      distance: direct
+        ? Math.max(touchingDistance, anchorDistance * 0.5)
+        : Math.max(touchingDistance, Math.min(anchorDistance * 0.64, touchingDistance * 1.72)),
+    });
+  };
+
+  const geometryNeighbors = topojson.neighbors(worldTopology.objects.countries.geometries);
+  const itemByFeatureIndex = new Map();
+  items.forEach((item) => {
+    const featureIndex = worldFeatures.indexOf(featureForCountry(item.node));
+    if (featureIndex >= 0) itemByFeatureIndex.set(featureIndex, item);
+  });
+  geometryNeighbors.forEach((neighborIndexes, sourceIndex) => {
+    const source = itemByFeatureIndex.get(sourceIndex);
+    neighborIndexes.forEach((targetIndex) => addLink(source, itemByFeatureIndex.get(targetIndex), true));
+  });
+
+  items.forEach((item) => {
+    const nearest = items
+      .filter((candidate) => candidate !== item && candidate.node.parent?.data.name === item.node.parent?.data.name)
+      .sort((a, b) => Math.hypot(a.anchorX - item.anchorX, a.anchorY - item.anchorY)
+        - Math.hypot(b.anchorX - item.anchorX, b.anchorY - item.anchorY))
+      .slice(0, 5);
+    nearest.forEach((candidate) => addLink(item, candidate, false));
+  });
+  return links;
+}
+
+function relaxCartogramLabels(items, cellSize, columns, rows) {
+  const labels = items.map((item) => ({
+      item,
+      anchorX: item.labelX,
+      anchorY: item.labelY,
+      x: item.labelX,
+      y: item.labelY,
+      maxDisplacement: item.radius * 0.72 + 6,
+    }));
+  const updateMetrics = () => labels.forEach((label) => {
+    const { item } = label;
+    const textWidth = item.showName ? Math.max(24, item.node.data.name.length * 4.55) : 0;
+    const flagWidth = item.hideLabel ? 0 : item.labelFontSize + 6;
+    const textHeight = item.showCount ? 37 : item.showName ? 27 : item.hideLabel ? 0 : item.labelFontSize + 5;
+    label.halfWidth = Math.max(textWidth, flagWidth) * 0.53 / cellSize;
+    label.halfHeight = textHeight * 0.53 / cellSize;
+  });
+  const settle = (iterations = 220) => {
+    for (let tick = 0; tick < iterations; tick += 1) {
+      labels.forEach((label) => {
+        if (label.item.hideLabel) return;
+        label.x += (label.anchorX - label.x) * 0.065;
+        label.y += (label.anchorY - label.y) * 0.065;
+      });
+      for (let index = 0; index < labels.length; index += 1) {
+        const a = labels[index];
+        if (a.item.hideLabel) continue;
+        for (let otherIndex = index + 1; otherIndex < labels.length; otherIndex += 1) {
+          const b = labels[otherIndex];
+          if (b.item.hideLabel) continue;
+          const dx = b.x - a.x || 0.001;
+          const dy = b.y - a.y || 0.001;
+          const overlapX = a.halfWidth + b.halfWidth + 1.15 - Math.abs(dx);
+          const overlapY = a.halfHeight + b.halfHeight + 1.15 - Math.abs(dy);
+          if (overlapX <= 0 || overlapY <= 0) continue;
+          const aWeight = a.item.displayArea >= b.item.displayArea ? 0.28 : 0.72;
+          const bWeight = 1 - aWeight;
+          if (overlapX < overlapY) {
+            const direction = Math.sign(dx);
+            a.x -= direction * overlapX * aWeight;
+            b.x += direction * overlapX * bWeight;
+          } else {
+            const direction = Math.sign(dy);
+            a.y -= direction * overlapY * aWeight;
+            b.y += direction * overlapY * bWeight;
+          }
+        }
+      }
+      labels.forEach((label) => {
+        label.x = clamp(label.x, label.anchorX - label.maxDisplacement, label.anchorX + label.maxDisplacement);
+        label.y = clamp(label.y, label.anchorY - label.maxDisplacement, label.anchorY + label.maxDisplacement);
+        label.x = clamp(label.x, label.halfWidth + 1, columns - label.halfWidth - 1);
+        label.y = clamp(label.y, label.halfHeight + 1, rows - label.halfHeight - 1);
+      });
+    }
+  };
+  const overlappingPairs = () => {
+    const pairs = [];
+    for (let index = 0; index < labels.length; index += 1) {
+      const a = labels[index];
+      if (a.item.hideLabel) continue;
+      for (let otherIndex = index + 1; otherIndex < labels.length; otherIndex += 1) {
+        const b = labels[otherIndex];
+        if (b.item.hideLabel) continue;
+        if (Math.abs(b.x - a.x) < a.halfWidth + b.halfWidth + 0.5
+          && Math.abs(b.y - a.y) < a.halfHeight + b.halfHeight + 0.5) pairs.push([a, b]);
+      }
+    }
+    return pairs;
+  };
+  const lessImportant = (a, b) => a.item.displayArea <= b.item.displayArea ? a : b;
+
+  updateMetrics();
+  settle();
+  overlappingPairs().forEach(([a, b]) => {
+    const label = lessImportant(a, b);
+    label.item.showName = false;
+    label.item.showCount = false;
+  });
+  updateMetrics();
+  settle(160);
+  overlappingPairs().forEach(([a, b]) => {
+    lessImportant(a, b).item.hideLabel = true;
+  });
+  updateMetrics();
+  settle(100);
+  labels.forEach((label) => {
+    label.item.labelX = clamp(label.x, 1, columns - 2);
+    label.item.labelY = clamp(label.y, 1, rows - 2);
+    label.item.labelRadius = Math.hypot(label.halfWidth, label.halfHeight);
+  });
+}
+
+function declutterRenderedCartogramLabels(svgElement) {
+  if (!svgElement) return;
+  const groups = [...svgElement.querySelectorAll(".grid-cartogram-label")];
+  const removeLowestPriorityText = (first, second) => {
+    const firstArea = first.__data__?.displayArea ?? 0;
+    const secondArea = second.__data__?.displayArea ?? 0;
+    const target = firstArea <= secondArea ? first : second;
+    const count = target.querySelector(".grid-cartogram-count");
+    const name = target.querySelector(".grid-cartogram-name");
+    const flag = target.querySelector(".grid-cartogram-flag");
+    if (count?.textContent) count.textContent = "";
+    else if (name?.textContent) name.textContent = "";
+    else if (flag?.textContent) flag.textContent = "";
+  };
+  for (let pass = 0; pass < groups.length * 3; pass += 1) {
+    const visibleText = groups.flatMap((group) => [...group.querySelectorAll("text")]
+      .filter((text) => text.textContent.trim())
+      .map((text) => ({ group, rect: text.getBoundingClientRect() })));
+    let collision = null;
+    for (let index = 0; index < visibleText.length && !collision; index += 1) {
+      const a = visibleText[index];
+      for (let otherIndex = index + 1; otherIndex < visibleText.length; otherIndex += 1) {
+        const b = visibleText[otherIndex];
+        if (a.group === b.group) continue;
+        if (a.rect.left < b.rect.right + 1
+          && a.rect.right + 1 > b.rect.left
+          && a.rect.top < b.rect.bottom + 1
+          && a.rect.bottom + 1 > b.rect.top) {
+          collision = [a.group, b.group];
+          break;
+        }
+      }
+    }
+    if (!collision) break;
+    removeLowestPriorityText(collision[0], collision[1]);
+  }
 }
 
 function cartogramGeographicAnchor(node, projected, projection) {
   if (node.parent?.data.name !== "Europe") return projected;
   const center = projection([14, 51]);
   return [
-    center[0] + (projected[0] - center[0]) * 2.45,
-    center[1] + (projected[1] - center[1]) * 2.35,
+    center[0] + (projected[0] - center[0]) * 3.45,
+    center[1] + (projected[1] - center[1]) * 3.2,
   ];
 }
 
-function assignCartogramShades(items) {
+function assignCartogramShades(items, resolutionScale) {
   [...items].sort((a, b) => b.quota - a.quota).forEach((item) => {
     const nearby = items.filter((other) => other !== item
       && other.shadeIndex !== undefined
       && other.node.parent?.data.name === item.node.parent?.data.name
-      && Math.hypot(other.anchorX - item.anchorX, other.anchorY - item.anchorY) < 14);
+      && Math.hypot(other.anchorX - item.anchorX, other.anchorY - item.anchorY) < 14 * resolutionScale);
     const scores = [0, 1, 2, 3].map((shadeIndex) => d3.sum(nearby, (other) => (
       other.shadeIndex === shadeIndex
         ? 1 / Math.max(1, Math.hypot(other.anchorX - item.anchorX, other.anchorY - item.anchorY))
@@ -849,6 +1079,38 @@ function cartogramCountryColor(item) {
   const lightnessOffsets = [-0.13, -0.035, 0.07, 0.16];
   base.l = clamp(base.l + lightnessOffsets[item.shadeIndex ?? 0], 0.25, 0.76);
   return base.formatHex();
+}
+
+function gridCartogramFitTransform(grid, width, height) {
+  const allCells = grid.items.flatMap((item) => item.cells);
+  if (!allCells.length) return d3.zoomIdentity;
+  const minX = d3.min(allCells, (cell) => cell.x);
+  const maxX = d3.max(allCells, (cell) => cell.x + 1);
+  const minY = d3.min(allCells, (cell) => cell.y);
+  const maxY = d3.max(allCells, (cell) => cell.y + 1);
+  const minLabelX = d3.min(grid.items, (item) => item.labelX - (item.labelRadius ?? 0));
+  const maxLabelX = d3.max(grid.items, (item) => item.labelX + (item.labelRadius ?? 0));
+  const minLabelY = d3.min(grid.items, (item) => item.labelY - (item.labelRadius ?? 0));
+  const maxLabelY = d3.max(grid.items, (item) => item.labelY + (item.labelRadius ?? 0));
+  const padding = Math.max(14, grid.cellSize * 5);
+  const bounds = {
+    x0: grid.originX + Math.min(minX, minLabelX) * grid.cellSize - padding,
+    x1: grid.originX + Math.max(maxX, maxLabelX) * grid.cellSize + padding,
+    y0: grid.originY + Math.min(minY, minLabelY) * grid.cellSize - padding,
+    y1: grid.originY + Math.max(maxY, maxLabelY) * grid.cellSize + padding,
+  };
+  const viewport = { x0: 24, x1: width - 24, y0: 116, y1: height - 60 };
+  const scale = clamp(Math.min(
+    (viewport.x1 - viewport.x0) / (bounds.x1 - bounds.x0),
+    (viewport.y1 - viewport.y0) / (bounds.y1 - bounds.y0),
+  ), 0.7, 2.65);
+  const boundsCenterX = (bounds.x0 + bounds.x1) / 2;
+  const boundsCenterY = (bounds.y0 + bounds.y1) / 2;
+  const viewportCenterX = (viewport.x0 + viewport.x1) / 2;
+  const viewportCenterY = (viewport.y0 + viewport.y1) / 2;
+  return d3.zoomIdentity
+    .translate(viewportCenterX - boundsCenterX * scale, viewportCenterY - boundsCenterY * scale)
+    .scale(scale);
 }
 
 function nearestGridCell(targetX, targetY, occupied, columns, rows) {
