@@ -5,9 +5,10 @@ const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm";
 const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 const scene = document.querySelector("#scene");
 const cursorLabel = document.querySelector("#cursor-label");
+const savedVisualization = window.localStorage.getItem("gastroglobe-dev-visualization");
 
 const state = {
-  visualization: window.localStorage.getItem("gastroglobe-dev-visualization") || "emoji",
+  visualization: ["treemap", "cartogram"].includes(savedVisualization) ? savedVisualization : "cartogram",
   cityId: null,
   countryId: null,
   cuisineId: null,
@@ -20,6 +21,14 @@ const CONTINENT_COLORS = {
   Africa: "#2a2a28",
   Asia: "#f4c300",
   Oceania: "#009f3d",
+};
+
+const CARTOGRAM_CONTINENT_COLORS = {
+  Americas: "#a95553",
+  Europe: "#527f9c",
+  Africa: "#303331",
+  Asia: "#b99a3f",
+  Oceania: "#56816b",
 };
 
 let d3;
@@ -166,6 +175,9 @@ function renderCurrentVisualization() {
   if (state.visualization === "treemap") return renderInteractiveTreemap();
   if (state.visualization === "cartogram") {
     return state.countryId ? renderRegionalCartogram() : renderCuisineCartogram();
+  }
+  if (state.visualization === "atlas") {
+    return state.countryId ? renderEditorialCountryAtlas() : renderEditorialWorldAtlas();
   }
   return state.countryId ? renderCountryMap() : renderWorldMap();
 }
@@ -503,7 +515,6 @@ function devMenuMarkup() {
       <span>Dev view</span>
       <select aria-label="Choose visualization strategy">
         <option value="treemap"${state.visualization === "treemap" ? " selected" : ""}>1 · Interactive treemap</option>
-        <option value="emoji"${state.visualization === "emoji" ? " selected" : ""}>2 · Emoji density map</option>
         <option value="cartogram"${state.visualization === "cartogram" ? " selected" : ""}>3 · Cuisine territory map</option>
       </select>
     </label>
@@ -654,8 +665,8 @@ function renderCuisineCartogram() {
     <section class="culinary-map cartogram-view grid-cartogram-view semantic-layer" aria-label="${escapeHtml(city.data.name)} grid cuisine cartogram">
       ${breadcrumbMarkup(city, null)}
       <div class="map-heading cartogram-heading">
-        <p><strong>${escapeHtml(city.data.name)}</strong> · a pixel cuisine world</p>
-        <span>Country area = restaurant representation · location remains geographic</span>
+        <p><strong>${escapeHtml(city.data.name)}</strong> · culinary demographic atlas</p>
+        <span>Country area = restaurant representation · adjacency preserves geography</span>
       </div>
       <svg class="world-map cartogram-map grid-cartogram-map" viewBox="0 0 ${width} ${height}" role="img" aria-label="Pixel world cartogram with country area proportional to restaurant counts">
         <defs>
@@ -666,19 +677,30 @@ function renderCuisineCartogram() {
         <g class="grid-cartogram-layer">
           <rect class="grid-cartogram-field" x="${grid.originX}" y="${grid.originY}" width="${grid.gridWidth}" height="${grid.gridHeight}"></rect>
           <g class="grid-cartogram-territories"></g>
+          <g class="grid-cartogram-leaders"></g>
           <g class="grid-cartogram-labels"></g>
         </g>
       </svg>
-      <p class="map-legend"><span class="legend-flag">▦</span><span>Fine cells preserve relative direction and island geography</span><span class="legend-action">Connected cuisine territories · select to drill down</span></p>
+      <p class="map-legend"><span class="legend-flag">◫</span><span>Area = restaurants · color = continent</span><span class="legend-action">Labels follow country centroids · select to drill down</span></p>
       ${devMenuMarkup()}
     </section>
   `;
 
   const svg = d3.select(scene.querySelector(".cartogram-map"));
+  let labels;
+  const setCountryHighlight = (item, active) => {
+    territories.classed("is-highlighted", (candidate) => (
+      active && candidate.node.data.id === item.node.data.id
+    ));
+    labels?.classed("is-highlighted", (candidate) => (
+      active && candidate.node.data.id === item.node.data.id
+    ));
+  };
   const territories = svg.select(".grid-cartogram-territories").selectAll("g")
     .data(grid.items, (item) => item.node.data.id)
     .join("g")
     .attr("class", "grid-cartogram-country")
+    .attr("data-country-id", (item) => item.node.data.id)
     .attr("role", "button")
     .attr("tabindex", 0)
     .attr("aria-label", (item) => `${item.node.data.name}, ${item.cells.length} connected grid cells represent ${item.node.data.available} restaurants`)
@@ -688,9 +710,19 @@ function renderCuisineCartogram() {
       event.preventDefault();
       openCountry(item.node.data.countryId);
     })
-    .on("pointerenter", (event, item) => showCursorLabel(event, `${item.node.data.flag} ${item.node.data.name} · ${item.node.data.available} restaurants`))
+    .on("pointerover", function handleTerritoryPointerOver(event, item) {
+      if (event.relatedTarget && this.contains(event.relatedTarget)) return;
+      setCountryHighlight(item, true);
+      showCursorLabel(event, `${item.node.data.flag} ${item.node.data.name} · ${item.node.data.available} restaurants`);
+    })
     .on("pointermove", moveCursorLabel)
-    .on("pointerleave", hideCursorLabel);
+    .on("pointerout", function handleTerritoryPointerOut(event, item) {
+      if (event.relatedTarget && this.contains(event.relatedTarget)) return;
+      setCountryHighlight(item, false);
+      hideCursorLabel();
+    })
+    .on("focusin", (_, item) => setCountryHighlight(item, true))
+    .on("focusout", (_, item) => setCountryHighlight(item, false));
   territories.each(function renderGridCells(item) {
     d3.select(this).selectAll("rect")
       .data(item.cells)
@@ -708,37 +740,345 @@ function renderCuisineCartogram() {
     .attr("class", "grid-country-border")
     .attr("d", (item) => gridBoundaryPath(item, grid));
 
-  const labels = svg.select(".grid-cartogram-labels").selectAll("g")
+  svg.select(".grid-cartogram-leaders").selectAll("path")
+    .data(grid.items.filter((item) => item.showName && Math.hypot(item.labelX - item.centroidX, item.labelY - item.centroidY) > 2.4))
+    .join("path")
+    .attr("class", "grid-label-leader")
+    .attr("data-country-id", (item) => item.node.data.id)
+    .attr("d", (item) => {
+      const startX = grid.originX + (item.centroidX + 0.5) * grid.cellSize;
+      const startY = grid.originY + (item.centroidY + 0.5) * grid.cellSize;
+      const endX = grid.originX + (item.labelX + 0.5) * grid.cellSize;
+      const endY = grid.originY + (item.labelY + 0.5) * grid.cellSize;
+      return `M${startX},${startY}L${endX},${endY}`;
+    });
+
+  labels = svg.select(".grid-cartogram-labels").selectAll("g")
     .data(grid.items, (item) => item.node.data.id)
     .join("g")
     .attr("class", "grid-cartogram-label")
+    .attr("data-country-id", (item) => item.node.data.id)
     .attr("transform", (item) => `translate(${grid.originX + (item.labelX + 0.5) * grid.cellSize},${grid.originY + (item.labelY + 0.5) * grid.cellSize})`)
     .attr("role", "button")
     .attr("tabindex", 0)
     .attr("aria-label", (item) => `Open ${item.node.data.name}`)
-    .on("click", (_, item) => openCountry(item.node.data.countryId))
     .on("keydown", (event, item) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       openCountry(item.node.data.countryId);
-    });
-  labels.append("rect").attr("class", "grid-label-hit").attr("x", -18).attr("y", -18).attr("width", 36).attr("height", 36);
+    })
+    .on("focusin", (_, item) => setCountryHighlight(item, true))
+    .on("focusout", (_, item) => setCountryHighlight(item, false));
   labels.append("text")
     .attr("class", "grid-cartogram-flag")
     .attr("text-anchor", "middle")
-    .attr("y", -2)
+    .attr("y", -4)
     .style("font-size", (item) => `${item.labelFontSize}px`)
     .text((item) => item.hideLabel ? "" : item.node.data.flag);
-  labels.append("text").attr("class", "grid-cartogram-name").attr("text-anchor", "middle").attr("y", 12).text((item) => item.showName ? item.node.data.name : "");
-  labels.append("text").attr("class", "grid-cartogram-count").attr("text-anchor", "middle").attr("y", 23).text((item) => item.showCount ? item.node.data.available : "");
+  labels.append("text")
+    .attr("class", "grid-cartogram-name")
+    .attr("text-anchor", "middle")
+    .attr("y", 9)
+    .style("font-size", (item) => `${item.nameFontSize}px`)
+    .text((item) => item.showName ? item.node.data.name : "");
+  labels.append("text")
+    .attr("class", "grid-cartogram-count")
+    .attr("text-anchor", "middle")
+    .attr("y", 19)
+    .text((item) => item.showCount ? `${item.node.data.available}` : "");
 
   const zoom = d3.zoom().scaleExtent([0.7, 12]).on("zoom", (event) => svg.select(".grid-cartogram-layer").attr("transform", event.transform));
   svg.call(zoom).on("dblclick.zoom", null);
   svg.call(zoom.transform, gridCartogramFitTransform(grid, width, height));
   declutterRenderedCartogramLabels(svg.node());
-  document.fonts?.ready.then(() => declutterRenderedCartogramLabels(svg.node()));
+  updateCartogramLeaderVisibility(svg.node());
+  document.fonts?.ready.then(() => {
+    declutterRenderedCartogramLabels(svg.node());
+    updateCartogramLeaderVisibility(svg.node());
+  });
   bindBreadcrumbs();
   bindDevMenu();
+}
+
+function renderEditorialWorldAtlas() {
+  const city = cityNodes.find((node) => node.data.id === state.cityId);
+  if (!city) return renderGallery();
+  const live = city.data.id === "munich";
+  const values = live ? countryNodes : countryNodes.map((node) => previewCountryNode(city.data.id, node));
+  const width = Math.max(720, scene.clientWidth || 1200);
+  const height = Math.max(520, scene.clientHeight || 760);
+  const grid = buildGridCartogram(values, width, height);
+  const continentLeaders = new Set(d3.groups(grid.items, (item) => item.node.parent?.data.name)
+    .map(([, items]) => d3.greatest(items, (item) => item.node.data.available)?.node.data.id)
+    .filter(Boolean));
+  grid.items.forEach((item) => {
+    item.editorialPath = editorialCountryPath(item, grid);
+    item.editorialLabel = item.node.data.available >= 50 || continentLeaders.has(item.node.data.id);
+    item.editorialLabelX = d3.mean(item.cells, (cell) => cell.x);
+    item.editorialLabelY = d3.mean(item.cells, (cell) => cell.y);
+  });
+
+  scene.innerHTML = `
+    <section class="editorial-atlas-view semantic-layer" aria-label="${escapeHtml(city.data.name)} living cultural atlas">
+      ${breadcrumbMarkup(city, null)}
+      <div class="editorial-atlas-heading">
+        <p class="editorial-atlas-kicker">A city contains a miniature world</p>
+        <h2>${escapeHtml(city.data.name)}</h2>
+        <p><strong>${city.data.available.toLocaleString()}</strong> restaurants · <span>${grid.items.length} culinary countries</span></p>
+      </div>
+      <svg class="editorial-atlas-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="editorial-atlas-title editorial-atlas-desc">
+        <title id="editorial-atlas-title">${escapeHtml(city.data.name)} living cultural atlas</title>
+        <desc id="editorial-atlas-desc">An organic topological world where country area represents restaurants and muted color groups continents.</desc>
+        <defs>
+          <filter id="paper-cutout" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" seed="11" result="paperNoise"></feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="paperNoise" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="softEdge"></feDisplacementMap>
+            <feDropShadow in="softEdge" dx="0" dy="3" stdDeviation="3.5" flood-color="#4f493f" flood-opacity="0.16"></feDropShadow>
+          </filter>
+          <filter id="paper-hover" x="-25%" y="-25%" width="150%" height="160%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="11" result="paperNoise"></feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="paperNoise" scale="1.8" result="softEdge"></feDisplacementMap>
+            <feDropShadow in="softEdge" dx="0" dy="7" stdDeviation="7" flood-color="#4f493f" flood-opacity="0.24"></feDropShadow>
+          </filter>
+          <filter id="paper-grain" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="5" result="grain"></feTurbulence>
+            <feColorMatrix in="grain" type="saturate" values="0" result="monoGrain"></feColorMatrix>
+            <feComponentTransfer in="monoGrain">
+              <feFuncA type="table" tableValues="0 0.035"></feFuncA>
+            </feComponentTransfer>
+          </filter>
+        </defs>
+        <rect class="editorial-paper-field" x="0" y="0" width="${width}" height="${height}"></rect>
+        <rect class="editorial-paper-grain" x="0" y="0" width="${width}" height="${height}"></rect>
+        <g class="editorial-atlas-zoom-layer"></g>
+      </svg>
+      <p class="editorial-atlas-legend"><span>Area represents restaurants</span><span>Color groups continents</span><span>Select a country to enter its cuisines</span></p>
+      ${devMenuMarkup()}
+    </section>
+  `;
+
+  const svg = d3.select(scene.querySelector(".editorial-atlas-map"));
+  const layer = svg.select(".editorial-atlas-zoom-layer");
+  const continentGroups = layer.selectAll("g")
+    .data(d3.groups(grid.items, (item) => item.node.parent?.data.name))
+    .join("g")
+    .attr("class", ([continent]) => `editorial-continent editorial-continent-${normalizeCountryName(continent).replaceAll(" ", "-")}`)
+    .style("--float-delay", (_, index) => `${index * -1.7}s`)
+    .style("--float-x", (_, index) => `${index % 2 ? 1.8 : -1.4}px`)
+    .style("--float-y", (_, index) => `${index % 3 ? -2.2 : 1.6}px`);
+
+  const countries = continentGroups.selectAll("g")
+    .data(([, items]) => items, (item) => item.node.data.id)
+    .join("g")
+    .attr("class", "editorial-country")
+    .attr("role", "button")
+    .attr("tabindex", 0)
+    .attr("aria-label", (item) => `${item.node.data.name}, ${item.node.data.available} restaurants`)
+    .style("--country-fill", (item) => editorialCountryColor(item))
+    .style("--breath-delay", (_, index) => `${(index % 9) * -0.43}s`)
+    .on("click", (_, item) => openCountry(item.node.data.countryId))
+    .on("keydown", (event, item) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openCountry(item.node.data.countryId);
+    })
+    .on("pointerover", function handleEditorialPointerOver(event, item) {
+      if (event.relatedTarget && this.contains(event.relatedTarget)) return;
+      showCursorLabel(event, `${item.node.data.flag} ${item.node.data.name} · ${item.node.data.available} restaurants`);
+    })
+    .on("pointermove", moveCursorLabel)
+    .on("pointerout", function handleEditorialPointerOut(event) {
+      if (event.relatedTarget && this.contains(event.relatedTarget)) return;
+      hideCursorLabel();
+    });
+
+  countries.append("path")
+    .attr("class", "editorial-country-cutout")
+    .attr("d", (item) => item.editorialPath)
+    .attr("filter", "url(#paper-cutout)");
+
+  const labels = countries.append("g")
+    .attr("class", "editorial-country-label")
+    .attr("transform", (item) => `translate(${grid.originX + (item.editorialLabelX + 0.5) * grid.cellSize},${grid.originY + (item.editorialLabelY + 0.5) * grid.cellSize})`);
+  labels.append("text")
+    .attr("class", "editorial-country-flag")
+    .attr("text-anchor", "middle")
+    .attr("y", (item) => item.editorialLabel ? -18 : 2)
+    .text((item) => item.node.data.flag);
+  labels.append("text")
+    .attr("class", "editorial-country-name")
+    .attr("text-anchor", "middle")
+    .attr("y", 3)
+    .text((item) => item.editorialLabel ? item.node.data.name : "");
+  labels.append("text")
+    .attr("class", "editorial-country-meta")
+    .attr("text-anchor", "middle")
+    .attr("y", 20)
+    .text((item) => item.editorialLabel
+      ? `${item.node.data.available} ${item.node.data.available === 1 ? "Restaurant" : "Restaurants"}`
+      : "");
+
+  const zoom = d3.zoom()
+    .scaleExtent([0.72, 8])
+    .on("zoom", (event) => layer.attr("transform", event.transform));
+  svg.call(zoom).on("dblclick.zoom", null);
+  svg.call(zoom.transform, gridCartogramFitTransform(grid, width, height));
+  declutterEditorialLabels(svg.node());
+  document.fonts?.ready.then(() => declutterEditorialLabels(svg.node()));
+  bindBreadcrumbs();
+  bindDevMenu();
+}
+
+function editorialCountryPath(item, grid) {
+  const mask = new Uint8Array(grid.columns * grid.rows);
+  item.cells.forEach((cell) => {
+    mask[cell.y * grid.columns + cell.x] = 1;
+  });
+  const contour = d3.contours()
+    .size([grid.columns, grid.rows])
+    .smooth(true)
+    .thresholds([0.5])(mask)[0];
+  if (!contour) return gridBoundaryPath(item, grid);
+  const projection = d3.geoIdentity()
+    .scale(grid.cellSize)
+    .translate([grid.originX, grid.originY]);
+  return d3.geoPath(projection)(contour);
+}
+
+function editorialCountryColor(item) {
+  const palette = {
+    Americas: ["#b96f5d", "#c68571", "#a86153", "#d39a86"],
+    Europe: ["#78929f", "#8ca4ae", "#657f8c", "#a7b8bd"],
+    Africa: ["#8d8966", "#a09a73", "#777654", "#b0a982"],
+    Asia: ["#c29a4b", "#d0aa5b", "#aa823d", "#ddbd75"],
+    Oceania: ["#6f9991", "#85aaa2", "#5d837c", "#9dbbb4"],
+  };
+  const colors = palette[item.node.parent?.data.name] ?? ["#918b80"];
+  return colors[item.shadeIndex % colors.length];
+}
+
+function declutterEditorialLabels(svgElement) {
+  if (!svgElement) return;
+  const groups = [...svgElement.querySelectorAll(".editorial-country-label")];
+  for (let pass = 0; pass < groups.length * 2; pass += 1) {
+    const visible = groups.map((group) => ({
+      group,
+      item: group.parentElement.__data__,
+      rect: group.getBoundingClientRect(),
+      visible: group.textContent.trim().length > 0,
+    })).filter((entry) => entry.visible);
+    let collision;
+    for (let index = 0; index < visible.length && !collision; index += 1) {
+      const a = visible[index];
+      for (let otherIndex = index + 1; otherIndex < visible.length; otherIndex += 1) {
+        const b = visible[otherIndex];
+        if (a.rect.left < b.rect.right + 5
+          && a.rect.right + 5 > b.rect.left
+          && a.rect.top < b.rect.bottom + 5
+          && a.rect.bottom + 5 > b.rect.top) {
+          collision = a.item.displayArea <= b.item.displayArea ? a : b;
+          break;
+        }
+      }
+    }
+    if (!collision) break;
+    const meta = collision.group.querySelector(".editorial-country-meta");
+    const name = collision.group.querySelector(".editorial-country-name");
+    const flag = collision.group.querySelector(".editorial-country-flag");
+    if (meta?.textContent) meta.textContent = "";
+    else if (name?.textContent) name.textContent = "";
+    else if (flag?.textContent) flag.textContent = "";
+  }
+}
+
+function renderEditorialCountryAtlas() {
+  const city = cityNodes.find((node) => node.data.id === state.cityId);
+  const country = countryNodes.find((node) => node.data.countryId === state.countryId);
+  if (!city || !country) return renderEditorialWorldAtlas();
+  const cuisines = cuisineNodesFor(country);
+  const width = Math.max(720, scene.clientWidth || 1200);
+  const height = Math.max(520, scene.clientHeight || 760);
+  const feature = featureForCountry(country);
+  const projection = d3.geoMercator();
+  if (feature) projection.fitExtent([[110, 124], [width - 110, height - 74]], feature);
+  else projection.center([country.data.lng, country.data.lat]).scale(720).translate([width / 2, height / 2]);
+  const path = d3.geoPath(projection);
+  const maxCount = d3.max(cuisines, (node) => node.data.available) || 1;
+  const radius = d3.scaleSqrt().domain([0, maxCount]).range([34, 74]);
+  const positioned = cuisineMarkerPositions(cuisines, projection, width, height, radius);
+
+  scene.innerHTML = `
+    <section class="editorial-atlas-view editorial-country-view semantic-layer" aria-label="${escapeHtml(country.data.name)} cuisine atlas">
+      ${breadcrumbMarkup(city, country)}
+      <div class="editorial-atlas-heading editorial-country-heading">
+        <p class="editorial-atlas-kicker">${escapeHtml(city.data.name)} · regional kitchens</p>
+        <h2>${country.data.flag} ${escapeHtml(country.data.name)}</h2>
+        <p><strong>${country.data.available}</strong> restaurants · <span>${cuisines.length} cuisine traditions</span></p>
+      </div>
+      <svg class="editorial-atlas-map editorial-country-map" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(country.data.name)} regional cuisines">
+        <defs>
+          <filter id="cuisine-paper" x="-30%" y="-30%" width="160%" height="170%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="17" result="noise"></feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" result="softEdge"></feDisplacementMap>
+            <feDropShadow in="softEdge" dx="0" dy="4" stdDeviation="5" flood-color="#4f493f" flood-opacity="0.15"></feDropShadow>
+          </filter>
+        </defs>
+        <rect class="editorial-paper-field" x="0" y="0" width="${width}" height="${height}"></rect>
+        <g class="editorial-country-silhouette">${feature ? `<path d="${path(feature)}"></path>` : ""}</g>
+        <g class="editorial-cuisine-layer"></g>
+      </svg>
+      <p class="editorial-atlas-legend"><span>Regional cuisine</span><span>Size represents restaurants</span><span>Empty traditions remain visible</span></p>
+      <aside class="cuisine-drawer editorial-cuisine-drawer" aria-live="polite"></aside>
+      ${devMenuMarkup()}
+    </section>
+  `;
+
+  const svg = d3.select(scene.querySelector(".editorial-country-map"));
+  const islands = svg.select(".editorial-cuisine-layer")
+    .selectAll("g")
+    .data(positioned, (item) => item.node.data.id)
+    .join("g")
+    .attr("class", (item) => `editorial-cuisine-island${item.node.data.available === 0 ? " is-empty" : ""}`)
+    .attr("transform", (item) => `translate(${item.x},${item.y})`)
+    .attr("role", "button")
+    .attr("tabindex", 0)
+    .attr("aria-label", (item) => `${item.node.data.name}, ${item.node.data.available} restaurants`)
+    .style("--breath-delay", (_, index) => `${(index % 7) * -0.58}s`)
+    .on("click", (_, item) => selectCuisine(item.node))
+    .on("keydown", (event, item) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      selectCuisine(item.node);
+    })
+    .on("pointerover", (event, item) => showCursorLabel(event, `${item.node.data.emoji} ${item.node.data.name} · ${item.node.data.available} restaurants`))
+    .on("pointermove", moveCursorLabel)
+    .on("pointerout", hideCursorLabel);
+
+  islands.append("circle")
+    .attr("r", (item) => radius(item.node.data.available))
+    .attr("filter", "url(#cuisine-paper)");
+  islands.append("text")
+    .attr("class", "editorial-cuisine-emoji")
+    .attr("text-anchor", "middle")
+    .attr("y", -12)
+    .text((item) => item.node.data.emoji);
+  islands.append("text")
+    .attr("class", "editorial-cuisine-name")
+    .attr("text-anchor", "middle")
+    .attr("y", 14)
+    .text((item) => item.node.data.name);
+  islands.append("text")
+    .attr("class", "editorial-cuisine-count")
+    .attr("text-anchor", "middle")
+    .attr("y", 32)
+    .text((item) => `${item.node.data.available} ${item.node.data.available === 1 ? "Restaurant" : "Restaurants"}`);
+
+  bindBreadcrumbs();
+  bindDevMenu();
+  if (state.cuisineId) {
+    const selected = cuisines.find((node) => node.data.id === state.cuisineId);
+    if (selected) selectCuisine(selected, false);
+  }
 }
 
 function buildGridCartogram(values, width, height) {
@@ -821,12 +1161,15 @@ function buildGridCartogram(values, width, height) {
     const center = item.cells.reduce((sum, cell) => ({ x: sum.x + cell.x, y: sum.y + cell.y }), { x: 0, y: 0 });
     const centroidX = center.x / item.cells.length;
     const centroidY = center.y / item.cells.length;
-    item.labelX = item.seedX * 0.72 + centroidX * 0.28;
-    item.labelY = item.seedY * 0.72 + centroidY * 0.28;
+    item.centroidX = centroidX;
+    item.centroidY = centroidY;
     item.displayArea = item.cells.length / quotaScale;
-    item.showName = item.displayArea >= 7.5;
-    item.showCount = item.displayArea >= 12;
-    item.labelFontSize = clamp(7 + Math.sqrt(item.displayArea) * 0.9, 9, 16);
+    item.labelX = item.displayArea >= 20 ? centroidX : item.seedX * 0.72 + centroidX * 0.28;
+    item.labelY = item.displayArea >= 20 ? centroidY : item.seedY * 0.72 + centroidY * 0.28;
+    item.showName = item.displayArea >= 4.5;
+    item.showCount = item.displayArea >= 10;
+    item.labelFontSize = clamp(6 + Math.sqrt(item.displayArea) * 0.62, 8, 13);
+    item.nameFontSize = clamp(5.8 + Math.sqrt(item.displayArea) * 0.38, 6.5, 10.5);
   });
   relaxCartogramLabels(items, cellSize, columns, rows);
   return { items, columns, rows, cellSize, gridWidth, gridHeight, originX, originY };
@@ -861,7 +1204,7 @@ function compactContinentAnchors(items) {
   const compactness = {
     Americas: 0.72,
     Europe: 0.78,
-    Africa: 0.68,
+    Africa: 0.52,
     Asia: 0.69,
     Oceania: 0.72,
   };
@@ -926,13 +1269,13 @@ function relaxCartogramLabels(items, cellSize, columns, rows) {
       anchorY: item.labelY,
       x: item.labelX,
       y: item.labelY,
-      maxDisplacement: item.radius * 0.72 + 6,
+      maxDisplacement: item.displayArea >= 20 ? 3.6 : item.radius * 0.55 + 5,
     }));
   const updateMetrics = () => labels.forEach((label) => {
     const { item } = label;
-    const textWidth = item.showName ? Math.max(24, item.node.data.name.length * 4.55) : 0;
+    const textWidth = item.showName ? Math.max(18, (item.labelName ?? item.node.data.name).length * item.nameFontSize * 0.56) : 0;
     const flagWidth = item.hideLabel ? 0 : item.labelFontSize + 6;
-    const textHeight = item.showCount ? 37 : item.showName ? 27 : item.hideLabel ? 0 : item.labelFontSize + 5;
+    const textHeight = item.showCount ? 29 : item.showName ? 20 : item.hideLabel ? 0 : item.labelFontSize + 4;
     label.halfWidth = Math.max(textWidth, flagWidth) * 0.53 / cellSize;
     label.halfHeight = textHeight * 0.53 / cellSize;
   });
@@ -1050,13 +1393,32 @@ function declutterRenderedCartogramLabels(svgElement) {
   }
 }
 
+function updateCartogramLeaderVisibility(svgElement) {
+  if (!svgElement) return;
+  svgElement.querySelectorAll(".grid-label-leader").forEach((leader) => {
+    const countryId = leader.getAttribute("data-country-id");
+    const label = svgElement.querySelector(`.grid-cartogram-label[data-country-id="${countryId}"]`);
+    leader.style.display = label?.textContent.trim() ? "" : "none";
+  });
+}
+
 function cartogramGeographicAnchor(node, projected, projection) {
-  if (node.parent?.data.name !== "Europe") return projected;
-  const center = projection([14, 51]);
-  return [
-    center[0] + (projected[0] - center[0]) * 3.45,
-    center[1] + (projected[1] - center[1]) * 3.2,
-  ];
+  const continent = node.parent?.data.name;
+  if (continent === "Europe") {
+    const center = projection([14, 51]);
+    return [
+      center[0] + (projected[0] - center[0]) * 3.45,
+      center[1] + (projected[1] - center[1]) * 3.2 - 3.5,
+    ];
+  }
+  if (continent === "Africa") {
+    const center = projection([18, 13]);
+    return [
+      center[0] + (projected[0] - center[0]) * 0.72 - 2,
+      center[1] + (projected[1] - center[1]) * 0.66 + 26,
+    ];
+  }
+  return projected;
 }
 
 function assignCartogramShades(items, resolutionScale) {
@@ -1075,9 +1437,11 @@ function assignCartogramShades(items, resolutionScale) {
 }
 
 function cartogramCountryColor(item) {
-  const base = d3.hsl(CONTINENT_COLORS[item.node.parent?.data.name] ?? "#77736b");
-  const lightnessOffsets = [-0.13, -0.035, 0.07, 0.16];
-  base.l = clamp(base.l + lightnessOffsets[item.shadeIndex ?? 0], 0.25, 0.76);
+  const continent = item.node.parent?.data.name;
+  const base = d3.hsl(CARTOGRAM_CONTINENT_COLORS[continent] ?? "#77736b");
+  const lightnessOffsets = [-0.065, -0.018, 0.034, 0.072];
+  base.l = clamp(base.l + lightnessOffsets[item.shadeIndex ?? 0], 0.2, 0.72);
+  base.s = continent === "Africa" ? 0.035 : clamp(base.s * 0.82, 0.16, 0.52);
   return base.formatHex();
 }
 
@@ -1092,18 +1456,18 @@ function gridCartogramFitTransform(grid, width, height) {
   const maxLabelX = d3.max(grid.items, (item) => item.labelX + (item.labelRadius ?? 0));
   const minLabelY = d3.min(grid.items, (item) => item.labelY - (item.labelRadius ?? 0));
   const maxLabelY = d3.max(grid.items, (item) => item.labelY + (item.labelRadius ?? 0));
-  const padding = Math.max(14, grid.cellSize * 5);
+  const padding = Math.max(7, grid.cellSize * 2.5);
   const bounds = {
     x0: grid.originX + Math.min(minX, minLabelX) * grid.cellSize - padding,
     x1: grid.originX + Math.max(maxX, maxLabelX) * grid.cellSize + padding,
     y0: grid.originY + Math.min(minY, minLabelY) * grid.cellSize - padding,
     y1: grid.originY + Math.max(maxY, maxLabelY) * grid.cellSize + padding,
   };
-  const viewport = { x0: 24, x1: width - 24, y0: 116, y1: height - 60 };
+  const viewport = { x0: 10, x1: width - 10, y0: 116, y1: height - 60 };
   const scale = clamp(Math.min(
     (viewport.x1 - viewport.x0) / (bounds.x1 - bounds.x0),
     (viewport.y1 - viewport.y0) / (bounds.y1 - bounds.y0),
-  ), 0.7, 2.65);
+  ), 0.7, 2.9);
   const boundsCenterX = (bounds.x0 + bounds.x1) / 2;
   const boundsCenterY = (bounds.y0 + bounds.y1) / 2;
   const viewportCenterX = (viewport.x0 + viewport.x1) / 2;
@@ -1186,16 +1550,9 @@ function renderRegionalCartogram() {
   const cuisines = cuisineNodesFor(country);
   const width = Math.max(720, scene.clientWidth || 1200);
   const height = Math.max(520, scene.clientHeight || 760);
-  const packWidth = width - 90;
-  const packHeight = height - 155;
-  const packedRoot = d3.pack().size([packWidth, packHeight]).padding(7)(
-    d3.hierarchy({ children: cuisines }).sum((item) => item.data ? Math.max(item.data.available, 0.65) : 0),
-  );
-  const packed = packedRoot.children ?? [];
   const feature = featureForCountry(country);
-  const projection = d3.geoMercator();
-  if (feature) projection.fitExtent([[60, 96], [width - 60, height - 54]], feature);
-  const path = d3.geoPath(projection);
+  const grid = buildRegionalCuisineCartogram(cuisines, country, feature, width, height);
+  const path = d3.geoPath(grid.projection);
   const continent = country.parent?.data.name;
 
   scene.innerHTML = `
@@ -1203,11 +1560,12 @@ function renderRegionalCartogram() {
       ${breadcrumbMarkup(city, country)}
       <div class="map-heading cartogram-heading">
         <p><strong>${country.data.flag} ${escapeHtml(country.data.name)}</strong> · cuisine territories</p>
-        <span>Regional area = verified restaurants · zero-count traditions retain a minimum territory</span>
+        <span>Regional area = verified restaurants · position follows culinary geography</span>
       </div>
-      <svg class="world-map regional-cartogram-map" viewBox="0 0 ${width} ${height}" role="img" aria-label="Regional cuisines sized by verified restaurants">
-        ${feature ? `<g class="regional-country-silhouette"><path d="${path(feature)}"></path></g>` : ""}
-        <g class="regional-territories" transform="translate(45,105)"></g>
+      <svg class="world-map regional-cartogram-map" viewBox="0 0 ${width} ${height}" role="img" aria-label="Regional cuisines sized by verified restaurants and positioned by geographic origin">
+        ${feature ? `<g class="regional-country-silhouette" transform="translate(${grid.originX},${grid.originY}) scale(${grid.cellSize})"><path d="${path(feature)}"></path></g>` : ""}
+        <g class="regional-territories"></g>
+        <g class="regional-territory-labels"></g>
       </svg>
       <p class="map-legend"><span class="legend-flag">${country.data.flag}</span><span>Regional territory = restaurant count</span><span class="legend-action">Select a cuisine to see its restaurants</span></p>
       <aside class="cuisine-drawer" aria-live="polite"></aside>
@@ -1216,23 +1574,66 @@ function renderRegionalCartogram() {
   `;
 
   const nodes = d3.select(scene.querySelector(".regional-territories")).selectAll("g")
-    .data(packed, (item) => item.data.data.id)
+    .data(grid.items, (item) => item.node.data.id)
     .join("g")
-    .attr("class", (item) => `regional-territory${item.data.data.available === 0 ? " is-empty" : ""}`)
-    .attr("transform", (item) => `translate(${item.x},${item.y})`)
+    .attr("class", (item) => [
+      "grid-cartogram-country",
+      "regional-grid-territory",
+      item.node.data.available === 0 ? "is-empty" : "",
+      item.node.data.unclassified ? "is-unclassified" : "",
+    ].filter(Boolean).join(" "))
     .attr("role", "button")
     .attr("tabindex", 0)
-    .attr("aria-label", (item) => `${item.data.data.name}, ${item.data.data.available} restaurants`)
-    .on("click", (_, item) => selectCuisine(item.data))
+    .attr("aria-label", (item) => `${item.node.data.name}, ${item.node.data.available} restaurants`)
+    .on("click", (_, item) => selectCuisine(item.node))
     .on("keydown", (event, item) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
-      selectCuisine(item.data);
+      selectCuisine(item.node);
     });
-  nodes.append("circle").attr("r", (item) => item.r).style("--territory-color", CONTINENT_COLORS[continent] ?? "#77736b");
-  nodes.append("text").attr("class", "regional-territory-emoji").attr("text-anchor", "middle").attr("dominant-baseline", "central").attr("font-size", (item) => clamp(item.r * 0.72, 13, 48)).text((item) => item.data.data.emoji);
-  nodes.append("text").attr("class", "regional-territory-name").attr("text-anchor", "middle").attr("y", (item) => Math.min(item.r * 0.48, 32)).text((item) => item.r > 24 ? item.data.data.name : "");
-  nodes.append("text").attr("class", "regional-territory-count").attr("text-anchor", "middle").attr("y", (item) => Math.min(item.r * 0.48, 32) + 13).text((item) => item.r > 19 ? item.data.data.available : "");
+  nodes.each(function renderRegionalGridCells(item) {
+    d3.select(this).selectAll("rect")
+      .data(item.cells)
+      .join("rect")
+      .attr("x", (cell) => grid.originX + cell.x * grid.cellSize)
+      .attr("y", (cell) => grid.originY + cell.y * grid.cellSize)
+      .attr("width", grid.cellSize)
+      .attr("height", grid.cellSize)
+      .style("--territory-color", CARTOGRAM_CONTINENT_COLORS[continent] ?? "#77736b");
+  });
+  nodes.append("path")
+    .attr("class", "grid-country-separator")
+    .attr("d", (item) => gridBoundaryPath(item, grid));
+  nodes.append("path")
+    .attr("class", "grid-country-border")
+    .attr("d", (item) => gridBoundaryPath(item, grid));
+
+  const labels = d3.select(scene.querySelector(".regional-territory-labels")).selectAll("g")
+    .data(grid.items, (item) => item.node.data.id)
+    .join("g")
+    .attr("class", "grid-cartogram-label regional-grid-label")
+    .attr("transform", (item) => `translate(${grid.originX + (item.labelX + 0.5) * grid.cellSize},${grid.originY + (item.labelY + 0.5) * grid.cellSize})`)
+    .attr("aria-hidden", "true");
+  labels.append("text")
+    .attr("class", "grid-cartogram-flag")
+    .attr("text-anchor", "middle")
+    .attr("y", -4)
+    .style("font-size", (item) => `${item.labelFontSize}px`)
+    .text((item) => item.hideLabel ? "" : item.node.data.emoji);
+  labels.append("text")
+    .attr("class", "grid-cartogram-name")
+    .attr("text-anchor", "middle")
+    .attr("y", 9)
+    .style("font-size", (item) => `${item.nameFontSize}px`)
+    .text((item) => item.showName ? item.labelName : "");
+  labels.append("text")
+    .attr("class", "grid-cartogram-count")
+    .attr("text-anchor", "middle")
+    .attr("y", 19)
+    .text((item) => item.showCount ? `${item.node.data.available}` : "");
+
+  declutterRenderedCartogramLabels(scene.querySelector(".regional-cartogram-map"));
+  document.fonts?.ready.then(() => declutterRenderedCartogramLabels(scene.querySelector(".regional-cartogram-map")));
 
   bindBreadcrumbs();
   bindDevMenu();
@@ -1240,6 +1641,143 @@ function renderRegionalCartogram() {
     const selected = cuisines.find((node) => node.data.id === state.cuisineId);
     if (selected) selectCuisine(selected, false);
   }
+}
+
+function buildRegionalCuisineCartogram(cuisines, country, feature, width, height) {
+  const columns = 180;
+  const rows = 112;
+  const quotaScale = 3.2;
+  const cellSize = Math.min((width - 38) / columns, (height - 172) / rows);
+  const gridWidth = columns * cellSize;
+  const gridHeight = rows * cellSize;
+  const originX = (width - gridWidth) / 2;
+  const originY = 112 + Math.max(0, (height - 172 - gridHeight) / 2);
+  const items = cuisines.map((node) => {
+    const quota = Math.max(10, Math.round((2 + Math.sqrt(node.data.available) * 3) * quotaScale));
+    return {
+      node,
+      quota,
+      unclassified: Boolean(node.data.unclassified),
+      radius: Math.sqrt(quota / Math.PI) * 0.62 + 1.2,
+      shapeAspect: 1,
+      cells: [],
+      cellKeys: new Set(),
+    };
+  });
+  const unclassified = items.find((item) => item.unclassified);
+  const unclassifiedRows = unclassified ? Math.max(22, Math.ceil(unclassified.radius * 2 + 10)) : 0;
+  const provincialBottom = rows - unclassifiedRows - (unclassified ? 4 : 8);
+  const projection = d3.geoMercator();
+  if (feature) {
+    projection.fitExtent([[8, 6], [columns - 8, Math.max(34, provincialBottom - 5)]], feature);
+  } else {
+    projection
+      .center([country.data.lng, country.data.lat])
+      .translate([columns / 2, provincialBottom / 2])
+      .scale(180);
+  }
+
+  items.forEach((item) => {
+    const projected = projection([item.node.data.lng, item.node.data.lat]) ?? [columns / 2, provincialBottom / 2];
+    item.anchorX = item.unclassified ? columns / 2 : clamp(projected[0], item.radius + 2, columns - item.radius - 2);
+    item.anchorY = item.unclassified
+      ? rows - item.radius - 4
+      : clamp(projected[1], item.radius + 2, provincialBottom - item.radius - 2);
+    item.x = item.anchorX;
+    item.y = item.anchorY;
+  });
+
+  const provincialItems = items.filter((item) => !item.unclassified);
+  const links = [];
+  const linkKeys = new Set();
+  provincialItems.forEach((item) => {
+    provincialItems
+      .filter((candidate) => candidate !== item)
+      .sort((a, b) => Math.hypot(a.anchorX - item.anchorX, a.anchorY - item.anchorY)
+        - Math.hypot(b.anchorX - item.anchorX, b.anchorY - item.anchorY))
+      .slice(0, 2)
+      .forEach((candidate) => {
+        const key = [item.node.data.id, candidate.node.data.id].sort().join("|");
+        if (linkKeys.has(key)) return;
+        linkKeys.add(key);
+        links.push({
+          source: item,
+          target: candidate,
+          distance: Math.max(item.radius + candidate.radius + 2, Math.hypot(item.anchorX - candidate.anchorX, item.anchorY - candidate.anchorY) * 0.72),
+        });
+      });
+  });
+  const simulation = d3.forceSimulation(items)
+    .force("link", d3.forceLink(links).id((item) => item.node.data.id).distance((link) => link.distance).strength(0.34))
+    .force("x", d3.forceX((item) => item.anchorX).strength((item) => item.unclassified ? 0.9 : 0.2))
+    .force("y", d3.forceY((item) => item.anchorY).strength((item) => item.unclassified ? 0.9 : 0.2))
+    .force("collide", d3.forceCollide((item) => item.radius + 2.2).strength(1).iterations(8))
+    .stop();
+  for (let tick = 0; tick < 360; tick += 1) {
+    simulation.tick();
+    items.forEach((item) => {
+      item.x = clamp(item.x, item.radius + 2, columns - item.radius - 2);
+      item.y = item.unclassified
+        ? clamp(item.y, rows - unclassifiedRows + item.radius, rows - item.radius - 3)
+        : clamp(item.y, item.radius + 2, provincialBottom - item.radius - 2);
+    });
+  }
+
+  const occupied = new Map();
+  [...items].sort((a, b) => a.quota - b.quota).forEach((item) => {
+    const seed = nearestGridCell(Math.round(item.x), Math.round(item.y), occupied, columns, rows);
+    addGridCell(item, seed, occupied);
+    item.seedX = seed.x;
+    item.seedY = seed.y;
+    item.anchorX = item.x;
+    item.anchorY = item.y;
+    item.containsTargetCell = (cell) => item.unclassified
+      ? cell.y >= rows - unclassifiedRows
+      : cell.y < provincialBottom;
+  });
+  let remaining = d3.sum(items, (item) => item.quota - item.cells.length);
+  let guard = remaining * 4 + 100;
+  while (remaining > 0 && guard > 0) {
+    guard -= 1;
+    let progress = false;
+    items
+      .filter((item) => item.cells.length < item.quota)
+      .sort((a, b) => (b.quota - b.cells.length) / b.quota - (a.quota - a.cells.length) / a.quota)
+      .forEach((item) => {
+        const candidate = bestGrowthCell(item, occupied, columns, rows);
+        if (!candidate) return;
+        addGridCell(item, candidate, occupied);
+        remaining -= 1;
+        progress = true;
+      });
+    if (!progress) break;
+  }
+
+  items.forEach((item) => {
+    const centroidX = d3.mean(item.cells, (cell) => cell.x);
+    const centroidY = d3.mean(item.cells, (cell) => cell.y);
+    item.displayArea = item.cells.length / quotaScale;
+    item.labelX = centroidX;
+    item.labelY = centroidY;
+    item.labelName = regionalCuisineLabel(item.node.data.name, item.displayArea);
+    item.showName = true;
+    item.showCount = true;
+    item.labelFontSize = clamp(7 + Math.sqrt(item.displayArea) * 0.62, 9, 17);
+    item.nameFontSize = clamp(6.4 + Math.sqrt(item.displayArea) * 0.38, 7, 12);
+  });
+  relaxCartogramLabels(items, cellSize, columns, rows);
+  return { items, columns, rows, cellSize, gridWidth, gridHeight, originX, originY, projection };
+}
+
+function regionalCuisineLabel(name, displayArea) {
+  const concise = name
+    .replace("Unclassified regional identity", "Uncategorized")
+    .replace(" culinary family", "")
+    .split(/\s[\/·]\s/)
+    .slice(0, 2)
+    .join(" · ");
+  const maxCharacters = Math.round(clamp(8 + Math.sqrt(displayArea) * 2.6, 10, 24));
+  return concise.length <= maxCharacters ? concise : `${concise.slice(0, Math.max(6, maxCharacters - 1)).trim()}…`;
 }
 
 function bindMapZoom(svg, width, height) {

@@ -1,0 +1,420 @@
+[
+  {
+    "id": "osm-node-6472655594",
+    "name": "Asia Leckerbissen",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Genuinely dedicated Chinese restaurant (formerly 'China Nudeln Haus') specializing in handmade dumplings, wontons, baozi, and noodle soups. No source names a specific regional tradition; dish format alone (dumplings/noodles) is not sufficient evidence per methodology.",
+    "checkedSources": [
+      "https://freizeitmonster.de/gastronomie/restaurants/asia-leckerbissen-215364",
+      "https://restaurantguru.com/China-Nudeln-Haus-Munich",
+      "https://www.chinahirn.de/2021/05/18/chinahirn-isst-in-muenchen/"
+    ]
+  },
+  {
+    "id": "osm-node-318708860",
+    "name": "Asia Restaurant",
+    "countryId": "china",
+    "reason": "Explicitly multi-regional, no single dominant region",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Cantonese / Guangdong",
+      "Fujian / Taiwan culinary family"
+    ],
+    "researchNotes": "Also trades as 'MOK' (asiamokmuenchen.de). Menu explicitly features Sichuan dishes (Mapo Tofu, Dan Dan Mian), a Cantonese-style duck, and Taiwanese-style items simultaneously, with no single dominant identity. Genuinely Chinese-dedicated (not pan-Asian), just spans multiple regions.",
+    "checkedSources": [
+      "https://www.mokasia-restaurant.de/",
+      "https://www.asiamokmuenchen.de/",
+      "https://www.lieferando.de/speisekarte/asia-mok"
+    ]
+  },
+  {
+    "id": "osm-node-279830869",
+    "name": "Bei Ling",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Generic German-Chinese takeaway/restaurant menu (fried beef with vegetables, fried rice/noodles, fried pork, duck, soup). No source anywhere mentions a specific regional tradition.",
+    "checkedSources": [
+      "https://www.mux.de/Bei-Ling-China-Restaurant",
+      "https://www.yelp.com/biz/bei-ling-m%C3%BCnchen",
+      "https://www.tripadvisor.com/Restaurant_Review-g187309-d811950-Reviews-Bei_Ling-Munich_Upper_Bavaria_Bavaria.html"
+    ]
+  },
+  {
+    "id": "osm-node-389447123",
+    "name": "Cooking Yu Restaurant",
+    "countryId": "china",
+    "reason": "Buffet format, not tied to a single regional tradition",
+    "candidateRegions": [],
+    "researchNotes": "All-you-can-eat Chinese & Mongolian buffet with a live-cooking station and a sushi bar; explicitly a multi-style buffet format rather than a regional specialist.",
+    "checkedSources": [
+      "https://www.mux.de/Cooking-Yu",
+      "https://www.yelp.com/biz/cooking-yu-m%C3%BCnchen",
+      "https://www.cooking-yu.de/images/cooking-yu/Speisekarte_Cooking-Yu.pdf"
+    ]
+  },
+  {
+    "id": "osm-node-651508502",
+    "name": "FAN",
+    "countryId": "china",
+    "reason": "Explicitly multi-regional, no single dominant region",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "An independent food blog explicitly frames the menu as journeying from Sichuan to Cantonese cuisine with fusion touches (e.g. balsamic vinegar) — genuinely Chinese-dedicated but multi-regional with no clear primary identity.",
+    "checkedSources": [
+      "https://haochibites.com/fan-chinese-restaurant-munich/",
+      "https://muenchen.mitvergnuegen.com/tipps/authentische-chinesische-koestlichkeiten-im-fan-restaurant-bestellen/"
+    ]
+  },
+  {
+    "id": "osm-node-5489630514",
+    "name": "Fuyuan",
+    "countryId": "china",
+    "reason": "Explicitly multi-regional, no single dominant region",
+    "candidateRegions": [
+      "Cantonese / Guangdong",
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "Menu spans Cantonese-style dim sum (har gow, siu mai, braised pork stomach, steamed chicken feet), Sichuan mapo tofu, and Peking duck simultaneously — a genuinely pan-regional menu, not a single specialization. Note: OSM address lists 'Gräfelfing' but the street (Augustenstraße 21) and other listings place it in central Munich (Maxvorstadt); likely an OSM postal-code/city data error, left uncorrected as out of scope for this audit.",
+    "checkedSources": [
+      "https://restaurant-haco.com/post/liste-30-chinesische-restaurants-in-muenchen.p539",
+      "https://www.mux.de/China-Restaurant-Fuyuan",
+      "https://asia-zone.com/website/fuyuan-muenchen"
+    ]
+  },
+  {
+    "id": "osm-node-1055335186",
+    "name": "Gam Sing",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Described only generically as traditional Chinese/Asian cuisine, family-run with duck dishes highlighted. No Cantonese, Sichuan, or other regional identifiers found in any source despite the name's Cantonese-romanization sound.",
+    "checkedSources": [
+      "https://www.mux.de/GAM-SING",
+      "https://www.golocal.de/muenchen/chinesische-restaurants/gam-sing-china-restaurant-YUFf0/",
+      "https://gam-sing.foodpearl.com/"
+    ]
+  },
+  {
+    "id": "osm-node-1726383947",
+    "name": "Gao",
+    "countryId": "china",
+    "reason": "Buffet format, not tied to a single regional tradition",
+    "candidateRegions": [],
+    "researchNotes": "All-you-can-eat buffet combining dim sum, sushi, wok dishes, and a Mongolian grill night. Formerly named 'Majestic' at the same location. Explicitly multi-style, not regionally specialized.",
+    "checkedSources": [
+      "https://www.muenchen-sehen.de/essen-trinken/all-you-can-eat-gao-restaurant-munchen/",
+      "https://www.restaurant-gao.de/"
+    ]
+  },
+  {
+    "id": "osm-node-6651440000",
+    "name": "Honghong Noodles",
+    "countryId": "china",
+    "reason": "Menu is explicitly cross-country fusion, not a single Chinese region",
+    "candidateRegions": [],
+    "researchNotes": "Official menu is explicitly pan-Asian: Sichuan-flavored dishes (Gong Bao Chicken, Ma Po Tofu) sit alongside Thai (Tom Yam, Tom Kha Gai) and Vietnamese (Pho Bo) dishes — a fusion Chinese-and-Thai noodle house rather than a regional specialist.",
+    "checkedSources": [
+      "https://honghong.eu/menu",
+      "https://www.muenchen-sehen.de/essen-trinken/honghong-noodles-muenchen/"
+    ]
+  },
+  {
+    "id": "osm-node-1444923171",
+    "name": "Jackie Chan",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Confirmed as a genuine, long-running (30+ years) dedicated Chinese sit-down restaurant with beer garden, popular with tour groups — but cuisine is described only generically as 'Chinese, Asian, and International' with no source naming a specific region.",
+    "checkedSources": [
+      "https://www.restaurant-jackiechan.de/",
+      "https://www.opentable.com/r/china-restaurant-jackie-chan",
+      "https://www.tripadvisor.com/Restaurant_Review-g187309-d4346404-Reviews-China_Restaurant_Jackie_Chan-Munich_Upper_Bavaria_Bavaria.html"
+    ]
+  },
+  {
+    "id": "osm-node-9586451346",
+    "name": "Le Voyage",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Menu centers on Peking duck and dim sum, and the Chinese name translates roughly to 'carefree private home cooking' — a generic descriptor, not a region. Peking duck and dim sum are ubiquitous across generic Chinese restaurants in Germany and not sufficient alone. Official site had an expired SSL certificate at time of check.",
+    "checkedSources": [
+      "https://www.thefork.de/restaurant/le-voyage-r749504/speisekarte",
+      "https://www.yelp.com/biz/le-voyage-m%C3%BCnchen",
+      "https://www.tripadvisor.com/Restaurant_Review-g187309-d15696975-Reviews-Le_Voyage-Munich_Upper_Bavaria_Bavaria.html"
+    ]
+  },
+  {
+    "id": "osm-node-2595562246",
+    "name": "LeDu - Happy Dumplings",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Official brand site frames itself only as food 'aus dem Reich der Mitte' (from the Middle Kingdom / China generically) — no regional claim. Serves dumplings and jianbing (a Beijing/Tianjin street food), but this is single-dish evidence only and the brand does not itself claim a Beijing identity. One of three LeDu branches audited (Theresienstraße 18); confirmed a genuinely separate branch, not duplicate OSM data.",
+    "checkedSources": [
+      "https://ledu.restaurant/restaurants/ledu-happy-dumplings-theresienstrasse/",
+      "https://www.leduhappydumplings.de/"
+    ]
+  },
+  {
+    "id": "osm-node-6934408010",
+    "name": "LEDU DUMPLINGS & JIANBING",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Same LeDu brand/menu framing as the other two branches audited; no specific regional claim beyond generic Chinese. Externally identified as the Stachus Passagen / Karlsplatz 1 branch — confirmed a genuinely separate physical location, not duplicate OSM data.",
+    "checkedSources": [
+      "https://eaten.io/p/LeDu-Happy-Dumplings--Jianbin-UG-Stachus-Passagen-Karlspl-3045a9",
+      "https://www.stachuspassagen.de/en/all-shops/ledu"
+    ]
+  },
+  {
+    "id": "osm-node-2810020835",
+    "name": "LeDu Happy Dumplings & Noodle",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Same LeDu brand (Altheimer Eck 7 branch); no specific regional claim beyond generic Chinese. Confirmed a genuinely separate branch by its own address, phone number and hours.",
+    "checkedSources": [
+      "https://onlinestreet.de/poi/dVBXZ1liL0tpTitFNnMxY0JYYkQyUT09",
+      "https://ledu.restaurant/restaurants/ledu-happy-dumplings-altheimereck/"
+    ]
+  },
+  {
+    "id": "osm-node-1195737881",
+    "name": "Mai Garten",
+    "countryId": "china",
+    "reason": "Explicitly multi-regional, no single dominant region",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Jiangsu / Zhejiang / Shanghai"
+    ],
+    "researchNotes": "Official site calls itself 'klassische chinesische Küche' with Sichuan-style dishes (fried eggplant, Sichuan-pepper beans, Mapo Tofu) repeated across sources, but the restaurant is equally known for Xiao Long Bao (a Jiangnan/Shanghai-style specialty). An AI-aggregated search summary claimed the owner is 'from Shanghai' serving 'Huaiyang cuisine' but this could not be verified in any of three primary articles fetched directly and was discarded as unreliable.",
+    "checkedSources": [
+      "https://www.mai-garten.com/",
+      "https://www.muenchen-sehen.de/essen-trinken/mai-garten-muenchen/",
+      "https://www.gastrobenni.de/mai-garten",
+      "https://muenchen.mitvergnuegen.com/2019/mai-garten-gaertnerplatz/"
+    ]
+  },
+  {
+    "id": "osm-node-452068329",
+    "name": "Man Fat",
+    "countryId": "china",
+    "reason": "Explicitly multi-regional, no single dominant region",
+    "candidateRegions": [
+      "Cantonese / Guangdong",
+      "Sichuan / Chongqing",
+      "Fujian / Taiwan culinary family"
+    ],
+    "researchNotes": "A detailed local feature states the kitchen team comes from Hong Kong, Fuzhou, and Sichuan province, and each chef brings their own regional dishes to the menu — an explicitly multi-regional, long-running (second-generation) family restaurant rather than a single specialist.",
+    "checkedSources": [
+      "https://www.mucbook.de/c-wie-chinesisch-im-man-fat/",
+      "https://www.yelp.com/biz/man-fat-m%C3%BCnchen"
+    ]
+  },
+  {
+    "id": "osm-node-1660556258",
+    "name": "Mandarin China Restaurant",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "No reliable, directly citable source specifies a regional cuisine. A search-engine aggregate suggested 'Northern Chinese' but this could not be pinned to any verifiable source and was discarded. Menu is described only generically (wok dishes, fried noodles, homemade soups).",
+    "checkedSources": [
+      "https://orte.muenchen.de/1264370.html",
+      "https://www.yelp.com/biz/mandarin-m%C3%BCnchen",
+      "https://speisekartenweb.de/restaurants/m%C3%BCnchen/china-restaurant-mandarin-101930"
+    ]
+  },
+  {
+    "id": "osm-node-11365929071",
+    "name": "Meet Nudelbar",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence, and closure/rebrand status is unresolved",
+    "candidateRegions": [],
+    "researchNotes": "Previously described only generically as 'authentic Chinese noodle soups' with no regional specificity. Current searches for the same address (Schillerstraße 14, 80336 München) now surface a different-named business, 'Sichuan Küche Nudelbar,' with no active 2026 mentions of 'Meet Nudelbar' at that address — suggesting the business has closed or rebranded. Kept in the dataset as unclassified rather than removed or renamed, since a rename/rebrand could not be confirmed as the same legal entity; recommend a field visit or phone check before the next taxonomy update.",
+    "checkedSources": [
+      "https://www.tiktok.com/@miasanfoodies/video/7288395088886091041",
+      "https://www.sichuannudelbar.de/en",
+      "https://www.tripadvisor.com/Restaurant_Review-g187309-d26585958-Reviews-Meet_Nudelbar-Munich_Upper_Bavaria_Bavaria.html"
+    ]
+  },
+  {
+    "id": "osm-node-7779203018",
+    "name": "Ming",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Menu shows generic dim sum (Har Gow, Siu Mai, Char Siu Bao) and Peking duck — standard offerings found at most generic Chinese restaurants in Germany, not distinctive enough to assign a region. Branded as a casual 'Ming Lunch&Tea' concept; no official restaurant website found.",
+    "checkedSources": [
+      "https://www.thefork.de/restaurant/ming-lunch-tea-r847462/speisekarte",
+      "https://asia-zone.com/website/ming-lunch-tee-muenchen"
+    ]
+  },
+  {
+    "id": "osm-node-701421198",
+    "name": "Qin Cheng",
+    "countryId": "china",
+    "reason": "Would meet evidence bar for Shanxi / Shaanxi noodles, but closure status is unresolved and conflicting",
+    "candidateRegions": [
+      "Shanxi / Shaanxi noodles"
+    ],
+    "researchNotes": "Menu explicitly features Biangbiang noodles (a Shaanxi specialty), and the name 'Qin Cheng' (秦城) plausibly references Xianyang/Xi'an. However, closure signals conflict: HappyCow lists it as permanently closed ('reported closed June 2025'), while a dining blog reviewed it as if open in March 2026, and Lieferando carries active listings for both 'Mian Noodles / Qin Cheng Sendling' and 'Qincheng Restaurant' at what may be a different address. Kept unclassified and in the dataset pending field verification of the Herzog-Wilhelm-Straße 7 location specifically, rather than assigning a region to a possibly-closed listing or guessing at a relocation.",
+    "checkedSources": [
+      "https://haochibites.com/qin-cheng-noodles-munich/",
+      "https://www.happycow.net/reviews/qin-cheng-hand-pulled-noodles-munich-409157",
+      "https://www.thediningexperience.org/?p=54551",
+      "https://www.lieferando.de/en/menu/mian-noodles-qin-cheng-sendling"
+    ]
+  },
+  {
+    "id": "osm-node-571393848",
+    "name": "Ri Chu",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Reviews describe a straightforward generic Chinese-takeaway-style menu (spring rolls, sweet-and-sour chicken, fried noodles with chicken). No regional identity mentioned by reviewers or listings. No dedicated official website found.",
+    "checkedSources": [
+      "https://www.tripadvisor.de/Restaurant_Review-g187309-d34045236-Reviews-Ri_Chu-Munich_Upper_Bavaria_Bavaria.html",
+      "https://asia-zone.com/menu/ri-chu-muenchen"
+    ]
+  },
+  {
+    "id": "osm-node-269571504",
+    "name": "Royal Garden",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Standard generic Chinese-restaurant menu format (starters, soups, duck, fish, vegetarian) with a single Sichuan-named dish ('Gong Bao' chicken) — insufficient alone per methodology. A borderline directory mention of Vietnamese influence appears to be templated boilerplate rather than restaurant-specific and could not be corroborated; official site returned a 403-blocked page.",
+    "checkedSources": [
+      "https://www.speisekarte.de/m%C3%BCnchen/restaurant/royal_garden_chinesisches_restaurant_und_bar",
+      "https://speisekartenweb.de/restaurants/m%C3%BCnchen/royal-garden-168294",
+      "https://www.dasoertliche.de/Themen/Royal-Garden-China-Restaurant-M%C3%BCnchen-Trudering-Riem-Hugo-Weiss-Str"
+    ]
+  },
+  {
+    "id": "osm-node-326725407",
+    "name": "San Jie Mei",
+    "countryId": "china",
+    "reason": "Explicit dual regional identity documented first-party, does not fit the single-primary-region rule",
+    "candidateRegions": [
+      "Cantonese / Guangdong",
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "The restaurant's own official website states the owner developed her love of dim sum through Munich's Cantonese community and explicitly states her husband specializes in the cuisine of the 'Yue- und Sichuan-Region' (Cantonese and Sichuan). This is high-quality first-party evidence of a genuine two-region concept (Cantonese dim sum plus Sichuan mains) rather than a single dominant regional identity, so per the one-region-per-restaurant rule it is left unclassified rather than assigned to either region alone.",
+    "checkedSources": [
+      "https://sanjiemei.de/"
+    ]
+  },
+  {
+    "id": "osm-node-6429412886",
+    "name": "Shanghai Restaurant",
+    "countryId": "china",
+    "reason": "Name does not match menu evidence; explicitly multi-regional",
+    "candidateRegions": [],
+    "researchNotes": "Despite the name, no source describes Shanghainese/Jiangsu-Zhejiang dishes (no xiaolongbao, no red-braising mentioned). Aggregated menu/review data instead describes a generic Chinese-restaurant menu and explicitly notes it serves 'Sichuan, Cantonese, and other regional Chinese dishes' — exactly the name-does-not-equal-cuisine trap the methodology warns against. Actual address is Sonnenstraße 3, 80331 München.",
+    "checkedSources": [
+      "https://www.speisekarte.de/m%C3%BCnchen/restaurant/china_restaurant_shanghai",
+      "https://restaurantguru.com/Shanghai-Munich",
+      "https://shanghai-muenchen.xregional.de/"
+    ]
+  },
+  {
+    "id": "osm-node-4978366181",
+    "name": "Slurp! Nudelbar",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Described as authentic Chinese hand-pulled noodles and broth combined with a 'lighter, Japanese-inspired touch' — generic/fusion-leaning, no single-region claim found. Augustenstraße 94 branch of the small 'Slurp / 面肆郎' chain; confirmed genuinely operating, not stale data.",
+    "checkedSources": [
+      "https://www.speisekarte.de/m%C3%BCnchen/restaurant/slurp",
+      "https://www.yelp.com/biz/slurp-m%C3%BCnchen"
+    ]
+  },
+  {
+    "id": "osm-node-13649901228",
+    "name": "Slurp! Nudelbar",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Same brand and generic 'bold Chinese flavors, handcrafted broths' framing as the Augustenstraße branch; no specific region confirmed. Leopoldstraße 41 branch, located inside a REWE shop per one listing; confirmed genuinely operating as a separate branch, not duplicate OSM data.",
+    "checkedSources": [
+      "https://www.ubereats.com/de-en/store/slurp-nudelbar-leopoldstr-%E9%9D%A2%E8%82%86%E9%83%8E/tnXRp6q7UGWTIdE3SOtqNw",
+      "https://wolt.com/en/deu/munich/restaurant/slurp-nudelbar-leopoldstrae"
+    ]
+  },
+  {
+    "id": "osm-node-10719538905",
+    "name": "Song's Kitchen",
+    "countryId": "china",
+    "reason": "Mixed menu, no single-region self-identification",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Fujian / Taiwan culinary family"
+    ],
+    "researchNotes": "Menu mixes Sichuan-named items (Dan Dan Mian, 'Sichuan Chili') with Taiwanese items (braised pork rice) and generic wok/rice dishes; the restaurant's own website makes no explicit single-region claim. Rosenheimer Straße 67 branch; owner Danhua Song. Confirmed genuinely separate from the Schleißheimer Straße branch (different phone number and website), not duplicate OSM data.",
+    "checkedSources": [
+      "https://www.songs-kitchen.de/"
+    ]
+  },
+  {
+    "id": "osm-node-315919425",
+    "name": "Song’s Kitchen",
+    "countryId": "china",
+    "reason": "Mixed menu, no single-region self-identification",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Fujian / Taiwan culinary family"
+    ],
+    "researchNotes": "Same mixed Chinese/Taiwanese menu pattern (beef noodle soup, bao, fried chicken) as the Rosenheimer Straße branch; no explicit single-region self-identification found. Schleißheimer Straße 5 branch, same owner (Danhua Song), confirmed genuinely separate branch (different phone/domain), not a duplicate.",
+    "checkedSources": [
+      "https://www.songskitchenmuenchen.de/colofon",
+      "https://restaurantguru.com/Songs-Kitchen-Restaurant-Munich"
+    ]
+  },
+  {
+    "id": "osm-node-3929290127",
+    "name": "Uncle Chen",
+    "countryId": "china",
+    "reason": "Conflicting regional signals across sources, single-dish evidence only",
+    "candidateRegions": [
+      "Cantonese / Guangdong",
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "Positioned as a 'Daipaidong' (Hong Kong street-food stall) concept with baozi and noodle soups; two press pieces flag its Dan Dan noodles as a Sichuan specialty (single-dish evidence only), and one of the same articles describes the food as 'typical for the regions around Hong Kong and Sichuan' — a mixed/blended identity that does not clear the single-dominant-region bar. Founder is a Munich native with no documented regional chef lineage.",
+    "checkedSources": [
+      "https://uncle-chen.de/",
+      "https://www.in-muenchen.de/gastro/uncle-chen-in-der-maxvorstadt-muenchen-92780173.html",
+      "https://www.cremeguides.com/muenchen/uncle-chen/"
+    ]
+  },
+  {
+    "id": "osm-node-4022625874",
+    "name": "Yuan",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Official site describes itself only generically as 'authentische chinesische Küche.' Lists a couple of Sichuan-named dishes (Dan Dan noodles, beef in Sichuan chili) and one Beijing-named dish ('Peking Suppe'), but per methodology a handful of named dishes on an otherwise generic multi-region menu (crispy duck, sweet-and-sour pork, various wok dishes) is not sufficient for a single regional identity. Formerly named 'Emmi's Giesing' (a rebrand, not evidence of closure).",
+    "checkedSources": [
+      "https://yuan-china-restaurant.onepage.me/",
+      "https://www.lieferando.de/speisekarte/yuan-china-restaurant"
+    ]
+  },
+  {
+    "id": "osm-node-412743894",
+    "name": "Zero Hotpot & Lounge",
+    "countryId": "china",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Described generically as 'Asian hotpot' with 'flavors of Asia'; no restaurant-wide regional claim. The only regional-cuisine language found was a single Mapo Tofu menu item described as being in a 'Sichuan sauce' — single-dish evidence only, insufficient per methodology.",
+    "checkedSources": [
+      "https://asia-zone.com/website/zero-hotpot-lounge-muenchen",
+      "https://www.instagram.com/zero.hotpot/"
+    ]
+  }
+]

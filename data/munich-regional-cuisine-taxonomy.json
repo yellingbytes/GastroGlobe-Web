@@ -3,7 +3,7 @@
   "city": "Munich",
   "country": "Germany",
   "datasetSnapshot": "2026-07-18",
-  "generatedAt": "2026-07-19",
+  "generatedAt": "2026-07-25",
   "sourceDataset": "data/munich-restaurants.js",
   "hierarchy": ["World", "Continent", "Country", "Regional Cuisine", "Restaurant"],
   "methodology": {
@@ -25,45 +25,210 @@
         {
           "country": "China",
           "emoji": "🇨🇳",
-          "sourceRestaurantCount": 63,
-          "classifiedRestaurantCount": 5,
-          "unclassifiedRestaurantCount": 58,
+          "sourceRestaurantCount": 56,
+          "classifiedRestaurantCount": 25,
+          "unclassifiedRestaurantCount": 31,
+          "auditNote": "Phase 1 audit (2026-07-25): re-researched all 63 originally china-national-tagged restaurants via official sites, menus, social media, and independent local food press. 7 restaurants were removed from the Munich dataset entirely as not genuinely dedicated Chinese restaurants (fusion/pan-Asian concepts or credibly mis-tagged); the sourceRestaurantCount above reflects the remaining 56. See audit-report.md for the full restaurant-by-restaurant record, including 2 restaurants with unresolved closure signals that were kept unclassified pending field verification rather than removed.",
           "regions": [
             {
-              "name": "Sichuan",
+              "name": "Sichuan / Chongqing",
               "emoji": "🌶️",
               "geographicCenter": {"lat": 30.65, "lng": 104.07},
-              "restaurantCount": 1,
+              "restaurantCount": 10,
               "restaurants": [
                 {
                   "id": "osm-node-5081218862",
                   "name": "Sichuan Ecke",
                   "evidenceLevel": "high",
-                  "evidence": "The first-party restaurant identity explicitly names Sichuan.",
-                  "sourceUrls": ["https://sichuan-ecke.eatbu.com/?lang=en", "https://www.openstreetmap.org/node/5081218862"]
+                  "evidence": "The first-party restaurant identity explicitly names Sichuan, corroborated by independent local food press describing authentic Sichuan classics.",
+                  "sourceUrls": ["https://sichuan-ecke.eatbu.com/?lang=en", "https://muenchen.mitvergnuegen.com/tipps/chinesisches-sharing-in-der-sichuan-kueche/", "https://www.openstreetmap.org/node/5081218862"]
+                },
+                {
+                  "id": "osm-node-4960091098",
+                  "name": "Chois Hotpot & Lounge",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website explicitly states it serves hotpot prepared per old Sichuan-province recipes and separately markets \"Bring Chongqing home!\"",
+                  "sourceUrls": ["https://www.chois-hotpot.de/", "https://www.in-muenchen.de/gastro/restaurants/chois-restaurant-muenchen-kritik-8559512.html"]
+                },
+                {
+                  "id": "osm-node-3338183566",
+                  "name": "Chuan-Fans",
+                  "evidenceLevel": "medium",
+                  "evidence": "The name contains \"Chuan\" (川, Sichuan); an independent restaurant directory explicitly categorizes it as Sichuan cuisine and lists canonical Sichuan dishes, corroborated by a second independent press piece.",
+                  "sourceUrls": ["http://de.feinfood.com/restaurant/Deutschland/Muenchen/CHUAN-FANS(%E5%B7%9D%E7%B2%89).xhtml", "https://www.in-muenchen.de/essen-und-trinken/aufgetischt-im-november-2025.html"]
+                },
+                {
+                  "id": "osm-node-1741354240",
+                  "name": "GuShu Hotpot",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website states directly: \"Im Gushu servieren wir Hotpot Spezialität aus Sichuan in China.\"",
+                  "sourceUrls": ["https://gushu-hotpot.de/"]
+                },
+                {
+                  "id": "osm-node-12999991326",
+                  "name": "Hantang Malatang",
+                  "evidenceLevel": "medium",
+                  "evidence": "The restaurant is built entirely around malatang, a dish documented as originating in the Sichuan/Chongqing region; confirmed still operating via an active delivery listing.",
+                  "sourceUrls": ["https://en.wikipedia.org/wiki/Malatang", "https://wolt.com/de/deu/munich/restaurant/hantang"]
+                },
+                {
+                  "id": "osm-node-1134127002",
+                  "name": "Malatang",
+                  "evidenceLevel": "medium",
+                  "evidence": "The restaurant is built entirely around malatang, a dish documented as originating in the Sichuan/Chongqing region; corroborated by independent local food press.",
+                  "sourceUrls": ["https://en.wikipedia.org/wiki/Malatang", "https://www.muenchen-sehen.de/essen-trinken/malatang-restaurants-muenchen/", "https://www.in-muenchen.de/gastro/restaurants/restaurant-malatang-suppe-macht-gluecklich.html"]
+                },
+                {
+                  "id": "osm-node-1939700056",
+                  "name": "Dingshang",
+                  "evidenceLevel": "medium",
+                  "evidence": "Independent restaurant directories categorize it under Szechuan restaurants, and a local food blog names specific Sichuan-style dishes (spicy mussels, eggplant) as menu highlights, though the menu also carries some Jiangsu-style dishes.",
+                  "sourceUrls": ["https://www.muenchen-sehen.de/essen-trinken/dingshang-chinesisches-restaurant-muenchen/", "https://dingshang-chinesisches-restaurant.wheree.com/"]
+                },
+                {
+                  "id": "osm-node-1098713377",
+                  "name": "Seen",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website states the head chef is from Chengdu and the restaurant serves authentic Sichuan cuisine, explicitly contrasted with the more common Cantonese style found in Germany; corroborated by an independent \"best of Munich\" feature.",
+                  "sourceUrls": ["https://seen-restaurant.de/", "https://miasanfoodies.de/top7/die-7-besten-chinesischen-restaurants-in-muenchen/"]
+                },
+                {
+                  "id": "osm-node-12739974829",
+                  "name": "Sister Wei",
+                  "evidenceLevel": "medium",
+                  "evidence": "An independent local food feature explicitly states the restaurant's signature \"Trockentopf\" (dry pot) dishes are firmly rooted in Sichuan cuisine and separately highlights a Sichuan-sour-stew dish.",
+                  "sourceUrls": ["https://www.muenchen-sehen.de/essen-trinken/chinesisch-essen-sister-wei/"]
+                },
+                {
+                  "id": "osm-node-5311718621",
+                  "name": "Yanyou",
+                  "evidenceLevel": "medium",
+                  "evidence": "The restaurant's own site titles it \"Yanyou – Sichuan Fusion Restaurant München\" and repeatedly names Sichuan-style dishes (beef in Sichuan chili, Dan Dan noodles Sichuan-style) rather than a single isolated item.",
+                  "sourceUrls": ["http://www.yanyou.de/", "https://www.yanyou.de/speisen/"]
                 }
               ]
             },
-            {"name": "Hunan", "emoji": "🥘", "geographicCenter": {"lat": 28.23, "lng": 112.94}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Hunan",
+              "emoji": "🥘",
+              "geographicCenter": {"lat": 28.23, "lng": 112.94},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-1909014201",
+                  "name": "Xiang",
+                  "evidenceLevel": "medium",
+                  "evidence": "The name \"Xiang\" (湘) is the classical abbreviation for Hunan province; an independent local food feature states the restaurant's distinguishing focus is authentic Hunan cuisine, corroborated by a second independent write-up, though some dishes are also marked Sichuan-style in the common paired Chuan-Xiang tradition.",
+                  "sourceUrls": ["https://www.muenchen-sehen.de/essen-trinken/xiang-muenchen-hunan-kueche/", "https://haochibites.com/hunan-chinese-restaurant-munich/"]
+                }
+              ]
+            },
             {
               "name": "Cantonese / Guangdong",
               "emoji": "🥢",
               "geographicCenter": {"lat": 23.13, "lng": 113.26},
-              "restaurantCount": 1,
+              "restaurantCount": 5,
               "restaurants": [
                 {
                   "id": "osm-node-1788814868",
                   "name": "yā | The Mandarin Room",
+                  "evidenceLevel": "high",
+                  "evidence": "Beyond the source's Cantonese cuisine tag, an independent local editorial piece explicitly states the restaurant carries guests into the world of Cantonese cuisine, and the official site is independently described as serving Cantonese grilled dishes and dim sum.",
+                  "sourceUrls": ["https://www.muenchen-sehen.de/essen-trinken/ya-the-mandarin-room/", "https://www.ya-restaurant.de/", "https://www.openstreetmap.org/node/1788814868"]
+                },
+                {
+                  "id": "osm-way-35217621",
+                  "name": "Bonsai Garden",
+                  "evidenceLevel": "high",
+                  "evidence": "Despite the Japanese-sounding name, the official website explicitly states \"das Beste aus unserer chinesischen Kanton-Küche\" (the best of our Chinese Cantonese cuisine), corroborated by an independent directory describing classic Cantonese dishes; operating continuously since 1986.",
+                  "sourceUrls": ["https://bon-sai-garden.de/", "https://www.mux.de/Bonsai-Garden-Ostpreussenstr"]
+                },
+                {
+                  "id": "osm-node-3669870109",
+                  "name": "Juli",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site's own title and meta description explicitly identify it as a Chaoshan (潮汕) beef-hotpot specialist, a Guangdong provincial culinary tradition, though third-party aggregators still carry stale \"Sichuan/Thai\" copy from an earlier concept.",
+                  "sourceUrls": ["https://juli-restaurants.de/", "https://www.mux.de/Restaurant-Juli"]
+                },
+                {
+                  "id": "osm-node-315953454",
+                  "name": "Kam Lung",
                   "evidenceLevel": "medium",
-                  "evidence": "The source record explicitly carries a Cantonese cuisine tag.",
-                  "sourceUrls": ["https://www.openstreetmap.org/node/1788814868"]
+                  "evidence": "Tripadvisor's structured cuisine tags list Chinese, Asian, Cantonese; independently, a self-identified Cantonese reviewer states the chef is from Hong Kong and the food is representative, and a second independent directory calls it a Cantonese restaurant.",
+                  "sourceUrls": ["https://www.tripadvisor.com/Restaurant_Review-g187309-d1111187-Reviews-Kam_Lung-Munich_Upper_Bavaria_Bavaria.html", "https://wanderlog.com/place/details/3615551/kam-lung-restaurant"]
+                },
+                {
+                  "id": "osm-node-7004862731",
+                  "name": "Wais Küche",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website states the restaurant is run by a family from Macau and its founder trained as a dim sum chef from age 14, specializing in handmade Cantonese/Macanese dim sum.",
+                  "sourceUrls": ["https://www.waiskueche.de/", "https://www.facebook.com/WaisKueche/"]
                 }
               ]
             },
-            {"name": "Jiangsu / Zhejiang", "emoji": "🍜", "geographicCenter": {"lat": 31.2, "lng": 120.6}, "restaurantCount": 0, "restaurants": []},
-            {"name": "Northern China / Beijing", "emoji": "🥟", "geographicCenter": {"lat": 39.9, "lng": 116.4}, "restaurantCount": 0, "restaurants": []},
+            {"name": "Jiangsu / Zhejiang / Shanghai", "emoji": "🍜", "geographicCenter": {"lat": 31.2, "lng": 120.6}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Northern China / Beijing",
+              "emoji": "🥟",
+              "geographicCenter": {"lat": 39.9, "lng": 116.4},
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-5198358434",
+                  "name": "Bia & Ban",
+                  "evidenceLevel": "medium",
+                  "evidence": "The official website brands itself around \"Beijing energy,\" and an independent local food review is titled \"Solide Beijing-Küche,\" describing homemade noodles, wontons, and 12-hour braised beef ribs as Beijing street-food specialties.",
+                  "sourceUrls": ["https://www.biaban.de/", "https://www.muenchen-sehen.de/essen-trinken/bia-ban-beijing-kueche/"]
+                }
+              ]
+            },
             {"name": "Northeast / Dongbei", "emoji": "🍲", "geographicCenter": {"lat": 43.9, "lng": 125.3}, "restaurantCount": 0, "restaurants": []},
-            {"name": "Yunnan", "emoji": "🍄", "geographicCenter": {"lat": 25.04, "lng": 102.72}, "restaurantCount": 0, "restaurants": []},
+            {
+              "name": "Shanxi / Shaanxi noodles",
+              "emoji": "🍝",
+              "geographicCenter": {"lat": 34.3416, "lng": 108.9398},
+              "restaurantCount": 4,
+              "restaurants": [
+                {
+                  "id": "osm-node-9199499628",
+                  "name": "Mama Bao",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website and independent local food guides identify the restaurant's signature Biang Biang noodles as originally from Shaanxi province in northwestern China; this is the second of two branches of the Mamma Bao brand.",
+                  "sourceUrls": ["https://mammabao.de/", "https://geheimtippmuenchen.de/geheimtipp/mamma-bao-biang-biang-nudeln-zum-reinlegen-an-zwei-standorten/", "https://www.cremeguides.com/en/munich/mamma-bao-chinese-street-food-in-the-maxvorstadt/"]
+                },
+                {
+                  "id": "osm-node-10555181507",
+                  "name": "Mamma Bao",
+                  "evidenceLevel": "high",
+                  "evidence": "The original/flagship Augustenstraße location of the same Biang Biang (Shaanxi) noodle specialist brand as Mama Bao; independent local press explicitly discusses the brand operating \"an zwei Standorten\" (at two locations).",
+                  "sourceUrls": ["https://www.in-muenchen.de/gastro/restaurants/das-chinesische-restaurant-mamma-bao-in-der-augustenstrasse-muenchen-92021504.html", "https://geheimtippmuenchen.de/geheimtipp/mamma-bao-biang-biang-nudeln-zum-reinlegen-an-zwei-standorten/"]
+                },
+                {
+                  "id": "osm-node-3601324494",
+                  "name": "Max Beef Noodles",
+                  "evidenceLevel": "high",
+                  "evidence": "Multiple independent sources consistently and specifically describe the signature dish as a reinterpretation of traditional Lanzhou Lamian beef noodle soup, a Northwestern Chinese (Gansu/Shaanxi-tradition) specialty.",
+                  "sourceUrls": ["https://www.falstaff.com/en/streetfood/maxs-beef-noodles", "https://haochibites.com/handmade-chinese-noodles-munich/"]
+                },
+                {
+                  "id": "osm-way-271078180",
+                  "name": "Shang Miang",
+                  "evidenceLevel": "high",
+                  "evidence": "The restaurant's own menu explicitly lists \"Xi'an Biang Biang Noodles\" and is built entirely around this Shaanxi hand-pulled noodle tradition, corroborated by multiple independent local food write-ups.",
+                  "sourceUrls": ["https://muenchen.mitvergnuegen.com/tipps/handpulled-noodles-bei-shang-miang-schluerfen/", "https://eaten.io/di/Xian-Biang-Biang-Noodles-Shang-Miang-Hand-Pulled-Noodle-b4fc58", "https://de.restaurantguru.com/Shang-Miang-Hand-Pulled-Noodles-Munich/menu"]
+                }
+              ]
+            },
+            {"name": "Yunnan", "emoji": "🍄", "geographicCenter": {"lat": 25.04, "lng": 102.72}, "restaurantCount": 1, "restaurants": [
+                {
+                  "id": "osm-way-122221506",
+                  "name": "JOY China-Restaurant",
+                  "evidenceLevel": "medium",
+                  "evidence": "The restaurant's own website and an independent food blog both explicitly and repeatedly highlight the signature dish \"Guoqiao Mixian\" (rice noodles crossing the bridge), a distinctive Yunnan specialty rarely found on generic Chinese menus in Germany, though the menu also carries some Jiangsu-style and generic pan-Chinese dishes.",
+                  "sourceUrls": ["https://www.joy-restaurant.de/", "https://haochibites.com/de/yunnan-suzhou-restaurant-muenchen/"]
+                }
+              ]
+            },
             {"name": "Fujian / Taiwan culinary family", "emoji": "🐟", "geographicCenter": {"lat": 24.8, "lng": 119.1}, "restaurantCount": 0, "restaurants": []},
             {
               "name": "Xinjiang / Uyghur",
@@ -75,21 +240,21 @@
                   "id": "osm-node-13638405713",
                   "name": "Karwan",
                   "evidenceLevel": "high",
-                  "evidence": "The official website describes authentic Uyghur cuisine and names lagman and plov.",
+                  "evidence": "The official website describes authentic Uyghur cuisine and names lagman and plov. Re-verified 2026-07-25: still open, evidence holds.",
                   "sourceUrls": ["https://www.karwan-muenchen.de/", "https://www.openstreetmap.org/node/13638405713"]
                 },
                 {
                   "id": "osm-node-305717986",
                   "name": "Taklamakan Restaurant",
                   "evidenceLevel": "high",
-                  "evidence": "The official website and menu explicitly present Uyghur cuisine and hand-pulled noodles.",
+                  "evidence": "The official website and menu explicitly present Uyghur cuisine and hand-pulled noodles. Re-verified 2026-07-25: still open (relocated to Isartorplatz in 2019), evidence holds; also featured on \"Kitchen Impossible\" as a Uyghur-cuisine reference.",
                   "sourceUrls": ["https://taklamakan-restaurant.de/taklamakan-restaurant-muenchen/", "https://taklamakan-restaurant.de/wp-content/uploads/2023/11/Speisekarte-Taklamakan_2023.pdf", "https://www.openstreetmap.org/node/305717986"]
                 },
                 {
                   "id": "osm-node-1091413931",
                   "name": "Tengri Tagh",
                   "evidenceLevel": "high",
-                  "evidence": "The official site explicitly advertises authentic Uyghur specialties.",
+                  "evidence": "The official site explicitly advertises authentic Uyghur specialties. Re-verified 2026-07-25: still open, evidence holds (some directories miscategorize it as \"Turkish,\" a common mislabel for Uyghur food that does not undermine the restaurant's own Uyghur branding).",
                   "sourceUrls": ["https://www.tengritagh-uyghur.de/en/reservierungen", "https://www.openstreetmap.org/node/1091413931"]
                 }
               ]
