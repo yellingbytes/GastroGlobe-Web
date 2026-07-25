@@ -1,4 +1,4 @@
-import { buildAtlasHierarchy, countries, datasetMeta, googleMapsUrl, metropolitanEditions } from "./restaurants.js?v=emoji-map-1";
+import { buildAtlasHierarchy, countries, datasetMeta, googleMapsUrl, metropolitanEditions } from "./restaurants.js?v=regional-cartogram-3";
 
 const D3_URL = "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm";
@@ -1502,6 +1502,7 @@ function bestGrowthCell(item, occupied, columns, rows) {
   item.cells.forEach((cell) => {
     gridNeighbors(cell.x, cell.y).forEach((candidate) => {
       if (candidate.x < 0 || candidate.x >= columns || candidate.y < 0 || candidate.y >= rows) return;
+      if (item.allowedCell && !item.allowedCell(candidate)) return;
       const key = `${candidate.x},${candidate.y}`;
       if (!occupied.has(key)) candidates.set(key, candidate);
     });
@@ -1563,9 +1564,11 @@ function renderRegionalCartogram() {
         <span>Regional area = verified restaurants · position follows culinary geography</span>
       </div>
       <svg class="world-map regional-cartogram-map" viewBox="0 0 ${width} ${height}" role="img" aria-label="Regional cuisines sized by verified restaurants and positioned by geographic origin">
-        ${feature ? `<g class="regional-country-silhouette" transform="translate(${grid.originX},${grid.originY}) scale(${grid.cellSize})"><path d="${path(feature)}"></path></g>` : ""}
-        <g class="regional-territories"></g>
-        <g class="regional-territory-labels"></g>
+        <g class="map-zoom-layer regional-cartogram-zoom-layer">
+          ${feature ? `<g class="regional-country-silhouette" transform="translate(${grid.originX},${grid.originY}) scale(${grid.cellSize})"><path d="${path(feature)}"></path></g>` : ""}
+          <g class="regional-territories"></g>
+          <g class="regional-territory-labels"></g>
+        </g>
       </svg>
       <p class="map-legend"><span class="legend-flag">${country.data.flag}</span><span>Regional territory = restaurant count</span><span class="legend-action">Select a cuisine to see its restaurants</span></p>
       <aside class="cuisine-drawer" aria-live="polite"></aside>
@@ -1634,6 +1637,7 @@ function renderRegionalCartogram() {
 
   declutterRenderedCartogramLabels(scene.querySelector(".regional-cartogram-map"));
   document.fonts?.ready.then(() => declutterRenderedCartogramLabels(scene.querySelector(".regional-cartogram-map")));
+  bindMapZoom(d3.select(scene.querySelector(".regional-cartogram-map")), width, height);
 
   bindBreadcrumbs();
   bindDevMenu();
@@ -1665,24 +1669,37 @@ function buildRegionalCuisineCartogram(cuisines, country, feature, width, height
     };
   });
   const unclassified = items.find((item) => item.unclassified);
-  const unclassifiedRows = unclassified ? Math.max(22, Math.ceil(unclassified.radius * 2 + 10)) : 0;
-  const provincialBottom = rows - unclassifiedRows - (unclassified ? 4 : 8);
   const projection = d3.geoMercator();
   if (feature) {
-    projection.fitExtent([[8, 6], [columns - 8, Math.max(34, provincialBottom - 5)]], feature);
+    projection.fitExtent([[8, 6], [columns - 8, rows - 8]], feature);
   } else {
     projection
       .center([country.data.lng, country.data.lat])
-      .translate([columns / 2, provincialBottom / 2])
+      .translate([columns / 2, rows / 2])
       .scale(180);
   }
+  const insideCountry = (cell) => {
+    if (!feature) return true;
+    const location = projection.invert([cell.x + 0.5, cell.y + 0.5]);
+    return Boolean(location && d3.geoContains(feature, location));
+  };
+  const primaryCountryCells = feature
+    ? regionalPrimaryGridComponent(columns, rows, insideCountry)
+    : null;
+  const insidePrimaryCountry = (cell) => !primaryCountryCells
+    || primaryCountryCells.has(`${Math.round(cell.x)},${Math.round(cell.y)}`);
+  const uncategorizedAnchor = unclassified
+    ? regionalLowerInteriorAnchor(feature, projection, columns, rows, unclassified.radius, insidePrimaryCountry)
+    : null;
 
   items.forEach((item) => {
-    const projected = projection([item.node.data.lng, item.node.data.lat]) ?? [columns / 2, provincialBottom / 2];
-    item.anchorX = item.unclassified ? columns / 2 : clamp(projected[0], item.radius + 2, columns - item.radius - 2);
+    const projected = projection([item.node.data.lng, item.node.data.lat]) ?? [columns / 2, rows / 2];
+    item.anchorX = item.unclassified
+      ? uncategorizedAnchor[0]
+      : clamp(projected[0], item.radius + 2, columns - item.radius - 2);
     item.anchorY = item.unclassified
-      ? rows - item.radius - 4
-      : clamp(projected[1], item.radius + 2, provincialBottom - item.radius - 2);
+      ? uncategorizedAnchor[1]
+      : clamp(projected[1], item.radius + 2, rows - item.radius - 2);
     item.x = item.anchorX;
     item.y = item.anchorY;
   });
@@ -1717,23 +1734,21 @@ function buildRegionalCuisineCartogram(cuisines, country, feature, width, height
     simulation.tick();
     items.forEach((item) => {
       item.x = clamp(item.x, item.radius + 2, columns - item.radius - 2);
-      item.y = item.unclassified
-        ? clamp(item.y, rows - unclassifiedRows + item.radius, rows - item.radius - 3)
-        : clamp(item.y, item.radius + 2, provincialBottom - item.radius - 2);
+      item.y = clamp(item.y, item.radius + 2, rows - item.radius - 2);
     });
   }
 
   const occupied = new Map();
   [...items].sort((a, b) => a.quota - b.quota).forEach((item) => {
-    const seed = nearestGridCell(Math.round(item.x), Math.round(item.y), occupied, columns, rows);
+    const allowedCell = item.unclassified ? insidePrimaryCountry : insideCountry;
+    const seed = nearestAllowedGridCell(Math.round(item.x), Math.round(item.y), occupied, columns, rows, allowedCell);
     addGridCell(item, seed, occupied);
     item.seedX = seed.x;
     item.seedY = seed.y;
     item.anchorX = item.x;
     item.anchorY = item.y;
-    item.containsTargetCell = (cell) => item.unclassified
-      ? cell.y >= rows - unclassifiedRows
-      : cell.y < provincialBottom;
+    item.allowedCell = allowedCell;
+    item.containsTargetCell = allowedCell;
   });
   let remaining = d3.sum(items, (item) => item.quota - item.cells.length);
   let guard = remaining * 4 + 100;
@@ -1767,6 +1782,82 @@ function buildRegionalCuisineCartogram(cuisines, country, feature, width, height
   });
   relaxCartogramLabels(items, cellSize, columns, rows);
   return { items, columns, rows, cellSize, gridWidth, gridHeight, originX, originY, projection };
+}
+
+function nearestAllowedGridCell(targetX, targetY, occupied, columns, rows, allowedCell) {
+  for (let radius = 0; radius < Math.max(columns, rows); radius += 1) {
+    for (let y = targetY - radius; y <= targetY + radius; y += 1) {
+      for (let x = targetX - radius; x <= targetX + radius; x += 1) {
+        if (x < 0 || x >= columns || y < 0 || y >= rows) continue;
+        if (Math.max(Math.abs(x - targetX), Math.abs(y - targetY)) !== radius) continue;
+        const candidate = { x, y };
+        if (!occupied.has(`${x},${y}`) && allowedCell(candidate)) return candidate;
+      }
+    }
+  }
+  return nearestGridCell(targetX, targetY, occupied, columns, rows);
+}
+
+function regionalPrimaryGridComponent(columns, rows, insideCountry) {
+  const unseen = new Set();
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < columns; x += 1) {
+      if (insideCountry({ x, y })) unseen.add(`${x},${y}`);
+    }
+  }
+  let largest = new Set();
+  while (unseen.size) {
+    const start = unseen.values().next().value;
+    const component = new Set([start]);
+    const queue = [start];
+    unseen.delete(start);
+    while (queue.length) {
+      const [x, y] = queue.shift().split(",").map(Number);
+      gridNeighbors(x, y).forEach((neighbor) => {
+        const key = `${neighbor.x},${neighbor.y}`;
+        if (!unseen.has(key)) return;
+        unseen.delete(key);
+        component.add(key);
+        queue.push(key);
+      });
+    }
+    if (component.size > largest.size) largest = component;
+  }
+  return largest;
+}
+
+function regionalLowerInteriorAnchor(feature, projection, columns, rows, radius, insidePrimaryCountry) {
+  if (!feature) return [columns / 2, rows * 0.68];
+  const geographicCenter = d3.geoCentroid(feature);
+  const projectedCenter = projection(geographicCenter) ?? [columns / 2, rows / 2];
+  const [[, minY], [, maxY]] = d3.geoPath(projection).bounds(feature);
+  const targetY = projectedCenter[1] + (maxY - minY) * 0.18;
+  const clearance = Math.max(1.5, radius * 0.48);
+  let best = null;
+  let bestScore = Infinity;
+  for (let y = Math.floor(projectedCenter[1]); y < rows - 3; y += 1) {
+    for (let x = 3; x < columns - 3; x += 1) {
+      const samples = [
+        [x, y],
+        [x - clearance, y],
+        [x + clearance, y],
+        [x, y - clearance],
+        [x, y + clearance],
+      ];
+      const safelyInside = samples.every(([sampleX, sampleY]) => insidePrimaryCountry({
+        x: Math.round(sampleX),
+        y: Math.round(sampleY),
+      }));
+      if (!safelyInside) continue;
+      const score = Math.abs(y - targetY) * 1.8 + Math.abs(x - projectedCenter[0]);
+      if (score < bestScore) {
+        best = [x, y];
+        bestScore = score;
+      }
+    }
+  }
+  if (best) return best;
+  return projectedCenter;
 }
 
 function regionalCuisineLabel(name, displayArea) {

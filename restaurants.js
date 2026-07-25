@@ -3,7 +3,7 @@ import {
   datasetMeta,
   regionTaxonomy,
   restaurants as sourceRestaurants,
-} from "./data/munich-restaurants.js";
+} from "./data/munich-restaurants.js?v=2026-07-25-2";
 
 const regionalTaxonomyResponse = await fetch(new URL("./data/munich-regional-cuisine-taxonomy.json", import.meta.url));
 if (!regionalTaxonomyResponse.ok) {
