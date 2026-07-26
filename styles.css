@@ -1870,12 +1870,12 @@ body {
   outline: none;
 }
 
-.grid-cartogram-country rect {
+.grid-country-fill {
   fill: color-mix(in srgb, var(--territory-color) 90%, #f2efe8);
   stroke: rgba(242, 239, 232, 0.12);
   stroke-width: 0.35px;
   vector-effect: non-scaling-stroke;
-  transition: filter 140ms ease, opacity 140ms ease;
+  transition: opacity 80ms linear;
 }
 
 .grid-country-border {
@@ -1898,11 +1898,11 @@ body {
   pointer-events: none;
 }
 
-.grid-cartogram-country:hover rect,
-.grid-cartogram-country:focus rect,
-.grid-cartogram-country:focus-visible rect,
-.grid-cartogram-country.is-highlighted rect {
-  filter: brightness(1.24) saturate(0.88);
+.grid-cartogram-country:hover .grid-country-fill,
+.grid-cartogram-country:focus .grid-country-fill,
+.grid-cartogram-country:focus-visible .grid-country-fill,
+.grid-cartogram-country.is-highlighted .grid-country-fill {
+  opacity: 1;
 }
 
 .grid-cartogram-country:hover .grid-country-border,
@@ -2092,11 +2092,11 @@ body {
 
 .grid-pattern-line { display: none; }
 
-.grid-cartogram-country rect {
+.grid-country-fill {
   fill: var(--territory-color);
   stroke: none;
   opacity: 0.96;
-  transition: filter 160ms ease, opacity 160ms ease;
+  transition: opacity 80ms linear;
 }
 
 .grid-country-border {
@@ -2109,11 +2109,10 @@ body {
   stroke-width: 0.7px;
 }
 
-.grid-cartogram-country:hover rect,
-.grid-cartogram-country:focus rect,
-.grid-cartogram-country:focus-visible rect,
-.grid-cartogram-country.is-highlighted rect {
-  filter: brightness(1.08) saturate(1.04);
+.grid-cartogram-country:hover .grid-country-fill,
+.grid-cartogram-country:focus .grid-country-fill,
+.grid-cartogram-country:focus-visible .grid-country-fill,
+.grid-cartogram-country.is-highlighted .grid-country-fill {
   opacity: 1;
 }
 
@@ -2132,11 +2131,11 @@ body {
   stroke: var(--atlas-print);
 }
 
-.grid-cartogram-view:has(.grid-cartogram-country.is-highlighted) .grid-cartogram-country:not(.is-highlighted) rect {
+.grid-cartogram-view.has-country-highlight .grid-cartogram-country:not(.is-highlighted) {
   opacity: 0.42;
 }
 
-.grid-cartogram-view:has(.grid-cartogram-country.is-highlighted) .grid-cartogram-label:not(.is-highlighted) {
+.grid-cartogram-view.has-country-highlight .grid-cartogram-label:not(.is-highlighted) {
   opacity: 0.32;
 }
 
@@ -2201,6 +2200,10 @@ body {
   fill: rgba(39, 44, 42, 0.045);
   stroke: rgba(39, 44, 42, 0.24);
   vector-effect: non-scaling-stroke;
+}
+
+.regional-grid-territory rect {
+  fill: color-mix(in srgb, var(--territory-color) 90%, var(--atlas-sheet-light));
 }
 
 .regional-grid-territory.is-empty rect {
