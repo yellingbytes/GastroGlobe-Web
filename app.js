@@ -8,7 +8,7 @@ const cursorLabel = document.querySelector("#cursor-label");
 const savedVisualization = window.localStorage.getItem("gastroglobe-dev-visualization");
 
 const state = {
-  visualization: ["treemap", "cartogram"].includes(savedVisualization) ? savedVisualization : "cartogram",
+  visualization: ["treemap", "cartogram", "balloon"].includes(savedVisualization) ? savedVisualization : "cartogram",
   cityId: null,
   countryId: null,
   cuisineId: null,
@@ -178,6 +178,9 @@ function renderCurrentVisualization() {
   if (state.visualization === "treemap") return renderInteractiveTreemap();
   if (state.visualization === "cartogram") {
     return state.countryId ? renderRegionalCartogram() : renderCuisineCartogram();
+  }
+  if (state.visualization === "balloon") {
+    return state.countryId ? renderRegionalCartogram() : renderSvgBalloonCartogram();
   }
   if (state.visualization === "atlas") {
     return state.countryId ? renderEditorialCountryAtlas() : renderEditorialWorldAtlas();
@@ -519,6 +522,7 @@ function devMenuMarkup() {
       <select aria-label="Choose visualization strategy">
         <option value="treemap"${state.visualization === "treemap" ? " selected" : ""}>1 · Interactive treemap</option>
         <option value="cartogram"${state.visualization === "cartogram" ? " selected" : ""}>3 · Cuisine territory map</option>
+        <option value="balloon"${state.visualization === "balloon" ? " selected" : ""}>4 · Elastic SVG countries</option>
       </select>
     </label>
   `;
@@ -807,6 +811,285 @@ function renderCuisineCartogram() {
   });
   bindBreadcrumbs();
   bindDevMenu();
+}
+
+function renderSvgBalloonCartogram() {
+  const city = cityNodes.find((node) => node.data.id === state.cityId);
+  if (!city) return renderGallery();
+  const live = city.data.id === "munich";
+  const values = live ? countryNodes : countryNodes.map((node) => previewCountryNode(city.data.id, node));
+  const width = Math.max(720, scene.clientWidth || 1200);
+  const height = Math.max(520, scene.clientHeight || 760);
+  const projection = d3.geoEqualEarth().fitExtent([[42, 132], [width - 42, height - 62]], { type: "Sphere" });
+  const path = d3.geoPath(projection);
+  const sourceItems = values.filter((node) => node.data.available > 0).map((node) => {
+    const feature = featureForCountry(node);
+    if (!feature) return null;
+    const baseArea = Math.max(0.1, path.area(feature));
+    const bounds = path.bounds(feature);
+    const centroid = [
+      (bounds[0][0] + bounds[1][0]) / 2,
+      (bounds[0][1] + bounds[1][1]) / 2,
+    ];
+    const projected = projection([node.data.lng, node.data.lat]) ?? centroid;
+    const anchor = cartogramGeographicAnchor(node, projected, projection);
+    return {
+      node,
+      feature,
+      baseArea,
+      bounds,
+      centroid,
+      anchorX: anchor[0],
+      anchorY: anchor[1],
+      weight: balloonCuisineWeight(node),
+      allowedNeighborIds: new Set(),
+    };
+  }).filter(Boolean);
+  const totalWeight = d3.sum(sourceItems, (item) => item.weight) || 1;
+  const usableArea = Math.max(1, (width - 84) * (height - 194));
+  const areaUnit = usableArea * 0.36 / totalWeight;
+  sourceItems.forEach((item) => {
+    item.targetArea = item.weight * areaUnit;
+    item.scale = clamp(Math.sqrt(item.targetArea / item.baseArea), 0.12, 24);
+    item.halfWidth = Math.max(7, (item.bounds[1][0] - item.bounds[0][0]) * item.scale / 2);
+    item.halfHeight = Math.max(7, (item.bounds[1][1] - item.bounds[0][1]) * item.scale / 2);
+    item.radius = Math.hypot(item.halfWidth, item.halfHeight) * 0.72;
+    item.quota = item.weight;
+    item.displayArea = item.weight;
+    item.x = item.anchorX;
+    item.y = item.anchorY;
+    item.showName = item.targetArea >= 850 && item.halfWidth >= 24 && item.halfHeight >= 18;
+    item.showCount = item.targetArea >= 1500 && item.halfWidth >= 32 && item.halfHeight >= 25;
+  });
+  const links = cartogramNeighborLinks(sourceItems, 1);
+  assignCartogramShades(sourceItems, 1);
+  const simulation = d3.forceSimulation(sourceItems)
+    .force("link", d3.forceLink(links)
+      .id((item) => item.node.data.id)
+      .distance((link) => Math.max(10, link.distance * (link.preferred ? 0.62 : 0.76)))
+      .strength((link) => link.preferred ? 0.72 : link.direct ? 0.38 : 0.08)
+      .iterations(4))
+    .force("x", d3.forceX((item) => item.anchorX).strength(0.12))
+    .force("y", d3.forceY((item) => item.anchorY).strength(0.14))
+    .force("collide", balloonRectangleCollisionForce(3.5))
+    .stop();
+  for (let tick = 0; tick < 620; tick += 1) simulation.tick();
+  resolveBalloonRectangleOverlaps(sourceItems, 3.5);
+
+  scene.innerHTML = `
+    <section class="culinary-map cartogram-view svg-balloon-view semantic-layer" aria-label="${escapeHtml(city.data.name)} elastic SVG country cartogram">
+      ${breadcrumbMarkup(city, null)}
+      <div class="map-heading cartogram-heading">
+        <p><strong>${escapeHtml(city.data.name)}</strong> · elastic cuisine atlas</p>
+        <span>Country silhouette area = restaurant representation · larger cuisines push their neighbours</span>
+      </div>
+      <svg class="world-map svg-balloon-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="svg-balloon-title svg-balloon-desc">
+        <title id="svg-balloon-title">${escapeHtml(city.data.name)} elastic cuisine country map</title>
+        <desc id="svg-balloon-desc">Real country SVG silhouettes expand with restaurant representation and push nearby countries without overlapping.</desc>
+        <g class="svg-balloon-layer"></g>
+      </svg>
+      <p class="map-legend"><span class="legend-flag">◒</span><span>SVG area = restaurants · color = continent</span><span class="legend-action">Select a country to drill down</span></p>
+      ${devMenuMarkup()}
+    </section>
+  `;
+
+  const svg = d3.select(scene.querySelector(".svg-balloon-map"));
+  const layer = svg.select(".svg-balloon-layer");
+  const countries = layer.selectAll("g")
+    .data(sourceItems, (item) => item.node.data.id)
+    .join("g")
+    .attr("class", "svg-balloon-country")
+    .attr("data-country-id", (item) => item.node.data.id)
+    .attr("transform", (item) => `translate(${item.x},${item.y})`)
+    .attr("role", "button")
+    .attr("tabindex", 0)
+    .attr("aria-label", (item) => `${item.node.data.name}, ${item.node.data.available} restaurants`)
+    .style("--country-fill", (item) => cartogramCountryColor(item))
+    .on("click", (_, item) => openCountry(item.node.data.countryId))
+    .on("keydown", (event, item) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openCountry(item.node.data.countryId);
+    })
+    .on("pointerover", function handleBalloonPointerOver(event, item) {
+      if (event.relatedTarget && this.contains(event.relatedTarget)) return;
+      showCursorLabel(event, `${item.node.data.flag} ${item.node.data.name} · ${item.node.data.available} restaurants`);
+    })
+    .on("pointermove", moveCursorLabel)
+    .on("pointerout", function handleBalloonPointerOut(event) {
+      if (event.relatedTarget && this.contains(event.relatedTarget)) return;
+      hideCursorLabel();
+    });
+
+  const countryShapes = countries.append("g")
+    .attr("class", "svg-balloon-shape-scale")
+    .attr("transform", (item) => `scale(${item.scale})`);
+  countryShapes.append("path")
+    .attr("class", "svg-balloon-country-shape")
+    .attr("d", (item) => path(item.feature))
+    .attr("transform", (item) => `translate(${-item.centroid[0]},${-item.centroid[1]})`);
+
+  const initialTransform = balloonRenderedFitTransform(svg.node(), width, height);
+  const labelCompensation = clamp(1 / initialTransform.k, 1, 2.15);
+  const labels = countries.append("g")
+    .attr("class", "svg-balloon-label")
+    .attr("transform", `scale(${labelCompensation})`);
+  labels.append("text")
+    .attr("class", "svg-balloon-flag")
+    .attr("text-anchor", "middle")
+    .attr("y", (item) => item.showName ? -9 : 5)
+    .text((item) => item.node.data.flag);
+  labels.append("text")
+    .attr("class", "svg-balloon-name")
+    .attr("text-anchor", "middle")
+    .attr("y", 8)
+    .text((item) => item.showName ? item.node.data.name : "");
+  labels.append("text")
+    .attr("class", "svg-balloon-count")
+    .attr("text-anchor", "middle")
+    .attr("y", 21)
+    .text((item) => item.showCount ? `${item.node.data.available}` : "");
+
+  const zoom = d3.zoom()
+    .scaleExtent([0.35, 9])
+    .on("zoom", (event) => layer.attr("transform", event.transform));
+  svg.call(zoom).on("dblclick.zoom", null);
+  svg.call(zoom.transform, initialTransform);
+  declutterBalloonLabels(svg.node());
+  document.fonts?.ready.then(() => declutterBalloonLabels(svg.node()));
+  bindBreadcrumbs();
+  bindDevMenu();
+}
+
+function balloonCuisineWeight(node) {
+  const continentScale = node.parent?.data.name === "Europe" ? 1.35 : 1;
+  const countryScale = {
+    china: 1.68,
+    japan: 1.22,
+  }[node.data.countryId] ?? 1;
+  return (3 + Math.pow(node.data.available, 0.61) * 3.6) * continentScale * countryScale;
+}
+
+function balloonRectangleCollisionForce(padding = 3) {
+  let nodes = [];
+  const force = (alpha) => {
+    for (let index = 0; index < nodes.length; index += 1) {
+      const first = nodes[index];
+      for (let otherIndex = index + 1; otherIndex < nodes.length; otherIndex += 1) {
+        const second = nodes[otherIndex];
+        const deltaX = (second.x + second.vx) - (first.x + first.vx) || 0.001;
+        const deltaY = (second.y + second.vy) - (first.y + first.vy) || 0.001;
+        const overlapX = first.halfWidth + second.halfWidth + padding - Math.abs(deltaX);
+        const overlapY = first.halfHeight + second.halfHeight + padding - Math.abs(deltaY);
+        if (overlapX <= 0 || overlapY <= 0) continue;
+        const firstShare = second.targetArea / (first.targetArea + second.targetArea);
+        const secondShare = 1 - firstShare;
+        if (overlapX / (first.halfWidth + second.halfWidth) < overlapY / (first.halfHeight + second.halfHeight)) {
+          const push = Math.sign(deltaX) * overlapX * 0.72 * alpha;
+          first.vx -= push * firstShare;
+          second.vx += push * secondShare;
+        } else {
+          const push = Math.sign(deltaY) * overlapY * 0.72 * alpha;
+          first.vy -= push * firstShare;
+          second.vy += push * secondShare;
+        }
+      }
+    }
+  };
+  force.initialize = (values) => { nodes = values; };
+  return force;
+}
+
+function resolveBalloonRectangleOverlaps(items, padding = 3.5) {
+  for (let pass = 0; pass < 900; pass += 1) {
+    let collisions = 0;
+    for (let index = 0; index < items.length; index += 1) {
+      const first = items[index];
+      for (let otherIndex = index + 1; otherIndex < items.length; otherIndex += 1) {
+        const second = items[otherIndex];
+        const deltaX = second.x - first.x || 0.001;
+        const deltaY = second.y - first.y || 0.001;
+        const overlapX = first.halfWidth + second.halfWidth + padding - Math.abs(deltaX);
+        const overlapY = first.halfHeight + second.halfHeight + padding - Math.abs(deltaY);
+        if (overlapX <= 0 || overlapY <= 0) continue;
+        collisions += 1;
+        const firstShare = second.targetArea / (first.targetArea + second.targetArea);
+        const secondShare = 1 - firstShare;
+        if (overlapX < overlapY) {
+          const shift = Math.sign(deltaX) * (overlapX + 0.08);
+          first.x -= shift * firstShare;
+          second.x += shift * secondShare;
+        } else {
+          const shift = Math.sign(deltaY) * (overlapY + 0.08);
+          first.y -= shift * firstShare;
+          second.y += shift * secondShare;
+        }
+      }
+    }
+    if (!collisions) break;
+  }
+}
+
+function balloonRenderedFitTransform(svgElement, width, height) {
+  const svgRect = svgElement.getBoundingClientRect();
+  const scaleX = width / Math.max(1, svgRect.width);
+  const scaleY = height / Math.max(1, svgRect.height);
+  const bounds = [...svgElement.querySelectorAll(".svg-balloon-country-shape")].map((shape) => {
+    const rect = shape.getBoundingClientRect();
+    return {
+      x0: (rect.left - svgRect.left) * scaleX,
+      x1: (rect.right - svgRect.left) * scaleX,
+      y0: (rect.top - svgRect.top) * scaleY,
+      y1: (rect.bottom - svgRect.top) * scaleY,
+    };
+  });
+  const x0 = d3.min(bounds, (bound) => bound.x0) ?? 0;
+  const x1 = d3.max(bounds, (bound) => bound.x1) ?? width;
+  const y0 = d3.min(bounds, (bound) => bound.y0) ?? 0;
+  const y1 = d3.max(bounds, (bound) => bound.y1) ?? height;
+  const viewport = { x0: 12, x1: width - 12, y0: 118, y1: height - 58 };
+  const scale = clamp(Math.min(
+    (viewport.x1 - viewport.x0) / Math.max(1, x1 - x0),
+    (viewport.y1 - viewport.y0) / Math.max(1, y1 - y0),
+  ), 0.35, 2.8);
+  return d3.zoomIdentity
+    .translate(
+      (viewport.x0 + viewport.x1) / 2 - (x0 + x1) / 2 * scale,
+      (viewport.y0 + viewport.y1) / 2 - (y0 + y1) / 2 * scale,
+    )
+    .scale(scale);
+}
+
+function declutterBalloonLabels(svgElement) {
+  if (!svgElement) return;
+  const labels = [...svgElement.querySelectorAll(".svg-balloon-label")];
+  for (let pass = 0; pass < labels.length * 2; pass += 1) {
+    const visible = labels.map((label) => ({
+      label,
+      item: label.parentElement.__data__,
+      rect: label.getBoundingClientRect(),
+    })).filter((entry) => entry.label.textContent.trim() && entry.rect.width > 0 && entry.rect.height > 0);
+    let collision = null;
+    for (let index = 0; index < visible.length && !collision; index += 1) {
+      for (let otherIndex = index + 1; otherIndex < visible.length; otherIndex += 1) {
+        const first = visible[index];
+        const second = visible[otherIndex];
+        if (first.rect.left < second.rect.right + 2
+          && first.rect.right + 2 > second.rect.left
+          && first.rect.top < second.rect.bottom + 2
+          && first.rect.bottom + 2 > second.rect.top) {
+          collision = first.item.targetArea <= second.item.targetArea ? first : second;
+          break;
+        }
+      }
+    }
+    if (!collision) break;
+    const count = collision.label.querySelector(".svg-balloon-count");
+    const name = collision.label.querySelector(".svg-balloon-name");
+    if (count?.textContent) count.textContent = "";
+    else if (name?.textContent) name.textContent = "";
+    else collision.label.style.display = "none";
+  }
 }
 
 function renderEditorialWorldAtlas() {
@@ -1100,14 +1383,22 @@ function buildGridCartogram(values, width, height) {
   const gridHeight = rows * cellSize;
   const originX = (width - gridWidth) / 2;
   const originY = 116 + Math.max(0, (height - 174 - gridHeight) / 2);
-  const projection = d3.geoNaturalEarth1().fitExtent([[2, 2], [columns - 3, rows - 3]], { type: "Sphere" });
+  // Equal Earth is equal-area: northern and southern countries keep comparable scale
+  // instead of being enlarged or compressed simply because of latitude.
+  const projection = d3.geoEqualEarth().fitExtent([[2, 2], [columns - 3, rows - 3]], { type: "Sphere" });
   const projectedPath = d3.geoPath(projection);
   const shapeContext = document.createElement("canvas").getContext("2d");
   const items = values.filter((node) => node.data.available > 0).map((node) => {
     const projected = projection([node.data.lng, node.data.lat]);
     const anchor = cartogramGeographicAnchor(node, projected, projection);
     const continentScale = node.parent?.data.name === "Europe" ? 1.35 : 1;
-    const quota = Math.max(14, Math.round((3 + Math.pow(node.data.available, 0.61) * 3.6) * continentScale * quotaScale));
+    const countryScale = {
+      china: 1.68,
+      japan: 1.22,
+    }[node.data.countryId] ?? 1;
+    const quota = Math.max(14, Math.round(
+      (3 + Math.pow(node.data.available, 0.61) * 3.6) * continentScale * countryScale * quotaScale,
+    ));
     const feature = featureForCountry(node);
     const bounds = feature ? projectedPath.bounds(feature) : [[0, 0], [1, 1]];
     const shapeWidth = Math.max(0.5, bounds[1][0] - bounds[0][0]);
@@ -1128,6 +1419,7 @@ function buildGridCartogram(values, width, height) {
       shapeAspect,
       cells: [],
       cellKeys: new Set(),
+      allowedNeighborIds: new Set(),
     };
     // Rasterise the country's real outline into exactly `quota` grid cells so the
     // filled territory traces the whole silhouette instead of a fraction of it.
@@ -1139,7 +1431,7 @@ function buildGridCartogram(values, width, height) {
     // disc, so 1.5 gives each outline a little more than its full reach — without that
     // slack a big neighbour's shape overruns a smaller country's ground (Germany over
     // France, whose cartogram area is 3.5x smaller despite the real country being larger).
-    item.radius = (stamp?.spreadRadius ?? Math.sqrt(quota / Math.PI) * 0.707) * 1.5 + resolutionScale * 0.42;
+    item.radius = (stamp?.spreadRadius ?? Math.sqrt(quota / Math.PI) * 0.707) * 0.82 + resolutionScale * 0.42;
     return item;
   });
   relaxCartogramAnchors(items, columns, rows, resolutionScale);
@@ -1151,7 +1443,7 @@ function buildGridCartogram(values, width, height) {
   [...items].sort((a, b) => b.quota - a.quota).forEach((item) => {
     const seed = item.stampCells
       ? bestSilhouettePlacement(item, occupied, columns, rows)
-      : nearestGridCell(Math.round(item.anchorX), Math.round(item.anchorY), occupied, columns, rows);
+      : nearestGridCell(Math.round(item.anchorX), Math.round(item.anchorY), occupied, columns, rows, item);
     addGridCell(item, seed, occupied, columns, rows);
     item.seedX = seed.x;
     item.seedY = seed.y;
@@ -1187,6 +1479,8 @@ function buildGridCartogram(values, width, height) {
     });
     if (!progress) break;
   }
+
+  connectAllowedNeighborTerritories(items, occupied, columns, rows);
 
   items.forEach((item) => {
     const center = item.cells.reduce((sum, cell) => ({ x: sum.x + cell.x, y: sum.y + cell.y }), { x: 0, y: 0 });
@@ -1231,16 +1525,18 @@ function relaxCartogramAnchors(items, columns, rows, resolutionScale) {
     .force("link", d3.forceLink(links)
       .id((item) => item.node.data.id)
       .distance((link) => link.distance)
-      .strength((link) => link.direct ? 0.34 : 0.12)
-      .iterations(5))
+      .strength((link) => link.preferred ? 1 : link.direct ? 0.62 : 0.12)
+      .iterations(8))
     // Silhouettes need more elbow room than blobs, so hold each territory firmly at its
     // projected position — otherwise the larger collision radii scramble world geography.
-    .force("x", d3.forceX((item) => item.anchorX).strength((item) => (
-      item.node.parent?.data.name === "Europe" ? 0.46 : 0.42
-    )))
-    .force("y", d3.forceY((item) => item.anchorY).strength((item) => (
-      item.node.parent?.data.name === "Europe" ? 0.58 : 0.42
-    )))
+    .force("x", d3.forceX((item) => item.anchorX).strength((item) => {
+      const continent = item.node.parent?.data.name;
+      return continent === "Europe" ? 0.46 : continent === "Asia" ? 0.56 : 0.42;
+    }))
+    .force("y", d3.forceY((item) => item.anchorY).strength((item) => {
+      const continent = item.node.parent?.data.name;
+      return continent === "Europe" ? 0.58 : continent === "Asia" ? 0.56 : 0.42;
+    }))
     // Keep this pass thorough: territories that are left overlapping here have to fight for
     // cells during growth, which costs far more than the extra collision iterations do.
     .force("collide", d3.forceCollide((item) => item.radius + resolutionScale * 0.08).strength(0.98).iterations(10))
@@ -1333,7 +1629,7 @@ function compactContinentAnchors(items) {
     Americas: 0.72,
     Europe: 0.78,
     Africa: 0.52,
-    Asia: 0.69,
+    Asia: 0.88,
     Oceania: 0.72,
   };
   d3.groups(items, (item) => item.node.parent?.data.name).forEach(([continent, group]) => {
@@ -1345,31 +1641,63 @@ function compactContinentAnchors(items) {
       item.anchorY = centerY + (item.anchorY - centerY) * scale;
     });
   });
+
+  // Represented South American cuisines are separated by missing countries in the
+  // dataset, so compact their own real geographic cluster without changing bearings.
+  const southAmericanIds = new Set(["argentina", "brazil", "peru"]);
+  const southAmerica = items.filter((item) => southAmericanIds.has(item.node.data.countryId));
+  if (southAmerica.length > 1) {
+    const centerX = d3.mean(southAmerica, (item) => item.anchorX);
+    const centerY = d3.mean(southAmerica, (item) => item.anchorY);
+    southAmerica.forEach((item) => {
+      item.anchorX = centerX + (item.anchorX - centerX) * 0.58;
+      item.anchorY = centerY + (item.anchorY - centerY) * 0.58;
+    });
+  }
 }
 
 function cartogramNeighborLinks(items, resolutionScale) {
   const links = [];
   const linkKeys = new Set();
-  const addLink = (source, target, direct) => {
+  const linkByKey = new Map();
+  const addLink = (source, target, direct, preferred = false, allowTouch = direct) => {
     if (!source || !target || source === target) return;
     const ids = [source.node.data.id, target.node.data.id].sort();
     const key = ids.join("|");
-    if (linkKeys.has(key)) return;
-    linkKeys.add(key);
     const anchorDistance = Math.hypot(source.anchorX - target.anchorX, source.anchorY - target.anchorY);
     const touchingDistance = source.radius + target.radius + resolutionScale * (direct ? 0.05 : 0.25);
-    links.push({
+    if (allowTouch) {
+      source.allowedNeighborIds.add(target.node.data.countryId);
+      target.allowedNeighborIds.add(source.node.data.countryId);
+    }
+    if (linkKeys.has(key)) {
+      if (preferred) {
+        const link = linkByKey.get(key);
+        link.preferred = true;
+        link.direct = true;
+        link.distance = touchingDistance;
+      }
+      return;
+    }
+    linkKeys.add(key);
+    const link = {
       source,
       target,
       direct,
-      distance: direct
+      preferred,
+      distance: preferred
+        ? touchingDistance
+        : direct
         ? Math.max(touchingDistance, anchorDistance * 0.5)
         : Math.max(touchingDistance, Math.min(anchorDistance * 0.64, touchingDistance * 1.72)),
-    });
+    };
+    links.push(link);
+    linkByKey.set(key, link);
   };
 
   const geometryNeighbors = topojson.neighbors(worldTopology.objects.countries.geometries);
   const itemByFeatureIndex = new Map();
+  const itemByCountryId = new Map(items.map((item) => [item.node.data.countryId, item]));
   items.forEach((item) => {
     const featureIndex = worldFeatures.indexOf(featureForCountry(item.node));
     if (featureIndex >= 0) itemByFeatureIndex.set(featureIndex, item);
@@ -1379,13 +1707,13 @@ function cartogramNeighborLinks(items, resolutionScale) {
     neighborIndexes.forEach((targetIndex) => addLink(source, itemByFeatureIndex.get(targetIndex), true));
   });
 
-  items.forEach((item) => {
-    const nearest = items
-      .filter((candidate) => candidate !== item && candidate.node.parent?.data.name === item.node.parent?.data.name)
-      .sort((a, b) => Math.hypot(a.anchorX - item.anchorX, a.anchorY - item.anchorY)
-        - Math.hypot(b.anchorX - item.anchorX, b.anchorY - item.anchorY))
-      .slice(0, 5);
-    nearest.forEach((candidate) => addLink(item, candidate, false));
+  // The represented-country map omits Laos, Cambodia and Myanmar. Preserve the
+  // recognizable mainland Southeast Asian chain across those missing intermediaries.
+  [
+    ["thailand", "china"],
+    ["thailand", "vietnam"],
+  ].forEach(([sourceId, targetId]) => {
+    addLink(itemByCountryId.get(sourceId), itemByCountryId.get(targetId), true, true, true);
   });
   return links;
 }
@@ -1564,6 +1892,15 @@ function cartogramGeographicAnchor(node, projected, projection) {
       center[0] + (projected[0] - center[0]) * 0.72 - 2,
       center[1] + (projected[1] - center[1]) * 0.66 + 26,
     ];
+  }
+  if (continent === "Asia") {
+    // Keep Asia on the equal-area scaffold; only Iran receives a small western/southern
+    // offset to preserve the Persian plateau between Türkiye, Afghanistan and India.
+    const nudge = {
+      iran: { x: -6, y: 8 },
+      thailand: { x: 15, y: 12 },
+    }[node.data.countryId] ?? { x: 0, y: 0 };
+    return [projected[0] + nudge.x, projected[1] + nudge.y];
   }
   return projected;
 }
@@ -1784,6 +2121,7 @@ function claimSilhouetteCells(item, occupied, columns, rows) {
       if (seen.has(key)) continue;
       seen.add(key);
       if (occupied.has(key)) continue;
+      if (touchesDisallowedCountry(item, neighbor, occupied)) continue;
       if (!item.stampIndex.has(`${neighbor.x - item.seedX},${neighbor.y - item.seedY}`)) continue;
       queue.push(neighbor);
       claimable.push(neighbor);
@@ -1814,14 +2152,19 @@ function bestSilhouettePlacement(item, occupied, columns, rows) {
         const seedY = originY + offsetY;
         if (seedX < 0 || seedY < 0 || seedX >= columns || seedY >= rows) continue;
         if (occupied.has(`${seedX},${seedY}`)) continue;
+        if (touchesDisallowedCountry(item, { x: seedX, y: seedY }, occupied)) continue;
         let free = 0;
+        let forbiddenContacts = 0;
         for (const cell of sample) {
           const x = seedX + cell.x;
           const y = seedY + cell.y;
           if (x < 0 || y < 0 || x >= columns || y >= rows) continue;
-          if (!occupied.has(`${x},${y}`)) free += 1;
+          if (!occupied.has(`${x},${y}`)) {
+            free += 1;
+            if (touchesDisallowedCountry(item, { x, y }, occupied)) forbiddenContacts += 1;
+          }
         }
-        const score = free - radius * 0.6;
+        const score = free - forbiddenContacts * 8 - radius * 0.6;
         if (score > bestScore) {
           bestScore = score;
           best = { x: seedX, y: seedY };
@@ -1831,16 +2174,18 @@ function bestSilhouettePlacement(item, occupied, columns, rows) {
     // A placement with the whole silhouette clear cannot be beaten further out.
     if (best && bestScore >= sample.length - radius * 0.6) break;
   }
-  return best ?? nearestGridCell(originX, originY, occupied, columns, rows);
+  return best ?? nearestGridCell(originX, originY, occupied, columns, rows, item);
 }
 
-function nearestGridCell(targetX, targetY, occupied, columns, rows) {
+function nearestGridCell(targetX, targetY, occupied, columns, rows, item = null) {
   for (let radius = 0; radius < Math.max(columns, rows); radius += 1) {
     for (let y = targetY - radius; y <= targetY + radius; y += 1) {
       for (let x = targetX - radius; x <= targetX + radius; x += 1) {
         if (x < 0 || x >= columns || y < 0 || y >= rows) continue;
         if (Math.max(Math.abs(x - targetX), Math.abs(y - targetY)) !== radius) continue;
-        if (!occupied.has(`${x},${y}`)) return { x, y };
+        const candidate = { x, y };
+        if (!occupied.has(`${x},${y}`)
+          && (!item || !touchesDisallowedCountry(item, candidate, occupied))) return candidate;
       }
     }
   }
@@ -1872,7 +2217,9 @@ function bestGrowthCell(item, occupied) {
   // Cells claimed by neighbours (or permanently out of bounds) never come back, so drop
   // them from the frontier as they are encountered.
   for (const [key, candidate] of candidates) {
-    if (occupied.has(key) || (item.allowedCell && !item.allowedCell(candidate))) {
+    if (occupied.has(key)
+      || touchesDisallowedCountry(item, candidate, occupied)
+      || (item.allowedCell && !item.allowedCell(candidate))) {
       candidates.delete(key);
       continue;
     }
@@ -1918,6 +2265,78 @@ function bestGrowthCell(item, occupied) {
 
 function gridNeighbors(x, y) {
   return [{ x: x - 1, y }, { x: x + 1, y }, { x, y: y - 1 }, { x, y: y + 1 }];
+}
+
+function touchesDisallowedCountry(item, cell, occupied) {
+  if (!item.allowedNeighborIds) return false;
+  return gridNeighbors(cell.x, cell.y).some((neighbor) => {
+    const other = occupied.get(`${neighbor.x},${neighbor.y}`);
+    return other
+      && other !== item
+      && !item.allowedNeighborIds?.has(other.node.data.countryId);
+  });
+}
+
+// Close only small empty seams between verified neighbours. A short connection makes
+// borders read as borders, while the placement and growth guards keep unrelated countries
+// separated by paper. Long gaps are never bridged.
+function connectAllowedNeighborTerritories(items, occupied, columns, rows, maxGap = 3) {
+  const itemByCountryId = new Map(items.map((item) => [item.node.data.countryId, item]));
+  const connectedPairs = new Set();
+  items.forEach((item) => {
+    item.allowedNeighborIds.forEach((neighborId) => {
+      const neighbor = itemByCountryId.get(neighborId);
+      if (!neighbor) return;
+      const pairKey = [item.node.data.countryId, neighborId].sort().join("|");
+      if (connectedPairs.has(pairKey)) return;
+      connectedPairs.add(pairKey);
+      const source = item.cells.length <= neighbor.cells.length ? item : neighbor;
+      const target = source === item ? neighbor : item;
+      const bridge = shortestEmptyBorderBridge(source, target, occupied, columns, rows, maxGap);
+      bridge?.forEach((cell) => addGridCell(source, cell, occupied, columns, rows));
+    });
+  });
+}
+
+function shortestEmptyBorderBridge(source, target, occupied, columns, rows, maxGap) {
+  const queue = [];
+  const seen = new Map();
+  const enqueue = (cell, parent, distance) => {
+    const key = `${cell.x},${cell.y}`;
+    if (seen.has(key)) return;
+    seen.set(key, queue.length);
+    queue.push({ cell, parent, distance });
+  };
+
+  for (const cell of source.cells) {
+    for (const neighbor of gridNeighbors(cell.x, cell.y)) {
+      if (neighbor.x < 0 || neighbor.x >= columns || neighbor.y < 0 || neighbor.y >= rows) continue;
+      const occupant = occupied.get(`${neighbor.x},${neighbor.y}`);
+      if (occupant === target) return [];
+      if (occupant || touchesDisallowedCountry(source, neighbor, occupied)) continue;
+      enqueue(neighbor, -1, 1);
+    }
+  }
+
+  for (let head = 0; head < queue.length; head += 1) {
+    const entry = queue[head];
+    for (const neighbor of gridNeighbors(entry.cell.x, entry.cell.y)) {
+      if (neighbor.x < 0 || neighbor.x >= columns || neighbor.y < 0 || neighbor.y >= rows) continue;
+      const occupant = occupied.get(`${neighbor.x},${neighbor.y}`);
+      if (occupant === target) {
+        const path = [];
+        let cursor = head;
+        while (cursor >= 0) {
+          path.push(queue[cursor].cell);
+          cursor = queue[cursor].parent;
+        }
+        return path.reverse();
+      }
+      if (occupant || entry.distance >= maxGap || touchesDisallowedCountry(source, neighbor, occupied)) continue;
+      enqueue(neighbor, head, entry.distance + 1);
+    }
+  }
+  return null;
 }
 
 function gridBoundaryPath(item, grid) {
