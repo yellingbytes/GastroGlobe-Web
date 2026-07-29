@@ -522,7 +522,7 @@ function devMenuMarkup() {
       <select aria-label="Choose visualization strategy">
         <option value="treemap"${state.visualization === "treemap" ? " selected" : ""}>1 · Interactive treemap</option>
         <option value="cartogram"${state.visualization === "cartogram" ? " selected" : ""}>3 · Cuisine territory map</option>
-        <option value="balloon"${state.visualization === "balloon" ? " selected" : ""}>4 · Elastic SVG countries</option>
+        <option value="balloon"${state.visualization === "balloon" ? " selected" : ""}>4 · Flat SVG countries</option>
       </select>
     </label>
   `;
@@ -820,22 +820,24 @@ function renderSvgBalloonCartogram() {
   const values = live ? countryNodes : countryNodes.map((node) => previewCountryNode(city.data.id, node));
   const width = Math.max(720, scene.clientWidth || 1200);
   const height = Math.max(520, scene.clientHeight || 760);
-  const projection = d3.geoEqualEarth().fitExtent([[42, 132], [width - 42, height - 62]], { type: "Sphere" });
-  const path = d3.geoPath(projection);
+  const anchorFor = balloonFlatWorldAnchor(width, height);
   const sourceItems = values.filter((node) => node.data.available > 0).map((node) => {
-    const feature = featureForCountry(node);
-    if (!feature) return null;
-    const baseArea = Math.max(0.1, path.area(feature));
-    const bounds = path.bounds(feature);
+    const sourceFeature = featureForCountry(node);
+    if (!sourceFeature) return null;
+    const feature = balloonDisplayFeature(sourceFeature, node);
+    const flatFeature = balloonFlattenFeature(feature, node);
+    const localPath = d3.geoPath(d3.geoIdentity().reflectY(true));
+    const baseArea = Math.max(0.0001, localPath.area(flatFeature));
+    const bounds = localPath.bounds(flatFeature);
     const centroid = [
       (bounds[0][0] + bounds[1][0]) / 2,
       (bounds[0][1] + bounds[1][1]) / 2,
     ];
-    const projected = projection([node.data.lng, node.data.lat]) ?? centroid;
-    const anchor = cartogramGeographicAnchor(node, projected, projection);
+    const anchor = anchorFor(node.data.lng, node.data.lat);
     return {
       node,
       feature,
+      pathD: localPath(flatFeature),
       baseArea,
       bounds,
       centroid,
@@ -847,7 +849,7 @@ function renderSvgBalloonCartogram() {
   }).filter(Boolean);
   const totalWeight = d3.sum(sourceItems, (item) => item.weight) || 1;
   const usableArea = Math.max(1, (width - 84) * (height - 194));
-  const areaUnit = usableArea * 0.36 / totalWeight;
+  const areaUnit = usableArea * 0.33 / totalWeight;
   sourceItems.forEach((item) => {
     item.targetArea = item.weight * areaUnit;
     item.scale = clamp(Math.sqrt(item.targetArea / item.baseArea), 0.12, 24);
@@ -866,29 +868,29 @@ function renderSvgBalloonCartogram() {
   const simulation = d3.forceSimulation(sourceItems)
     .force("link", d3.forceLink(links)
       .id((item) => item.node.data.id)
-      .distance((link) => Math.max(10, link.distance * (link.preferred ? 0.62 : 0.76)))
-      .strength((link) => link.preferred ? 0.72 : link.direct ? 0.38 : 0.08)
-      .iterations(4))
-    .force("x", d3.forceX((item) => item.anchorX).strength(0.12))
-    .force("y", d3.forceY((item) => item.anchorY).strength(0.14))
-    .force("collide", balloonRectangleCollisionForce(3.5))
+      .distance((link) => Math.max(8, link.distance * (link.preferred ? 0.82 : 0.9)))
+      .strength((link) => link.preferred ? 0.46 : link.direct ? 0.25 : 0.04)
+      .iterations(3))
+    .force("x", d3.forceX((item) => item.anchorX).strength(0.4))
+    .force("y", d3.forceY((item) => item.anchorY).strength(0.46))
+    .force("collide", balloonRectangleCollisionForce(1.5))
     .stop();
-  for (let tick = 0; tick < 620; tick += 1) simulation.tick();
-  resolveBalloonRectangleOverlaps(sourceItems, 3.5);
+  for (let tick = 0; tick < 720; tick += 1) simulation.tick();
+  resolveBalloonRectangleOverlaps(sourceItems, 1.5);
 
   scene.innerHTML = `
-    <section class="culinary-map cartogram-view svg-balloon-view semantic-layer" aria-label="${escapeHtml(city.data.name)} elastic SVG country cartogram">
+    <section class="culinary-map cartogram-view svg-balloon-view semantic-layer" aria-label="${escapeHtml(city.data.name)} flat SVG country cartogram">
       ${breadcrumbMarkup(city, null)}
       <div class="map-heading cartogram-heading">
-        <p><strong>${escapeHtml(city.data.name)}</strong> · elastic cuisine atlas</p>
-        <span>Country silhouette area = restaurant representation · larger cuisines push their neighbours</span>
+        <p><strong>${escapeHtml(city.data.name)}</strong> · flat cuisine atlas</p>
+        <span>Country shape = local flat silhouette · position preserves world topology</span>
       </div>
       <svg class="world-map svg-balloon-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="svg-balloon-title svg-balloon-desc">
-        <title id="svg-balloon-title">${escapeHtml(city.data.name)} elastic cuisine country map</title>
-        <desc id="svg-balloon-desc">Real country SVG silhouettes expand with restaurant representation and push nearby countries without overlapping.</desc>
+        <title id="svg-balloon-title">${escapeHtml(city.data.name)} flat cuisine country map</title>
+        <desc id="svg-balloon-desc">Undistorted local country silhouettes expand with restaurant representation while retaining recognizable world positions and non-overlapping neighboring borders.</desc>
         <g class="svg-balloon-layer"></g>
       </svg>
-      <p class="map-legend"><span class="legend-flag">◒</span><span>SVG area = restaurants · color = continent</span><span class="legend-action">Select a country to drill down</span></p>
+      <p class="map-legend"><span class="legend-flag">◒</span><span>Flat SVG area = restaurants · color = continent</span><span class="legend-action">Select a country to drill down</span></p>
       ${devMenuMarkup()}
     </section>
   `;
@@ -926,7 +928,7 @@ function renderSvgBalloonCartogram() {
     .attr("transform", (item) => `scale(${item.scale})`);
   countryShapes.append("path")
     .attr("class", "svg-balloon-country-shape")
-    .attr("d", (item) => path(item.feature))
+    .attr("d", (item) => item.pathD)
     .attr("transform", (item) => `translate(${-item.centroid[0]},${-item.centroid[1]})`);
 
   const initialTransform = balloonRenderedFitTransform(svg.node(), width, height);
@@ -961,6 +963,77 @@ function renderSvgBalloonCartogram() {
   bindDevMenu();
 }
 
+function balloonFlatWorldAnchor(width, height) {
+  const viewport = { x0: 58, x1: width - 58, y0: 132, y1: height - 66 };
+  const longitudeDomain = [-125, 150];
+  const latitudeDomain = [-45, 60];
+  const unit = Math.min(
+    (viewport.x1 - viewport.x0) / (longitudeDomain[1] - longitudeDomain[0]),
+    (viewport.y1 - viewport.y0) / (latitudeDomain[1] - latitudeDomain[0]),
+  );
+  const centerX = (viewport.x0 + viewport.x1) / 2;
+  const centerY = (viewport.y0 + viewport.y1) / 2;
+  const centerLongitude = (longitudeDomain[0] + longitudeDomain[1]) / 2;
+  const centerLatitude = (latitudeDomain[0] + latitudeDomain[1]) / 2;
+  return (longitude, latitude) => [
+    centerX + (longitude - centerLongitude) * unit,
+    centerY - (latitude - centerLatitude) * unit,
+  ];
+}
+
+function balloonDisplayFeature(feature, node) {
+  if (feature.geometry?.type !== "MultiPolygon") return feature;
+  const anchor = [node.data.lng, node.data.lat];
+  const polygons = feature.geometry.coordinates.map((coordinates) => {
+    const polygon = { type: "Polygon", coordinates };
+    return {
+      coordinates,
+      area: d3.geoArea(polygon),
+      distance: d3.geoDistance(anchor, d3.geoCentroid(polygon)),
+    };
+  });
+  const largestArea = d3.max(polygons, (polygon) => polygon.area) ?? 0;
+  const kept = polygons.filter((polygon) => (
+    polygon.area >= largestArea * 0.0015
+    && (polygon.distance <= 0.96 || polygon.area >= largestArea * 0.12)
+  ));
+  return {
+    ...feature,
+    geometry: {
+      type: "MultiPolygon",
+      coordinates: (kept.length ? kept : polygons.slice(0, 1)).map((polygon) => polygon.coordinates),
+    },
+  };
+}
+
+function balloonFlattenFeature(feature, node) {
+  const flattenRing = (ring) => {
+    let previousLongitude = null;
+    return ring.map(([longitude, latitude]) => {
+      let localLongitude = longitude - node.data.lng;
+      while (localLongitude > 180) localLongitude -= 360;
+      while (localLongitude < -180) localLongitude += 360;
+      if (previousLongitude !== null) {
+        while (localLongitude - previousLongitude > 180) localLongitude -= 360;
+        while (localLongitude - previousLongitude < -180) localLongitude += 360;
+      }
+      previousLongitude = localLongitude;
+      return [localLongitude, latitude - node.data.lat];
+    });
+  };
+  const flattenPolygon = (polygon) => polygon.map(flattenRing);
+  const coordinates = feature.geometry.type === "Polygon"
+    ? flattenPolygon(feature.geometry.coordinates)
+    : feature.geometry.coordinates.map(flattenPolygon);
+  return {
+    ...feature,
+    geometry: {
+      ...feature.geometry,
+      coordinates,
+    },
+  };
+}
+
 function balloonCuisineWeight(node) {
   const continentScale = node.parent?.data.name === "Europe" ? 1.35 : 1;
   const countryScale = {
@@ -984,15 +1057,11 @@ function balloonRectangleCollisionForce(padding = 3) {
         if (overlapX <= 0 || overlapY <= 0) continue;
         const firstShare = second.targetArea / (first.targetArea + second.targetArea);
         const secondShare = 1 - firstShare;
-        if (overlapX / (first.halfWidth + second.halfWidth) < overlapY / (first.halfHeight + second.halfHeight)) {
-          const push = Math.sign(deltaX) * overlapX * 0.72 * alpha;
-          first.vx -= push * firstShare;
-          second.vx += push * secondShare;
-        } else {
-          const push = Math.sign(deltaY) * overlapY * 0.72 * alpha;
-          first.vy -= push * firstShare;
-          second.vy += push * secondShare;
-        }
+        const push = balloonTopologicalPush(first, second, overlapX, overlapY, 0.72 * alpha);
+        first.vx -= push.x * firstShare;
+        first.vy -= push.y * firstShare;
+        second.vx += push.x * secondShare;
+        second.vy += push.y * secondShare;
       }
     }
   };
@@ -1015,19 +1084,39 @@ function resolveBalloonRectangleOverlaps(items, padding = 3.5) {
         collisions += 1;
         const firstShare = second.targetArea / (first.targetArea + second.targetArea);
         const secondShare = 1 - firstShare;
-        if (overlapX < overlapY) {
-          const shift = Math.sign(deltaX) * (overlapX + 0.08);
-          first.x -= shift * firstShare;
-          second.x += shift * secondShare;
-        } else {
-          const shift = Math.sign(deltaY) * (overlapY + 0.08);
-          first.y -= shift * firstShare;
-          second.y += shift * secondShare;
-        }
+        const push = balloonTopologicalPush(first, second, overlapX, overlapY, 1, 0.08);
+        first.x -= push.x * firstShare;
+        first.y -= push.y * firstShare;
+        second.x += push.x * secondShare;
+        second.y += push.y * secondShare;
       }
     }
-    if (!collisions) break;
+    if (pass < 600) {
+      items.forEach((item) => {
+        item.x += (item.anchorX - item.x) * 0.012;
+        item.y += (item.anchorY - item.y) * 0.014;
+      });
+    } else if (!collisions) {
+      break;
+    }
   }
+}
+
+function balloonTopologicalPush(first, second, overlapX, overlapY, strength = 1, extra = 0) {
+  let directionX = second.anchorX - first.anchorX;
+  let directionY = second.anchorY - first.anchorY;
+  let length = Math.hypot(directionX, directionY);
+  if (length < 0.001) {
+    directionX = second.x - first.x || 0.001;
+    directionY = second.y - first.y || 0.001;
+    length = Math.hypot(directionX, directionY);
+  }
+  const unitX = directionX / length;
+  const unitY = directionY / length;
+  const travelX = Math.abs(unitX) > 0.025 ? overlapX / Math.abs(unitX) : Infinity;
+  const travelY = Math.abs(unitY) > 0.025 ? overlapY / Math.abs(unitY) : Infinity;
+  const travel = (Math.min(travelX, travelY) + extra) * strength;
+  return { x: unitX * travel, y: unitY * travel };
 }
 
 function balloonRenderedFitTransform(svgElement, width, height) {
@@ -1047,7 +1136,7 @@ function balloonRenderedFitTransform(svgElement, width, height) {
   const x1 = d3.max(bounds, (bound) => bound.x1) ?? width;
   const y0 = d3.min(bounds, (bound) => bound.y0) ?? 0;
   const y1 = d3.max(bounds, (bound) => bound.y1) ?? height;
-  const viewport = { x0: 12, x1: width - 12, y0: 118, y1: height - 58 };
+  const viewport = { x0: 16, x1: width - 16, y0: 132, y1: height - 112 };
   const scale = clamp(Math.min(
     (viewport.x1 - viewport.x0) / Math.max(1, x1 - x0),
     (viewport.y1 - viewport.y0) / Math.max(1, y1 - y0),
@@ -1427,6 +1516,7 @@ function buildGridCartogram(values, width, height) {
     item.stampCells = stamp?.cells ?? null;
     item.stampIndex = stamp?.index ?? null;
     item.stampHalo = stamp?.halo ?? null;
+    item.stampBounds = stamp?.bounds ?? null;
     // Space territories by the silhouette's own footprint. RMS spread is radius / √2 for a
     // disc, so 1.5 gives each outline a little more than its full reach — without that
     // slack a big neighbour's shape overruns a smaller country's ground (Germany over
@@ -1547,8 +1637,15 @@ function relaxCartogramAnchors(items, columns, rows, resolutionScale) {
     .stop();
   for (let tick = 0; tick < 420; tick += 1) simulation.tick();
   items.forEach((item) => {
-    item.anchorX = clamp(item.x, item.radius + 3, columns - item.radius - 4);
-    item.anchorY = clamp(item.y, item.radius + 3, rows - item.radius - 4);
+    // Clamp against the actual raster silhouette, not its average radius. Tall, high-volume
+    // countries such as Germany can extend much farther than their RMS spread and were
+    // therefore clipped into a flat edge at the top of the world grid.
+    const minAnchorX = item.stampBounds ? 2 - item.stampBounds.minX : item.radius + 3;
+    const maxAnchorX = item.stampBounds ? columns - 3 - item.stampBounds.maxX : columns - item.radius - 4;
+    const minAnchorY = item.stampBounds ? 2 - item.stampBounds.minY : item.radius + 3;
+    const maxAnchorY = item.stampBounds ? rows - 3 - item.stampBounds.maxY : rows - item.radius - 4;
+    item.anchorX = clamp(item.x, minAnchorX, maxAnchorX);
+    item.anchorY = clamp(item.y, minAnchorY, maxAnchorY);
   });
   let t = 0, ok = 0; const bad = [];
   for (let i = 0; i < items.length; i += 1) for (let j = i + 1; j < items.length; j += 1) {
@@ -1883,7 +1980,10 @@ function cartogramGeographicAnchor(node, projected, projection) {
     }[node.data.countryId] ?? { x: 0, y: 0 };
     return [
       center[0] + (projected[0] - center[0]) * 3.7 + offshoreNudge.x,
-      center[1] + (projected[1] - center[1]) * 4.15 - 3.5 + offshoreNudge.y,
+      // Reserve northern breathing room for enlarged central-European silhouettes.
+      // Germany previously exhausted the grid above itself while avoiding Italy and
+      // France, which turned its northern border into a hard horizontal crop.
+      center[1] + (projected[1] - center[1]) * 4.15 + 12.5 + offshoreNudge.y,
     ];
   }
   if (continent === "Africa") {
@@ -2002,10 +2102,16 @@ function fitCountrySilhouetteStamp(item, shapeContext, target) {
   fitted.forEach((cell, order) => index.set(`${cell.x},${cell.y}`, order));
   const centroidX = d3.mean(fitted, (cell) => cell.x) ?? 0;
   const centroidY = d3.mean(fitted, (cell) => cell.y) ?? 0;
+  const bounds = {
+    minX: d3.min(fitted, (cell) => cell.x) ?? 0,
+    maxX: d3.max(fitted, (cell) => cell.x) ?? 0,
+    minY: d3.min(fitted, (cell) => cell.y) ?? 0,
+    maxY: d3.max(fitted, (cell) => cell.y) ?? 0,
+  };
   const spreadRadius = Math.sqrt(d3.mean(fitted, (cell) => (
     (cell.x - centroidX) ** 2 + (cell.y - centroidY) ** 2
   )) ?? 0);
-  return { cells: fitted, index, spreadRadius, halo: buildSilhouetteHalo(fitted, index) };
+  return { cells: fitted, index, bounds, spreadRadius, halo: buildSilhouetteHalo(fitted, index) };
 }
 
 // Distance rings just outside the silhouette. Overflow fills the nearest ring first, so a
@@ -2140,7 +2246,10 @@ function bestSilhouettePlacement(item, occupied, columns, rows) {
   const originY = Math.round(item.anchorY);
   const stride = Math.max(1, Math.floor(item.stampCells.length / 120));
   const sample = item.stampCells.filter((_, index) => index % stride === 0);
-  const maxShift = Math.min(16, Math.ceil(item.radius * 0.6) + 4);
+  // Dense parts of Europe sometimes need more than a handful of cells to place a whole
+  // silhouette. Let large countries search farther while keeping small-country motion
+  // restrained, so the outline wins over an artificial edge crop.
+  const maxShift = Math.min(30, Math.ceil(item.radius * 0.9) + 8);
   let best = null;
   let bestScore = -Infinity;
 
@@ -2151,6 +2260,11 @@ function bestSilhouettePlacement(item, occupied, columns, rows) {
         const seedX = originX + offsetX;
         const seedY = originY + offsetY;
         if (seedX < 0 || seedY < 0 || seedX >= columns || seedY >= rows) continue;
+        if (item.stampBounds
+          && (seedX + item.stampBounds.minX < 2
+            || seedX + item.stampBounds.maxX > columns - 3
+            || seedY + item.stampBounds.minY < 2
+            || seedY + item.stampBounds.maxY > rows - 3)) continue;
         if (occupied.has(`${seedX},${seedY}`)) continue;
         if (touchesDisallowedCountry(item, { x: seedX, y: seedY }, occupied)) continue;
         let free = 0;
