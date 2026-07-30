@@ -8,7 +8,7 @@ const cursorLabel = document.querySelector("#cursor-label");
 const savedVisualization = window.localStorage.getItem("gastroglobe-dev-visualization");
 
 const state = {
-  visualization: ["treemap", "cartogram", "balloon"].includes(savedVisualization) ? savedVisualization : "cartogram",
+  visualization: ["treemap", "cartogram", "balloon", "claude"].includes(savedVisualization) ? savedVisualization : "cartogram",
   cityId: null,
   countryId: null,
   cuisineId: null,
@@ -182,6 +182,7 @@ function renderCurrentVisualization() {
   if (state.visualization === "balloon") {
     return state.countryId ? renderRegionalCartogram() : renderSvgBalloonCartogram();
   }
+  if (state.visualization === "claude") return renderClaudeEditorialCartogram();
   if (state.visualization === "atlas") {
     return state.countryId ? renderEditorialCountryAtlas() : renderEditorialWorldAtlas();
   }
@@ -523,6 +524,7 @@ function devMenuMarkup() {
         <option value="treemap"${state.visualization === "treemap" ? " selected" : ""}>1 · Interactive treemap</option>
         <option value="cartogram"${state.visualization === "cartogram" ? " selected" : ""}>3 · Cuisine territory map</option>
         <option value="balloon"${state.visualization === "balloon" ? " selected" : ""}>4 · Flat SVG countries</option>
+        <option value="claude"${state.visualization === "claude" ? " selected" : ""}>5 · Editorial square cartogram</option>
       </select>
     </label>
   `;
@@ -960,6 +962,26 @@ function renderSvgBalloonCartogram() {
   declutterBalloonLabels(svg.node());
   document.fonts?.ready.then(() => declutterBalloonLabels(svg.node()));
   bindBreadcrumbs();
+  bindDevMenu();
+}
+
+function renderClaudeEditorialCartogram() {
+  const city = cityNodes.find((node) => node.data.id === state.cityId);
+  if (!city) return renderGallery();
+
+  scene.innerHTML = `
+    <section class="claude-cartogram-view semantic-layer" aria-label="${escapeHtml(city.data.name)} editorial square cuisine cartogram">
+      <div class="claude-cartogram-frame-shell">
+        <iframe
+          class="claude-cartogram-frame"
+          src="./experiments/claude-cartogram.html?v=dev-view-5c"
+          title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
+        ></iframe>
+      </div>
+      ${devMenuMarkup()}
+    </section>
+  `;
+
   bindDevMenu();
 }
 

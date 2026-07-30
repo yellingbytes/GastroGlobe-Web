@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Munich Eats the World — a cuisine cartogram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<style>
+  :root {
+    --paper: #efeae0;
+    --paper-2: #e5dece;
+    --ink: #23201b;
+    --ink-soft: #5c5449;
+    --ink-faint: #8c7f68;
+    --rule: #cfc5b0;
+  }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--paper); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; }
+  a { color: #8c4a3f; text-decoration: none; }
+  a:hover { color: var(--ink); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #c9bda6; border-radius: 8px; }
+  #app { position: absolute; top: 0; left: 0; width: 1680px; min-height: 1040px; display: grid; grid-template-columns: minmax(0, 1fr) 420px; transform-origin: top left; }
+  #left { padding: 30px 26px 26px 38px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-faint); }
+  h1 { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 56px; line-height: 0.95; margin: 6px 0 0; letter-spacing: -0.5px; }
+  #head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
+  #standfirst { text-align: right; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); max-width: 330px; }
+  #mapwrap { position: relative; border: 1px solid var(--ink); background: #f2ede3; overflow: hidden; touch-action: none; cursor: grab; }
+  #mapwrap.is-panning { cursor: grabbing; }
+  #mapscene { position: relative; width: 100%; transform-origin: 0 0; will-change: transform; }
+  #cv { display: block; width: 100%; height: auto; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  .lab {
+    position: absolute;
+    white-space: nowrap;
+    color: #1c1a16;
+    font-size: 12px;
+    font-weight: 600;
+    text-shadow:
+      -1px -1px 0 rgba(247,244,236,0.96),
+       1px -1px 0 rgba(247,244,236,0.96),
+      -1px  1px 0 rgba(247,244,236,0.96),
+       1px  1px 0 rgba(247,244,236,0.96),
+       0 0 4px rgba(247,244,236,0.9);
+  }
+  .lab-in { transform: translate(-50%, -50%); text-align: center; }
+  .lab-in .n { font: inherit; letter-spacing: 0.01em; color: inherit; }
+  .lab-in .c { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 500; color: #28241e; margin-top: 1px; }
+  .lab-out { color: inherit; font: inherit; }
+  .lab-out.halo { background: rgba(244,240,230,0.92); box-shadow: 0 0 0 2px rgba(244,240,230,0.92); }
+  .lab-out span { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 500; color: #51493d; margin-left: 4px; }
+  #key { position: absolute; border: 1px solid #c4b9a3; background: rgba(247,244,236,0.86); padding: 13px 16px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  #key .kt { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-faint); }
+  #key .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+  .kk { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+  .kk i { width: 13px; height: 13px; border: 1px solid var(--ink); display: block; }
+  #tip { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 12.5px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
+  #tip b { font-weight: 600; }
+  #tip s { text-decoration: none; font-family: 'IBM Plex Mono', monospace; color: #d8c9a8; margin-left: 8px; }
+  #ctrls { display: flex; align-items: center; gap: 18px; font-size: 12px; color: var(--ink-soft); }
+  #ctrls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  aside { background: var(--paper-2); border-left: 2px solid var(--ink); padding: 30px 28px 26px; display: flex; flex-direction: column; gap: 16px; height: 1040px; position: sticky; top: 0; }
+  .stats { display: flex; gap: 24px; }
+  .stat b { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 38px; line-height: 1; display: block; }
+  .stat span { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
+  .sec { border-top: 1px solid var(--rule); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+  .sec h2 { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); font-weight: 400; margin: 0; }
+  #rank { overflow-y: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; padding-right: 4px; }
+  .row { display: grid; grid-template-columns: 20px 1fr 34px; align-items: center; gap: 9px; cursor: pointer; padding: 3px 4px; border-radius: 2px; }
+  .row:hover, .row.on { background: var(--paper); }
+  .row .nm { font-size: 12.5px; display: block; margin-bottom: 3px; }
+  .row .bar { display: block; height: 6px; border: 0.5px solid rgba(35,32,27,0.35); }
+  .row .ct { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; text-align: right; color: var(--ink-soft); }
+  #detail { display: none; flex-direction: column; gap: 11px; min-height: 0; flex: 1; }
+  #detail.on { display: flex; }
+  #detail .dh { font-family: 'Instrument Serif', serif; font-size: 29px; line-height: 1.05; }
+  #detail .ds { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+  #detail .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  #detail .chip { font-size: 11.5px; background: var(--paper); border: 1px solid var(--rule); padding: 3px 8px; }
+  #detail .list { overflow-y: auto; min-height: 0; flex: 1; border-top: 1px solid var(--rule); padding-top: 8px; }
+  #detail .li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--rule); font-size: 12.5px; }
+  #detail .li em { font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-faint); }
+  button.close { background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 9px; cursor: pointer; }
+  button.close:hover { border-color: var(--ink); color: var(--ink); }
+  footer { font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div id="head">
+      <div>
+        <div class="eyebrow">A cuisine cartogram of a single city</div>
+        <h1>Munich Eats the World</h1>
+      </div>
+      <div id="standfirst">Every country keeps its own outline, drawn in squares — <strong>one square is one restaurant</strong> in Munich cooking that country's food. Countries are pushed apart until they fit, but never past their neighbours.</div>
+    </div>
+    <div id="mapwrap">
+      <div id="mapscene">
+        <canvas id="cv"></canvas>
+        <div id="labels"></div>
+      </div>
+      <div id="key">
+        <div class="kt">Colour key by continent</div>
+        <div class="grid">
+          <div class="kk"><i style="background:#527f9c"></i>Europe</div>
+          <div class="kk"><i style="background:#b99a3f"></i>Asia</div>
+          <div class="kk"><i style="background:#303331"></i>Africa</div>
+          <div class="kk"><i style="background:#a95553"></i>Americas</div>
+          <div class="kk"><i style="background:#56816b"></i>Oceania</div>
+        </div>
+        <div class="kk" style="border-top:1px solid #ddd3bf;padding-top:9px;color:var(--ink-soft)">
+          <span style="display:flex;gap:1px;margin-right:4px"><i style="background:#e3dac6;border-color:#8c7f68"></i><i style="background:#e3dac6;border-color:#8c7f68"></i><i style="background:#e3dac6;border-color:#8c7f68"></i></span>
+          = 3 restaurants
+        </div>
+        <div style="font-size:11px;color:var(--ink-soft);max-width:190px;line-height:1.4">Outlines are the real countries, at 1:110m — only their size is redrawn.</div>
+      </div>
+      <div id="tip"></div>
+    </div>
+    <div id="ctrls">
+      <label><input type="checkbox" id="ghost" /> show true world outline underneath</label>
+      <span id="status" style="color:var(--ink-faint)">building cartogram…</span>
+    </div>
+  </div>
+  <aside>
+    <div class="stats">
+      <div class="stat"><b id="s-total">—</b><span>Restaurants</span></div>
+      <div class="stat"><b id="s-count">—</b><span>Countries</span></div>
+      <div class="stat"><b id="s-share">—</b><span>Not German</span></div>
+    </div>
+    <div class="sec" id="ranksec">
+      <h2>Ranked by restaurants — click a country</h2>
+      <div id="rank"></div>
+    </div>
+    <div class="sec" id="detail">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div>
+          <div class="dh" id="d-name"></div>
+          <div class="ds" id="d-sum"></div>
+        </div>
+        <button class="close" id="d-close">Close</button>
+      </div>
+      <div class="chips" id="d-chips"></div>
+      <div class="list" id="d-list"></div>
+    </div>
+    <footer>Source: OpenStreetMap restaurants in Munich with an unambiguous country-origin cuisine tag, snapshot 2026-07-18; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth. Area is proportional to restaurant count above 10 restaurants; smaller countries are drawn at a minimum readable size so their shape stays legible.</footer>
+  </aside>
+</div>
+
+<script type="module">
+import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META } from '../restaurants.js?v=claude-dev-view-5';
+
+const DATA = SOURCE_COUNTRIES
+  .map((country) => {
+    const regionCounts = new Map();
+    country.restaurants.forEach((restaurant) => {
+      const regionName = restaurant.region || 'National cuisine';
+      regionCounts.set(regionName, (regionCounts.get(regionName) || 0) + 1);
+    });
+    return {
+      id: country.id,
+      name: country.name,
+      continent: country.continent,
+      flag: country.flag,
+      symbol: country.symbol,
+      lat: country.lat,
+      lng: country.lng,
+      count: country.restaurants.length,
+      regions: [...regionCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      restaurants: country.restaurants.map((restaurant) => ({
+        name: restaurant.name,
+        cuisine: restaurant.cuisine,
+      })),
+    };
+  })
+  .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+const META = { total: SOURCE_META.includedRestaurants };
+
+const CELL = 7;            // screen px per square
+const K = 1.7;             // squares per restaurant
+const MIN_CELLS = 12;      // compact fallback for countries with a small but visible scene presence
+const WORLD_COLS = 196, WORLD_ROWS = 104;
+const PAD = 26;            // slack cells around the world for pushing
+const CONT = {
+  Europe:   { fill: '#527f9c', deep: '#315c78' },
+  Asia:     { fill: '#b99a3f', deep: '#8f7019' },
+  Africa:   { fill: '#303331', deep: '#111412' },
+  Americas: { fill: '#a95553', deep: '#7f3230' },
+  Oceania:  { fill: '#56816b', deep: '#305b47' }
+};
+const ALIAS = {
+  'united-states': 'United States of America', 'turkiye': 'Turkey', 'south-korea': 'South Korea',
+  'bosnia-herzegovina': 'Bosnia and Herz.', 'czechia': 'Czechia', 'sri-lanka': 'Sri Lanka',
+  'united-kingdom': 'United Kingdom', 'kyrgyzstan': 'Kyrgyzstan'
+};
+
+const el = id => document.getElementById(id);
+const norm = s => s.toLowerCase().replace(/[^a-z]/g, '');
+
+const state = { sel: null, hover: null, ghost: false, leaders: [], placed: [], lookup: null, cols: 0, rows: 0, land: null, proj: null, off: null };
+
+function targetCellsForCount(count) {
+  // One- and two-restaurant countries should read as genuinely scarce, while
+  // retaining enough pixels to remain selectable at the embedded scale.
+  if (count === 1) return 4;
+  if (count === 2) return 6;
+  return Math.max(MIN_CELLS, Math.round(count * K));
+}
+
+function fitCartogramToFrame() {
+  const app = el('app');
+  const scale = Math.max(0.1, Math.min(window.innerWidth / 1680, window.innerHeight / 1040));
+  app.style.left = Math.max(0, (window.innerWidth - 1680 * scale) / 2) + 'px';
+  app.style.transform = 'scale(' + scale + ')';
+}
+fitCartogramToFrame();
+window.addEventListener('resize', fitCartogramToFrame);
+
+/* ---------- silhouette rasterisation ---------- */
+function rasterise(feature, path, targetCells) {
+  const b = path.bounds(feature);
+  const w = Math.max(0.4, b[1][0] - b[0][0]), h = Math.max(0.4, b[1][1] - b[0][1]);
+  const d = path(feature);
+  if (!d) return null;
+  const p2d = new Path2D(d);
+  let s = Math.sqrt(targetCells / Math.max(0.5, w * h * 0.55));
+  let cells = [], cw = 0, ch = 0;
+  for (let iter = 0; iter < 5; iter++) {
+    cw = Math.max(1, Math.ceil(w * s) + 2);
+    ch = Math.max(1, Math.ceil(h * s) + 2);
+    if (cw * ch > 40000) break;
+    const cvs = document.createElement('canvas');
+    cvs.width = cw; cvs.height = ch;
+    const c = cvs.getContext('2d');
+    c.setTransform(s, 0, 0, s, -b[0][0] * s + 1, -b[0][1] * s + 1);
+    c.fillStyle = '#000';
+    c.fill(p2d);
+    c.lineWidth = 0.9 / s;
+    c.strokeStyle = '#000';
+    c.stroke(p2d);
+    const px = c.getImageData(0, 0, cw, ch).data;
+    cells = [];
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (px[(y * cw + x) * 4 + 3] > 90) cells.push([x, y]);
+    if (!cells.length) { s *= 1.7; continue; }
+    const ratio = targetCells / cells.length;
+    if (Math.abs(ratio - 1) < 0.13 || iter === 4) break;
+    s *= Math.sqrt(ratio);
+  }
+  if (!cells.length) return null;
+  const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+  const minx = Math.min(...xs), miny = Math.min(...ys);
+  return {
+    cells: cells.map(c => [c[0] - minx, c[1] - miny]),
+    w: Math.max(...xs) - minx + 1,
+    h: Math.max(...ys) - miny + 1,
+    anchor: [b[0][0], b[0][1]],
+    scale: s,
+    offset: [minx - 1, miny - 1]
+  };
+}
+
+/* ---------- packing ---------- */
+function pack(items, cols, rows) {
+  const occ = new Uint8Array(cols * rows);
+  const fits = (it, ox, oy) => {
+    if (ox < 0 || oy < 0 || ox + it.w > cols || oy + it.h > rows) return false;
+    for (const [dx, dy] of it.cells) {
+      const x = ox + dx, y = oy + dy;
+      for (let ny = y - 1; ny <= y + 1; ny++) {
+        if (ny < 0 || ny >= rows) continue;
+        for (let nx = x - 1; nx <= x + 1; nx++) {
+          if (nx < 0 || nx >= cols) continue;
+          if (occ[ny * cols + nx]) return false;
+        }
+      }
+    }
+    return true;
+  };
+  const out = [];
+  const europeEastEdge = PAD + WORLD_COLS * 0.58;
+  const asiaWestEdge = PAD + WORLD_COLS * 0.6;
+  const continentZoneCost = (it, ox) => {
+    if (it.continent === 'Asia') {
+      const intrusion = Math.max(0, asiaWestEdge - ox);
+      return intrusion * intrusion;
+    }
+    if (it.continent === 'Europe') {
+      const intrusion = Math.max(0, ox + it.w - europeEastEdge);
+      return intrusion * intrusion;
+    }
+    return 0;
+  };
+  const dirCost = (it, ox, oy) => {
+    const cx = ox + it.w / 2, cy = oy + it.h / 2;
+    let pen = 0;
+    for (const p of out) {
+      const pcx = p.ox + p.w / 2, pcy = p.oy + p.h / 2;
+      const dLng = it.lng - p.lng, dLat = it.lat - p.lat;
+      const wgt = Math.sqrt(p.count) * 1.3;
+      if (Math.abs(dLng) > 6 && Math.sign(cx - pcx) !== Math.sign(dLng)) pen += wgt * Math.min(6, Math.abs(dLng) / 5);
+      if (Math.abs(dLat) > 5 && Math.sign(pcy - cy) !== Math.sign(dLat)) pen += wgt * Math.min(6, Math.abs(dLat) / 4);
+    }
+    return pen;
+  };
+  for (const it of items) {
+    const ix = Math.round(it.idealX), iy = Math.round(it.idealY);
+    let best = null, foundR = null;
+    for (let r = 0; r <= 90; r++) {
+      if (foundR !== null && r > foundR + 12) break;
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const ox = ix + dx, oy = iy + dy;
+          if (!fits(it, ox, oy)) continue;
+          const cost = Math.hypot(dx, dy * 1.15) + dirCost(it, ox, oy) * 5 + continentZoneCost(it, ox) * 1.8;
+          if (!best || cost < best.cost) best = { ox, oy, cost };
+          if (foundR === null) foundR = r;
+        }
+      }
+    }
+    if (!best) continue;
+    for (const [dx, dy] of it.cells) occ[(best.oy + dy) * cols + (best.ox + dx)] = 1;
+    out.push(Object.assign({}, it, { ox: best.ox, oy: best.oy }));
+  }
+
+  // relaxation: nudge each country toward its ideal spot while keeping the packing valid
+  const clear = it => { for (const [dx, dy] of it.cells) occ[(it.oy + dy) * cols + (it.ox + dx)] = 0; };
+  const set = it => { for (const [dx, dy] of it.cells) occ[(it.oy + dy) * cols + (it.ox + dx)] = 1; };
+  const score = (it, ox, oy) =>
+    Math.hypot(ox - it.idealX, (oy - it.idealY) * 1.15) +
+    dirCostAll(it, ox, oy) * 5 +
+    continentZoneCost(it, ox) * 1.8;
+  const dirCostAll = (it, ox, oy) => {
+    const cx = ox + it.w / 2, cy = oy + it.h / 2;
+    let pen = 0;
+    for (const p of out) {
+      if (p === it) continue;
+      const pcx = p.ox + p.w / 2, pcy = p.oy + p.h / 2;
+      const dLng = it.lng - p.lng, dLat = it.lat - p.lat;
+      const wgt = Math.sqrt(p.count) * 1.3;
+      if (Math.abs(dLng) > 6 && Math.sign(cx - pcx) !== Math.sign(dLng)) pen += wgt * Math.min(6, Math.abs(dLng) / 5);
+      if (Math.abs(dLat) > 5 && Math.sign(pcy - cy) !== Math.sign(dLat)) pen += wgt * Math.min(6, Math.abs(dLat) / 4);
+    }
+    return pen;
+  };
+  for (let pass = 0; pass < 14; pass++) {
+    let moved = 0;
+    for (const it of out) {
+      clear(it);
+      let best = { ox: it.ox, oy: it.oy, s: score(it, it.ox, it.oy) };
+      for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1],[2,0],[-2,0],[0,2],[0,-2]]) {
+        const ox = it.ox + dx, oy = it.oy + dy;
+        if (!fits(it, ox, oy)) continue;
+        const s = score(it, ox, oy);
+        if (s < best.s - 0.01) best = { ox, oy, s };
+      }
+      if (best.ox !== it.ox || best.oy !== it.oy) { it.ox = best.ox; it.oy = best.oy; moved++; }
+      set(it);
+    }
+    if (!moved) break;
+  }
+  return out;
+}
+
+/* ---------- drawing ---------- */
+let dpr = Math.min(2, window.devicePixelRatio || 1);
+function draw() {
+  const cv = el('cv'), ctx = cv.getContext('2d');
+  const W = state.cols * CELL, H = state.rows * CELL;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = '100%'; cv.style.height = 'auto';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#f2ede3';
+  ctx.fillRect(0, 0, W, H);
+
+  // graticule-ish grid
+  ctx.strokeStyle = '#e0d7c4';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x <= state.cols; x++) { ctx.moveTo(x * CELL + 0.5, 0); ctx.lineTo(x * CELL + 0.5, H); }
+  for (let y = 0; y <= state.rows; y++) { ctx.moveTo(0, y * CELL + 0.5); ctx.lineTo(W, y * CELL + 0.5); }
+  ctx.stroke();
+
+  // ghost of the real world, same projection, at true scale
+  if (state.ghost && state.land) {
+    ctx.save();
+    ctx.translate(-state.off[0] * CELL, -state.off[1] * CELL);
+    ctx.scale(CELL, CELL);
+    ctx.fillStyle = 'rgba(35,32,27,0.075)';
+    ctx.beginPath();
+    d3.geoPath(state.proj, ctx)(state.land);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  for (const p of state.placed) {
+    const c = CONT[p.continent] || CONT.Europe;
+    const active = state.hover === p.id || state.sel === p.id;
+    ctx.fillStyle = active ? c.deep : c.fill;
+    for (const [dx, dy] of p.cells) ctx.fillRect((p.ox + dx) * CELL, (p.oy + dy) * CELL, CELL, CELL);
+    // inner square seams
+    ctx.strokeStyle = 'rgba(247,244,236,0.2)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for (const [dx, dy] of p.cells) ctx.rect((p.ox + dx) * CELL + 0.5, (p.oy + dy) * CELL + 0.5, CELL - 1, CELL - 1);
+    ctx.stroke();
+    // silhouette border
+    const set = p.set;
+    ctx.strokeStyle = active ? '#23201b' : 'rgba(35,32,27,0.8)';
+    ctx.lineWidth = active ? 2 : 1.2;
+    ctx.beginPath();
+    for (const [dx, dy] of p.cells) {
+      const X = (p.ox + dx) * CELL, Y = (p.oy + dy) * CELL;
+      if (!set.has((dx) + ',' + (dy - 1))) { ctx.moveTo(X, Y); ctx.lineTo(X + CELL, Y); }
+      if (!set.has((dx) + ',' + (dy + 1))) { ctx.moveTo(X, Y + CELL); ctx.lineTo(X + CELL, Y + CELL); }
+      if (!set.has((dx - 1) + ',' + dy)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + CELL); }
+      if (!set.has((dx + 1) + ',' + dy)) { ctx.moveTo(X + CELL, Y); ctx.lineTo(X + CELL, Y + CELL); }
+    }
+    ctx.stroke();
+  }
+
+  // leader lines
+  ctx.strokeStyle = 'rgba(35,32,27,0.62)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (const l of state.leaders) { ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); }
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(35,32,27,0.72)';
+  for (const l of state.leaders) {
+    if (!l.dot) continue;
+    ctx.beginPath();
+    ctx.arc(l.x2, l.y2, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/* ---------- labels ---------- */
+function layoutLabels() {
+  const host = el('labels');
+  host.innerHTML = '';
+  state.leaders = [];
+  const W = state.cols * CELL, H = state.rows * CELL;
+
+  // exact ink mask: which grid cells are covered by a country silhouette
+  const ink = new Uint8Array(state.cols * state.rows);
+  for (const p of state.placed) for (const [dx, dy] of p.cells) ink[(p.oy + dy) * state.cols + (p.ox + dx)] = 1;
+  const inkHit = r => {
+    const x0 = Math.floor((r.x - 2) / CELL), x1 = Math.ceil((r.x + r.w + 2) / CELL);
+    const y0 = Math.floor((r.y - 2) / CELL), y1 = Math.ceil((r.y + r.h + 2) / CELL);
+    let n = 0;
+    for (let y = Math.max(0, y0); y < Math.min(state.rows, y1); y++)
+      for (let x = Math.max(0, x0); x < Math.min(state.cols, x1); x++)
+        if (ink[y * state.cols + x]) n++;
+    return n;
+  };
+  const boxes = [];
+  const kb = el('key').getBoundingClientRect(), wb = el('mapwrap').getBoundingClientRect();
+  const sc = W / Math.max(1, wb.width);
+  boxes.push({ x: (kb.left - wb.left) * sc - 6, y: (kb.top - wb.top) * sc - 6, w: kb.width * sc + 12, h: kb.height * sc + 12 });
+  const overlap = r => boxes.some(t => r.x < t.x + t.w && r.x + r.w > t.x && r.y < t.y + t.h && r.y + r.h > t.y);
+
+  const inside = state.placed.filter(p => p.cells.length >= 118);
+  const closeLabelPriority = new Set(['united-kingdom', 'israel']);
+  const outside = state.placed
+    .filter(p => p.cells.length < 118)
+    .sort((a, b) =>
+      Number(closeLabelPriority.has(b.id)) - Number(closeLabelPriority.has(a.id)) ||
+      b.count - a.count
+    );
+
+  for (const p of inside) {
+    let sx = 0, sy = 0;
+    for (const [dx, dy] of p.cells) { sx += dx; sy += dy; }
+    const cx = (p.ox + sx / p.cells.length + 0.5) * CELL, cy = (p.oy + sy / p.cells.length + 0.5) * CELL;
+    const d = document.createElement('div');
+    d.className = 'lab lab-in';
+    d.style.left = (cx / W * 100) + '%';
+    d.style.top = (cy / H * 100) + '%';
+    d.innerHTML = '<div class="n">' + p.name + '</div><div class="c">' + p.count + '</div>';
+    host.appendChild(d);
+    boxes.push({ x: cx - d.offsetWidth / 2 - 4, y: cy - d.offsetHeight / 2 - 3, w: d.offsetWidth + 8, h: d.offsetHeight + 6 });
+  }
+
+  for (const p of outside) {
+    const d = document.createElement('div');
+    d.className = 'lab lab-out';
+    d.innerHTML = p.name + '<span>' + p.count + '</span>';
+    d.style.left = '0px';
+    d.style.top = '-999px';
+    host.appendChild(d);
+    const lw = d.offsetWidth + 2, lh = d.offsetHeight + 1;
+    const bx = p.ox * CELL, by = p.oy * CELL, bw = p.w * CELL, bh = p.h * CELL;
+
+    const cands = [];
+    for (let ring = 0; ring < 19; ring++) {
+      // A finer search interval keeps callouts beside their country instead of
+      // jumping across the dense European and eastern Mediterranean clusters.
+      const g = ring * 7;
+      cands.push([bx + bw / 2 - lw / 2, by + bh + 4 + g]);
+      cands.push([bx + bw + 6 + g * 0.6, by + bh / 2 - lh / 2 + g * 0.3]);
+      cands.push([bx - lw - 6 - g * 0.6, by + bh / 2 - lh / 2 + g * 0.3]);
+      cands.push([bx + bw / 2 - lw / 2, by - lh - 4 - g]);
+      cands.push([bx + bw + 6 + g * 0.6, by - lh - 4 - g * 0.4]);
+      cands.push([bx - lw - 6 - g * 0.6, by - lh - 4 - g * 0.4]);
+      cands.push([bx + bw + 6 + g * 0.6, by + bh + 4 + g * 0.4]);
+      cands.push([bx - lw - 6 - g * 0.6, by + bh + 4 + g * 0.4]);
+    }
+    // distance from a point to this country's own silhouette
+    const ownDist = (px, py) => {
+      let best = Infinity;
+      for (const [dx, dy] of p.cells) {
+        const cx = (p.ox + dx + 0.5) * CELL, cy = (p.oy + dy + 0.5) * CELL;
+        const dd = Math.hypot(cx - px, cy - py);
+        if (dd < best) best = dd;
+      }
+      return best;
+    };
+    // owner of the nearest inked cell to a point (ring search on the grid)
+    const nearestOwner = (px, py) => {
+      const gx = Math.floor(px / CELL), gy = Math.floor(py / CELL);
+      for (let r = 0; r <= 30; r++) {
+        let bestD = Infinity, bestId = null;
+        for (let y = gy - r; y <= gy + r; y++) {
+          if (y < 0 || y >= state.rows) continue;
+          for (let x = gx - r; x <= gx + r; x++) {
+            if (x < 0 || x >= state.cols) continue;
+            if (Math.max(Math.abs(x - gx), Math.abs(y - gy)) !== r) continue;
+            const id = state.lookup[y * state.cols + x];
+            if (!id) continue;
+            const dd = Math.hypot((x + 0.5) * CELL - px, (y + 0.5) * CELL - py);
+            if (dd < bestD) { bestD = dd; bestId = id; }
+          }
+        }
+        if (bestId) return bestId;
+      }
+      return null;
+    };
+    let pick = null, pickScore = Infinity, fallback = null, fallbackScore = Infinity;
+    for (const c of cands) {
+      const r = { x: c[0], y: c[1], w: lw, h: lh };
+      if (r.x < 3 || r.y < 3 || r.x + r.w > W - 3 || r.y + r.h > H - 3) continue;
+      if (overlap(r)) continue;
+      if (inkHit(r) > 0) continue;
+      const cx = c[0] + lw / 2, cy = c[1] + lh / 2;
+      // probe from the edge of the label facing the shape as well as its centre
+      const dOwn = Math.min(ownDist(cx, cy), ownDist(c[0], cy), ownDist(c[0] + lw, cy), ownDist(cx, c[1]), ownDist(cx, c[1] + lh));
+      const owner = nearestOwner(cx, cy);
+      const unambiguous = owner === p.id;
+      const score = dOwn + (unambiguous ? 0 : 260);
+      if (unambiguous && score < pickScore) { pickScore = score; pick = c; }
+      if (score < fallbackScore) { fallbackScore = score; fallback = c; }
+    }
+    const ambiguous = !pick;
+    if (!pick) pick = fallback || [Math.min(W - lw - 4, Math.max(4, bx)), Math.min(H - lh - 4, by + bh + 4)];
+    d.style.left = (pick[0] / W * 100) + '%';
+    d.style.top = (pick[1] / H * 100) + '%';
+    boxes.push({ x: pick[0] - 2, y: pick[1] - 2, w: lw + 4, h: lh + 4 });
+
+    const lcx = pick[0] + lw / 2, lcy = pick[1] + lh / 2;
+    let tx = bx + bw / 2, ty = by + bh / 2, bestD = Infinity;
+    for (const [dx, dy] of p.cells) {
+      const cx = (p.ox + dx + 0.5) * CELL, cy = (p.oy + dy + 0.5) * CELL;
+      const dd = Math.hypot(cx - lcx, cy - lcy);
+      if (dd < bestD) { bestD = dd; tx = cx; ty = cy; }
+    }
+    if (bestD > 9 || ambiguous) {
+      const ux = (tx - lcx) / bestD, uy = (ty - lcy) / bestD;
+      state.leaders.push({
+        x1: lcx + ux * (lw / 2 + 3), y1: lcy + uy * (lh / 2 + 3),
+        x2: tx - ux * CELL * 0.5, y2: ty - uy * CELL * 0.5,
+        dot: ambiguous || bestD > 30
+      });
+    }
+  }
+}
+
+/* ---------- sidebar ---------- */
+function buildSidebar() {
+  const total = META.total, german = (DATA.find(d => d.id === 'germany') || { count: 0 }).count;
+  el('s-total').textContent = total;
+  el('s-count').textContent = DATA.length;
+  el('s-share').textContent = Math.round((total - german) / total * 100) + '%';
+  const max = DATA[0].count, rank = el('rank');
+  for (const d of DATA) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.id = d.id;
+    const col = (CONT[d.continent] || CONT.Europe).fill;
+    row.innerHTML = '<span style="font-size:14px">' + d.flag + '</span><span style="min-width:0"><span class="nm">' + d.name +
+      '</span><span class="bar" style="width:' + Math.max(3, Math.round(d.count / max * 100)) + '%;background:' + col + '"></span></span><span class="ct">' + d.count + '</span>';
+    row.onmouseenter = () => { state.hover = d.id; draw(); };
+    row.onmouseleave = () => { state.hover = null; draw(); };
+    row.onclick = () => select(d.id);
+    rank.appendChild(row);
+  }
+}
+function select(id) {
+  state.sel = id;
+  const d = DATA.find(x => x.id === id);
+  el('ranksec').style.display = 'none';
+  el('detail').classList.add('on');
+  el('d-name').textContent = d.flag + '  ' + d.name;
+  el('d-sum').textContent = d.count + (d.count === 1 ? ' restaurant · ' : ' restaurants · ') +
+    (Math.round(d.count / META.total * 1000) / 10) + '% of Munich\u2019s mapped kitchens · ' + d.continent;
+  el('d-chips').innerHTML = d.regions.slice(0, 8).map(r => '<div class="chip">' + r.name + ' · ' + r.count + '</div>').join('');
+  el('d-list').innerHTML = d.restaurants.map(r => '<div class="li"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('');
+  draw();
+}
+el('d-close').onclick = () => {
+  state.sel = null;
+  el('detail').classList.remove('on');
+  el('ranksec').style.display = '';
+  draw();
+};
+el('ghost').onchange = e => { state.ghost = e.target.checked; draw(); };
+
+/* ---------- interaction ---------- */
+function attachHover() {
+  const cv = el('cv'), tip = el('tip');
+  cv.onmousemove = ev => {
+    const r = cv.getBoundingClientRect();
+    const wr = el('mapwrap').getBoundingClientRect();
+    const gx = Math.floor((ev.clientX - r.left) / r.width * state.cols);
+    const gy = Math.floor((ev.clientY - r.top) / r.height * state.rows);
+    const id = state.lookup[gy * state.cols + gx] || null;
+    const d = id ? DATA.find(x => x.id === id) : null;
+    if (d) {
+      tip.style.opacity = 1;
+      tip.innerHTML = '<b>' + d.flag + ' ' + d.name + '</b><s>' + d.count + (d.count === 1 ? ' restaurant' : ' restaurants') + '</s>';
+      tip.style.transform = 'translate(' + (ev.clientX - wr.left + 14) + 'px,' + (ev.clientY - wr.top + 14) + 'px)';
+    } else tip.style.opacity = 0;
+    if (id !== state.hover) { state.hover = id; draw(); }
+  };
+  cv.onmouseleave = () => { tip.style.opacity = 0; state.hover = null; draw(); };
+  cv.onclick = ev => {
+    const r = cv.getBoundingClientRect();
+    const gx = Math.floor((ev.clientX - r.left) / r.width * state.cols);
+    const gy = Math.floor((ev.clientY - r.top) / r.height * state.rows);
+    const id = state.lookup[gy * state.cols + gx];
+    if (id) select(id);
+  };
+}
+
+function attachPanZoom() {
+  const wrap = el('mapwrap');
+  const scene = el('mapscene');
+  const zoom = d3.zoom()
+    .scaleExtent([1, 6])
+    .on('start', () => wrap.classList.add('is-panning'))
+    .on('zoom', event => {
+      const { x, y, k } = event.transform;
+      scene.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) scale(' + k + ')';
+    })
+    .on('end', () => wrap.classList.remove('is-panning'));
+
+  d3.select(wrap).call(zoom);
+}
+
+/* ---------- build ---------- */
+(async function build() {
+  buildSidebar();
+  const topo = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json').then(r => r.json());
+  const fc = topojson.feature(topo, topo.objects.countries);
+  const land = topojson.feature(topo, topo.objects.land);
+  const byName = new Map(fc.features.map(f => [norm(f.properties.name), f]));
+  const proj = d3.geoNaturalEarth1().fitSize([WORLD_COLS, WORLD_ROWS], { type: 'Sphere' });
+  const path = d3.geoPath(proj);
+  state.proj = proj;
+  state.land = land;
+
+  const items = [];
+  for (const d of DATA) {
+    const key = norm(ALIAS[d.id] || d.name);
+    const f = byName.get(key) || byName.get(norm(d.name));
+    const target = targetCellsForCount(d.count);
+    let sil = f ? rasterise(f, path, target) : null;
+    if (!sil) {
+      const w = Math.max(1, Math.round(Math.sqrt(target * 1.25))), h = Math.ceil(target / w);
+      const cells = [];
+      for (let i = 0; i < target; i++) cells.push([i % w, Math.floor(i / w)]);
+      sil = { cells, w, h, scale: 1, offset: [0, 0], anchor: [0, 0] };
+      console.warn('no geometry for', d.name);
+    }
+    const [ax, ay] = f ? path.bounds(f)[0] : [proj([d.lng, d.lat])[0], proj([d.lng, d.lat])[1]];
+    // ideal position: keep the shape's true centre where the real country sits
+    const trueC = f ? path.centroid(f) : proj([d.lng, d.lat]);
+    const continentShiftX = { Europe: -9, Asia: 15, Africa: 3, Americas: -8, Oceania: 10 };
+    items.push({
+      id: d.id, name: d.name, count: d.count, continent: d.continent, lat: d.lat, lng: d.lng,
+      cells: sil.cells, w: sil.w, h: sil.h,
+      idealX: PAD + trueC[0] + (continentShiftX[d.continent] || 0) - sil.w / 2,
+      idealY: PAD + trueC[1] - sil.h / 2
+    });
+  }
+  items.sort((a, b) => b.cells.length - a.cells.length);
+  const cols = WORLD_COLS + PAD * 2, rows = WORLD_ROWS + PAD * 2;
+  let placed = pack(items, cols, rows);
+
+  // crop to used area
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of placed) {
+    minX = Math.min(minX, p.ox); minY = Math.min(minY, p.oy);
+    maxX = Math.max(maxX, p.ox + p.w); maxY = Math.max(maxY, p.oy + p.h);
+  }
+  const M = 3;
+  const offX = minX - M, offY = minY - M;
+  state.cols = maxX - minX + M * 2;
+  state.rows = maxY - minY + M * 2;
+  state.off = [offX - PAD, offY - PAD];
+  placed.forEach(p => { p.ox -= offX; p.oy -= offY; p.set = new Set(p.cells.map(c => c[0] + ',' + c[1])); });
+  state.placed = placed;
+  state.lookup = new Array(state.cols * state.rows).fill(null);
+  for (const p of placed) for (const [dx, dy] of p.cells) state.lookup[(p.oy + dy) * state.cols + (p.ox + dx)] = p.id;
+
+  el('key').style.left = '1.5%';
+  el('key').style.top = '2.5%';
+  draw();
+  layoutLabels();
+  draw();
+  attachHover();
+  attachPanZoom();
+  el('status').textContent = state.placed.length + ' countries placed · ' + META.total + ' squares';
+})();
+</script>
+</body>
+</html>
