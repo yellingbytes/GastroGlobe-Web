@@ -28,8 +28,19 @@
   .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-faint); }
   h1 { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 56px; line-height: 0.95; margin: 6px 0 0; letter-spacing: -0.5px; }
   #head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
-  #standfirst { text-align: right; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); max-width: 330px; }
-  #mapwrap { position: relative; border: 1px solid var(--ink); background: #f2ede3; overflow: hidden; touch-action: none; cursor: grab; }
+  #mapwrap {
+    position: relative;
+    border: 1px solid var(--ink);
+    background-color: #f2ede3;
+    background-image:
+      linear-gradient(to right, rgba(140,127,104,0.18) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(140,127,104,0.18) 1px, transparent 1px);
+    background-size: 7px 7px;
+    background-position: 0 0;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+  }
   #mapwrap.is-panning { cursor: grabbing; }
   #mapscene { position: relative; width: 100%; transform-origin: 0 0; will-change: transform; }
   #cv { display: block; width: 100%; height: auto; }
@@ -47,13 +58,48 @@
        1px  1px 0 rgba(247,244,236,0.96),
        0 0 4px rgba(247,244,236,0.9);
   }
-  .lab-in { transform: translate(-50%, -50%); text-align: center; }
-  .lab-in .n { font: inherit; letter-spacing: 0.01em; color: inherit; }
-  .lab-in .c { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 500; color: #28241e; margin-top: 1px; }
   .lab-out { color: inherit; font: inherit; }
   .lab-out.halo { background: rgba(244,240,230,0.92); box-shadow: 0 0 0 2px rgba(244,240,230,0.92); }
   .lab-out span { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 500; color: #51493d; margin-left: 4px; }
-  #key { position: absolute; border: 1px solid #c4b9a3; background: rgba(247,244,236,0.86); padding: 13px 16px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  #legend-control { position: absolute; left: 18px; top: 18px; z-index: 5; transform-origin: top left; pointer-events: none; }
+  #legend-toggle {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(35,32,27,0.72);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    background: rgba(247,244,236,0.94);
+    color: var(--ink);
+    font-family: 'Instrument Serif', serif;
+    font-size: 21px;
+    font-style: italic;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(35,32,27,0.12);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  #legend-toggle:hover { background: #fffaf0; }
+  #legend-toggle:focus-visible { outline: 3px solid rgba(82,127,156,0.55); outline-offset: 2px; }
+  #key {
+    position: absolute;
+    left: 0;
+    top: 48px;
+    width: 224px;
+    border: 1px solid #c4b9a3;
+    background: rgba(247,244,236,0.96);
+    padding: 13px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-5px);
+    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms;
+    pointer-events: none;
+  }
+  #legend-control.is-open #key { opacity: 1; visibility: visible; transform: translateY(0); }
   #key .kt { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-faint); }
   #key .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
   .kk { display: flex; align-items: center; gap: 7px; font-size: 12px; }
@@ -63,6 +109,7 @@
   #tip s { text-decoration: none; font-family: 'IBM Plex Mono', monospace; color: #d8c9a8; margin-left: 8px; }
   #ctrls { display: flex; align-items: center; gap: 18px; font-size: 12px; color: var(--ink-soft); }
   #ctrls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  #ghost-control[hidden] { display: none !important; }
   aside { background: var(--paper-2); border-left: 2px solid var(--ink); padding: 30px 28px 26px; display: flex; flex-direction: column; gap: 16px; height: 1040px; position: sticky; top: 0; }
   .stats { display: flex; gap: 24px; }
   .stat b { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 38px; line-height: 1; display: block; }
@@ -87,6 +134,11 @@
   button.close { background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 9px; cursor: pointer; }
   button.close:hover { border-color: var(--ink); color: var(--ink); }
   footer { font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
+  @media (max-width: 720px) {
+    #legend-control { left: 12px; top: 12px; }
+    #legend-toggle { width: 44px; height: 44px; font-size: 23px; }
+    #key { top: 52px; width: 216px; max-width: calc(100vw - 24px); }
+  }
 </style>
 </head>
 <body>
@@ -94,43 +146,40 @@
   <div id="left">
     <div id="head">
       <div>
-        <div class="eyebrow">A cuisine cartogram of a single city</div>
-        <h1>Munich Eats the World</h1>
+        <div class="eyebrow" id="map-eyebrow">A cuisine cartogram of a single city</div>
+        <h1 id="map-title">Munich Eats the World</h1>
       </div>
-      <div id="standfirst">Every country keeps its own outline, drawn in squares — <strong>one square is one restaurant</strong> in Munich cooking that country's food. Countries are pushed apart until they fit, but never past their neighbours.</div>
     </div>
     <div id="mapwrap">
       <div id="mapscene">
         <canvas id="cv"></canvas>
         <div id="labels"></div>
       </div>
-      <div id="key">
-        <div class="kt">Colour key by continent</div>
-        <div class="grid">
-          <div class="kk"><i style="background:#527f9c"></i>Europe</div>
-          <div class="kk"><i style="background:#b99a3f"></i>Asia</div>
-          <div class="kk"><i style="background:#303331"></i>Africa</div>
-          <div class="kk"><i style="background:#a95553"></i>Americas</div>
-          <div class="kk"><i style="background:#56816b"></i>Oceania</div>
+      <div id="legend-control">
+        <button id="legend-toggle" type="button" aria-label="Show continent colour key" aria-controls="key" aria-expanded="false">i</button>
+        <div id="key" aria-hidden="true">
+          <div class="kt">Colour key by continent</div>
+          <div class="grid">
+            <div class="kk"><i style="background:#527f9c"></i>Europe</div>
+            <div class="kk"><i style="background:#b99a3f"></i>Asia</div>
+            <div class="kk"><i style="background:#303331"></i>Africa</div>
+            <div class="kk"><i style="background:#a95553"></i>Americas</div>
+            <div class="kk"><i style="background:#56816b"></i>Oceania</div>
+          </div>
         </div>
-        <div class="kk" style="border-top:1px solid #ddd3bf;padding-top:9px;color:var(--ink-soft)">
-          <span style="display:flex;gap:1px;margin-right:4px"><i style="background:#e3dac6;border-color:#8c7f68"></i><i style="background:#e3dac6;border-color:#8c7f68"></i><i style="background:#e3dac6;border-color:#8c7f68"></i></span>
-          = 3 restaurants
-        </div>
-        <div style="font-size:11px;color:var(--ink-soft);max-width:190px;line-height:1.4">Outlines are the real countries, at 1:110m — only their size is redrawn.</div>
       </div>
       <div id="tip"></div>
     </div>
     <div id="ctrls">
-      <label><input type="checkbox" id="ghost" /> show true world outline underneath</label>
+      <label id="ghost-control"><input type="checkbox" id="ghost" /> show true world outline underneath</label>
       <span id="status" style="color:var(--ink-faint)">building cartogram…</span>
     </div>
   </div>
   <aside>
     <div class="stats">
-      <div class="stat"><b id="s-total">—</b><span>Restaurants</span></div>
-      <div class="stat"><b id="s-count">—</b><span>Countries</span></div>
-      <div class="stat"><b id="s-share">—</b><span>Not German</span></div>
+      <div class="stat"><b id="s-total">—</b><span id="s-total-label">Restaurants</span></div>
+      <div class="stat"><b id="s-count">—</b><span id="s-count-label">Countries</span></div>
+      <div class="stat"><b id="s-share">—</b><span id="s-share-label">Not German</span></div>
     </div>
     <div class="sec" id="ranksec">
       <h2>Ranked by restaurants — click a country</h2>
@@ -147,19 +196,67 @@
       <div class="chips" id="d-chips"></div>
       <div class="list" id="d-list"></div>
     </div>
-    <footer>Source: OpenStreetMap restaurants in Munich with an unambiguous country-origin cuisine tag, snapshot 2026-07-18; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth. Area is proportional to restaurant count above 10 restaurants; smaller countries are drawn at a minimum readable size so their shape stays legible.</footer>
+    <footer>Source: OpenStreetMap restaurants in Munich plus curated regional-cuisine updates, snapshot 2026-08-02; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.</footer>
   </aside>
 </div>
 
 <script type="module">
-import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META } from '../restaurants.js?v=claude-dev-view-5';
+import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META } from '../restaurants.js?v=claude-dev-view-5h';
+
+const REGION_EMOJI_RULES = [
+  [/national cuisine|uncategorized/i, '◌'],
+  [/sichuan|chongqing/i, '🌶️'],
+  [/guangdong|cantonese/i, '🥟'],
+  [/northeast|dongbei/i, '🍲'],
+  [/gansu|lanzhou/i, '🍜'],
+  [/fujian|taiwan/i, '🐟'],
+  [/shanxi|shaanxi|northern china|beijing/i, '🍜'],
+  [/xinjiang|uyghur/i, '🐑'],
+  [/hunan/i, '🥘'],
+  [/yunnan/i, '🍄'],
+  [/emilia|rome|lazio|piedmont/i, '🍝'],
+  [/naples|campania/i, '🍕'],
+  [/sicily/i, '🍋'],
+  [/veneto/i, '🥂'],
+  [/sardinia|galician|brittany|mekong/i, '🐟'],
+  [/south indian|kerala/i, '🥥'],
+  [/punjabi|hyderabadi|goan|gujarati|kashmiri/i, '🍛'],
+  [/bengali/i, '🐟'],
+  [/tokyo|edo|sushi/i, '🍣'],
+  [/kansai|ramen|hokkaido|kyushu/i, '🍜'],
+  [/okinawa/i, '🍍'],
+  [/oaxaca|yucatan|jalisco|mexico city|baja/i, '🌮'],
+  [/^(central|northern|southern|isan)$/i, '🌶️']
+];
+
+function cuisineEmoji(name, fallback, countryFlag) {
+  const match = REGION_EMOJI_RULES.find(([pattern]) => pattern.test(name));
+  if (match) return match[1];
+  return fallback && fallback !== countryFlag ? fallback : '◌';
+}
 
 const DATA = SOURCE_COUNTRIES
   .map((country) => {
-    const regionCounts = new Map();
+    const regionData = new Map();
     country.restaurants.forEach((restaurant) => {
-      const regionName = restaurant.region || 'National cuisine';
-      regionCounts.set(regionName, (regionCounts.get(regionName) || 0) + 1);
+      const sourceRegionName = restaurant.region || 'National cuisine';
+      const regionName = /national cuisine|uncategorized/i.test(sourceRegionName)
+        ? 'Uncategorized'
+        : sourceRegionName;
+      if (!regionData.has(regionName)) {
+        regionData.set(regionName, {
+          id: 'region-' + country.id + '-' + regionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+          name: regionName,
+          emoji: cuisineEmoji(regionName, restaurant.symbol, country.flag),
+          lat: Number.isFinite(restaurant.originLat) ? restaurant.originLat : country.lat,
+          lng: Number.isFinite(restaurant.originLng) ? restaurant.originLng : country.lng,
+          count: 0,
+          restaurants: []
+        });
+      }
+      const region = regionData.get(regionName);
+      region.count += 1;
+      region.restaurants.push({ name: restaurant.name, cuisine: restaurant.cuisine });
     });
     return {
       id: country.id,
@@ -170,7 +267,7 @@ const DATA = SOURCE_COUNTRIES
       lat: country.lat,
       lng: country.lng,
       count: country.restaurants.length,
-      regions: [...regionCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      regions: [...regionData.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
       restaurants: country.restaurants.map((restaurant) => ({
         name: restaurant.name,
         cuisine: restaurant.cuisine,
@@ -201,7 +298,26 @@ const ALIAS = {
 const el = id => document.getElementById(id);
 const norm = s => s.toLowerCase().replace(/[^a-z]/g, '');
 
-const state = { sel: null, hover: null, ghost: false, leaders: [], placed: [], lookup: null, cols: 0, rows: 0, land: null, proj: null, off: null };
+const state = {
+  view: 'world',
+  sel: null,
+  hover: null,
+  ghost: false,
+  leaders: [],
+  placed: [],
+  lookup: null,
+  itemById: new Map(),
+  cols: 0,
+  rows: 0,
+  land: null,
+  proj: null,
+  off: null,
+  worldSnapshot: null,
+  activeCountry: null,
+  countryFeatures: new Map(),
+  countryBackdrop: null,
+  zoomBehavior: null
+};
 
 function targetCellsForCount(count) {
   // One- and two-restaurant countries should read as genuinely scarce, while
@@ -211,11 +327,25 @@ function targetCellsForCount(count) {
   return Math.max(MIN_CELLS, Math.round(count * K));
 }
 
+const MAINLAND_ONLY = new Set(['france', 'spain', 'portugal', 'united-states']);
+
+function mainlandFeature(id, feature, path) {
+  if (!MAINLAND_ONLY.has(id) || feature?.geometry?.type !== 'MultiPolygon') return feature;
+  const polygons = feature.geometry.coordinates.map(coordinates => ({
+    type: 'Feature',
+    properties: feature.properties,
+    geometry: { type: 'Polygon', coordinates }
+  }));
+  return polygons.reduce((largest, polygon) => path.area(polygon) > path.area(largest) ? polygon : largest);
+}
+
 function fitCartogramToFrame() {
   const app = el('app');
   const scale = Math.max(0.1, Math.min(window.innerWidth / 1680, window.innerHeight / 1040));
   app.style.left = Math.max(0, (window.innerWidth - 1680 * scale) / 2) + 'px';
   app.style.transform = 'scale(' + scale + ')';
+  const legend = el('legend-control');
+  if (legend) legend.style.transform = 'scale(' + (1 / scale) + ')';
 }
 fitCartogramToFrame();
 window.addEventListener('resize', fitCartogramToFrame);
@@ -263,8 +393,56 @@ function rasterise(feature, path, targetCells) {
   };
 }
 
+function rasteriseBackdrop(feature, path, cols, rows) {
+  const d = path(feature);
+  if (!d) return null;
+  const cvs = document.createElement('canvas');
+  cvs.width = cols;
+  cvs.height = rows;
+  const ctx = cvs.getContext('2d');
+  const shape = new Path2D(d);
+  ctx.fillStyle = '#000';
+  ctx.fill(shape);
+  ctx.lineWidth = 1.25;
+  ctx.strokeStyle = '#000';
+  ctx.stroke(shape);
+  const pixels = ctx.getImageData(0, 0, cols, rows).data;
+  const cells = [];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (pixels[(y * cols + x) * 4 + 3] > 72) cells.push([x, y]);
+    }
+  }
+  if (!cells.length) return null;
+  const set = new Set(cells.map(cell => cell[0] + ',' + cell[1]));
+  const layer = document.createElement('canvas');
+  layer.width = cols * CELL;
+  layer.height = rows * CELL;
+  const layerCtx = layer.getContext('2d');
+  layerCtx.fillStyle = 'rgba(157, 139, 104, 0.13)';
+  for (const [x, y] of cells) layerCtx.fillRect(x * CELL, y * CELL, CELL, CELL);
+  layerCtx.strokeStyle = 'rgba(75, 66, 51, 0.34)';
+  layerCtx.lineWidth = 1;
+  layerCtx.beginPath();
+  for (const [x, y] of cells) {
+    const X = x * CELL, Y = y * CELL;
+    if (!set.has(x + ',' + (y - 1))) { layerCtx.moveTo(X, Y); layerCtx.lineTo(X + CELL, Y); }
+    if (!set.has(x + ',' + (y + 1))) { layerCtx.moveTo(X, Y + CELL); layerCtx.lineTo(X + CELL, Y + CELL); }
+    if (!set.has((x - 1) + ',' + y)) { layerCtx.moveTo(X, Y); layerCtx.lineTo(X, Y + CELL); }
+    if (!set.has((x + 1) + ',' + y)) { layerCtx.moveTo(X + CELL, Y); layerCtx.lineTo(X + CELL, Y + CELL); }
+  }
+  layerCtx.stroke();
+  return {
+    cells,
+    set,
+    layer,
+    bounds: path.bounds(feature),
+    centroid: path.centroid(feature)
+  };
+}
+
 /* ---------- packing ---------- */
-function pack(items, cols, rows) {
+function pack(items, cols, rows, options = {}) {
   const occ = new Uint8Array(cols * rows);
   const fits = (it, ox, oy) => {
     if (ox < 0 || oy < 0 || ox + it.w > cols || oy + it.h > rows) return false;
@@ -284,6 +462,7 @@ function pack(items, cols, rows) {
   const europeEastEdge = PAD + WORLD_COLS * 0.58;
   const asiaWestEdge = PAD + WORLD_COLS * 0.6;
   const continentZoneCost = (it, ox) => {
+    if (options.continentZones === false) return 0;
     if (it.continent === 'Asia') {
       const intrusion = Math.max(0, asiaWestEdge - ox);
       return intrusion * intrusion;
@@ -386,7 +565,7 @@ function draw() {
   ctx.stroke();
 
   // ghost of the real world, same projection, at true scale
-  if (state.ghost && state.land) {
+  if (state.view === 'world' && state.ghost && state.land) {
     ctx.save();
     ctx.translate(-state.off[0] * CELL, -state.off[1] * CELL);
     ctx.scale(CELL, CELL);
@@ -397,10 +576,16 @@ function draw() {
     ctx.restore();
   }
 
+  // A quiet, geographically true silhouette keeps regional cuisine territories
+  // legible as parts of a real country rather than isolated chart marks.
+  if (state.view === 'country' && state.countryBackdrop) {
+    ctx.drawImage(state.countryBackdrop.layer, 0, 0);
+  }
+
   for (const p of state.placed) {
     const c = CONT[p.continent] || CONT.Europe;
     const active = state.hover === p.id || state.sel === p.id;
-    ctx.fillStyle = active ? c.deep : c.fill;
+    ctx.fillStyle = active ? (p.deepColor || c.deep) : (p.fillColor || c.fill);
     for (const [dx, dy] of p.cells) ctx.fillRect((p.ox + dx) * CELL, (p.oy + dy) * CELL, CELL, CELL);
     // inner square seams
     ctx.strokeStyle = 'rgba(247,244,236,0.2)';
@@ -463,27 +648,12 @@ function layoutLabels() {
   boxes.push({ x: (kb.left - wb.left) * sc - 6, y: (kb.top - wb.top) * sc - 6, w: kb.width * sc + 12, h: kb.height * sc + 12 });
   const overlap = r => boxes.some(t => r.x < t.x + t.w && r.x + r.w > t.x && r.y < t.y + t.h && r.y + r.h > t.y);
 
-  const inside = state.placed.filter(p => p.cells.length >= 118);
   const closeLabelPriority = new Set(['united-kingdom', 'israel']);
-  const outside = state.placed
-    .filter(p => p.cells.length < 118)
+  const outside = [...state.placed]
     .sort((a, b) =>
       Number(closeLabelPriority.has(b.id)) - Number(closeLabelPriority.has(a.id)) ||
       b.count - a.count
     );
-
-  for (const p of inside) {
-    let sx = 0, sy = 0;
-    for (const [dx, dy] of p.cells) { sx += dx; sy += dy; }
-    const cx = (p.ox + sx / p.cells.length + 0.5) * CELL, cy = (p.oy + sy / p.cells.length + 0.5) * CELL;
-    const d = document.createElement('div');
-    d.className = 'lab lab-in';
-    d.style.left = (cx / W * 100) + '%';
-    d.style.top = (cy / H * 100) + '%';
-    d.innerHTML = '<div class="n">' + p.name + '</div><div class="c">' + p.count + '</div>';
-    host.appendChild(d);
-    boxes.push({ x: cx - d.offsetWidth / 2 - 4, y: cy - d.offsetHeight / 2 - 3, w: d.offsetWidth + 8, h: d.offsetHeight + 6 });
-  }
 
   for (const p of outside) {
     const d = document.createElement('div');
@@ -578,12 +748,215 @@ function layoutLabels() {
   }
 }
 
+function pixelTerritory(target, index) {
+  const aspect = [1.35, 0.82, 1.05, 1.55, 0.72][index % 5];
+  const w = Math.max(3, Math.ceil(Math.sqrt(target * aspect)) + 2);
+  const h = Math.max(3, Math.ceil(target / Math.max(2, w - 2)) + 2);
+  const cx = (w - 1) / 2;
+  const cy = (h - 1) / 2;
+  const candidates = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const radial = Math.pow((x - cx) / Math.max(1, w * 0.48), 2) + Math.pow((y - cy) / Math.max(1, h * 0.48), 2);
+      const grain = ((x * 19 + y * 31 + index * 17) % 13) / 140;
+      candidates.push({ x, y, score: radial + grain });
+    }
+  }
+  const chosen = candidates.sort((a, b) => a.score - b.score).slice(0, target);
+  const minX = Math.min(...chosen.map(cell => cell.x));
+  const minY = Math.min(...chosen.map(cell => cell.y));
+  const cells = chosen.map(cell => [cell.x - minX, cell.y - minY]);
+  return {
+    cells,
+    w: Math.max(...cells.map(cell => cell[0])) + 1,
+    h: Math.max(...cells.map(cell => cell[1])) + 1
+  };
+}
+
+function regionColor(continent, index) {
+  const base = d3.color((CONT[continent] || CONT.Europe).fill);
+  const steps = [-0.48, -0.22, 0, 0.24, 0.46];
+  const step = steps[index % steps.length];
+  return (step < 0 ? base.darker(Math.abs(step)) : base.brighter(step)).formatHex();
+}
+
+function commitPackedLayout(placed, margin = 6) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of placed) {
+    minX = Math.min(minX, p.ox); minY = Math.min(minY, p.oy);
+    maxX = Math.max(maxX, p.ox + p.w); maxY = Math.max(maxY, p.oy + p.h);
+  }
+  const offX = minX - margin, offY = minY - margin;
+  state.cols = maxX - minX + margin * 2;
+  state.rows = maxY - minY + margin * 2;
+  state.off = [0, 0];
+  placed.forEach(p => {
+    p.ox -= offX;
+    p.oy -= offY;
+    p.set = new Set(p.cells.map(cell => cell[0] + ',' + cell[1]));
+  });
+  state.placed = placed;
+  state.lookup = new Array(state.cols * state.rows).fill(null);
+  state.itemById = new Map(placed.map(item => [item.id, item]));
+  for (const p of placed) {
+    for (const [dx, dy] of p.cells) state.lookup[(p.oy + dy) * state.cols + (p.ox + dx)] = p.id;
+  }
+}
+
+function commitFixedLayout(placed, cols, rows) {
+  state.cols = cols;
+  state.rows = rows;
+  state.off = [0, 0];
+  placed.forEach(p => {
+    p.set = new Set(p.cells.map(cell => cell[0] + ',' + cell[1]));
+  });
+  state.placed = placed;
+  state.lookup = new Array(cols * rows).fill(null);
+  state.itemById = new Map(placed.map(item => [item.id, item]));
+  for (const p of placed) {
+    for (const [dx, dy] of p.cells) state.lookup[(p.oy + dy) * cols + (p.ox + dx)] = p.id;
+  }
+}
+
+function resetMapTransform() {
+  if (!state.zoomBehavior) return;
+  d3.select(el('mapwrap')).call(state.zoomBehavior.transform, d3.zoomIdentity);
+}
+
+function renderCountryAtlas(country) {
+  const regions = country.regions;
+  const specific = regions.filter(region => !/national cuisine|uncategorized/i.test(region.name));
+  const source = specific.length ? specific : regions;
+  const minLng = d3.min(source, region => region.lng) ?? country.lng;
+  const maxLng = d3.max(source, region => region.lng) ?? country.lng;
+  const minLat = d3.min(source, region => region.lat) ?? country.lat;
+  const maxLat = d3.max(source, region => region.lat) ?? country.lat;
+  const lngSpan = Math.max(1, maxLng - minLng);
+  const latSpan = Math.max(1, maxLat - minLat);
+  const cols = WORLD_COLS + PAD * 2;
+  const rows = WORLD_ROWS + PAD * 2;
+  const countryFeature = state.countryFeatures.get(country.id) || null;
+  let countryProjection = null;
+  let countryPath = null;
+  let countryBackdrop = null;
+  if (countryFeature) {
+    countryProjection = d3.geoMercator().fitExtent(
+      [[cols * 0.11, rows * 0.08], [cols * 0.89, rows * 0.86]],
+      countryFeature
+    );
+    countryPath = d3.geoPath(countryProjection);
+    const fittedBounds = countryPath.bounds(countryFeature);
+    const fittedCenter = [
+      (fittedBounds[0][0] + fittedBounds[1][0]) / 2,
+      (fittedBounds[0][1] + fittedBounds[1][1]) / 2
+    ];
+    if (fittedCenter.every(Number.isFinite)) {
+      const translate = countryProjection.translate();
+      countryProjection.translate([
+        translate[0] + cols * 0.5 - fittedCenter[0],
+        translate[1] + rows * 0.47 - fittedCenter[1]
+      ]);
+      countryPath = d3.geoPath(countryProjection);
+    }
+    countryBackdrop = rasteriseBackdrop(countryFeature, countryPath, cols, rows);
+  }
+  const countryCenter = countryBackdrop?.centroid || [cols / 2, rows / 2];
+  const countryBounds = countryBackdrop?.bounds || [[cols * 0.2, rows * 0.12], [cols * 0.8, rows * 0.82]];
+  const projectedAnchor = region => {
+    if (!countryProjection) return null;
+    const point = countryProjection([region.lng, region.lat]);
+    if (!point || !point.every(Number.isFinite)) return null;
+    return point;
+  };
+  const items = regions.map((region, index) => {
+    const generic = /national cuisine|uncategorized/i.test(region.name);
+    const target = targetCellsForCount(region.count);
+    const shape = pixelTerritory(target, index);
+    const projected = projectedAnchor(region);
+    const idealCenterX = generic
+      ? countryCenter[0]
+      : projected?.[0] ?? cols * 0.22 + ((region.lng - minLng) / lngSpan) * cols * 0.56;
+    const idealCenterY = generic
+      ? Math.min(countryBounds[1][1] - shape.h / 2 - 3, countryCenter[1] + (countryBounds[1][1] - countryBounds[0][1]) * 0.17)
+      : projected?.[1] ?? rows * 0.18 + ((maxLat - region.lat) / latSpan) * rows * 0.48;
+    const fillColor = regionColor(country.continent, index);
+    return {
+      ...region,
+      name: region.emoji + ' ' + region.name,
+      regionName: region.name,
+      continent: country.continent,
+      cells: shape.cells,
+      w: shape.w,
+      h: shape.h,
+      fillColor,
+      deepColor: d3.color(fillColor).darker(0.72).formatHex(),
+      idealX: idealCenterX - shape.w / 2,
+      idealY: idealCenterY - shape.h / 2,
+      lat: generic ? minLat - latSpan * 0.55 : region.lat,
+      lng: generic ? (minLng + maxLng) / 2 : region.lng
+    };
+  }).sort((a, b) => b.cells.length - a.cells.length);
+
+  const placed = pack(items, cols, rows, { continentZones: false });
+  state.view = 'country';
+  state.activeCountry = country;
+  state.countryBackdrop = countryBackdrop;
+  state.hover = null;
+  state.sel = null;
+  commitFixedLayout(placed, cols, rows);
+  el('map-eyebrow').textContent = 'A regional cuisine cartogram of Munich';
+  el('map-title').textContent = country.flag + ' ' + country.name;
+  el('ghost-control').hidden = true;
+  el('status').textContent = regions.length + (regions.length === 1 ? ' cuisine · ' : ' cuisines · ') + country.count + ' restaurants';
+  resetMapTransform();
+  draw();
+  layoutLabels();
+  draw();
+}
+
+function restoreWorldAtlas() {
+  if (!state.worldSnapshot) return;
+  Object.assign(state, {
+    view: 'world',
+    sel: null,
+    hover: null,
+    activeCountry: null,
+    countryBackdrop: null,
+    placed: state.worldSnapshot.placed,
+    lookup: state.worldSnapshot.lookup,
+    itemById: state.worldSnapshot.itemById,
+    cols: state.worldSnapshot.cols,
+    rows: state.worldSnapshot.rows,
+    off: state.worldSnapshot.off
+  });
+  el('map-eyebrow').textContent = 'A cuisine cartogram of a single city';
+  el('map-title').textContent = 'Munich Eats the World';
+  el('ghost-control').hidden = false;
+  el('ranksec').style.display = '';
+  el('detail').classList.remove('on');
+  el('d-close').textContent = 'Close';
+  buildWorldStats();
+  el('status').textContent = DATA.length + ' cuisines · ' + META.total + ' restaurants';
+  resetMapTransform();
+  draw();
+  layoutLabels();
+  draw();
+}
+
 /* ---------- sidebar ---------- */
-function buildSidebar() {
-  const total = META.total, german = (DATA.find(d => d.id === 'germany') || { count: 0 }).count;
+function buildWorldStats() {
+  const total = META.total;
+  const german = (DATA.find(d => d.id === 'germany') || { count: 0 }).count;
   el('s-total').textContent = total;
   el('s-count').textContent = DATA.length;
   el('s-share').textContent = Math.round((total - german) / total * 100) + '%';
+  el('s-total-label').textContent = 'Restaurants';
+  el('s-count-label').textContent = 'Countries';
+  el('s-share-label').textContent = 'Not German';
+}
+
+function buildSidebar() {
+  buildWorldStats();
   const max = DATA[0].count, rank = el('rank');
   for (const d of DATA) {
     const row = document.createElement('div');
@@ -599,18 +972,40 @@ function buildSidebar() {
   }
 }
 function select(id) {
-  state.sel = id;
   const d = DATA.find(x => x.id === id);
+  if (!d) return;
   el('ranksec').style.display = 'none';
   el('detail').classList.add('on');
+  el('d-close').textContent = 'World map';
   el('d-name').textContent = d.flag + '  ' + d.name;
   el('d-sum').textContent = d.count + (d.count === 1 ? ' restaurant · ' : ' restaurants · ') +
     (Math.round(d.count / META.total * 1000) / 10) + '% of Munich\u2019s mapped kitchens · ' + d.continent;
-  el('d-chips').innerHTML = d.regions.slice(0, 8).map(r => '<div class="chip">' + r.name + ' · ' + r.count + '</div>').join('');
+  el('d-chips').innerHTML = d.regions.slice(0, 10).map(r => '<div class="chip">' + r.emoji + ' ' + r.name + ' · ' + r.count + '</div>').join('');
   el('d-list').innerHTML = d.restaurants.map(r => '<div class="li"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('');
+  el('s-total').textContent = d.count;
+  el('s-count').textContent = d.regions.length;
+  el('s-share').textContent = (Math.round(d.count / META.total * 1000) / 10) + '%';
+  el('s-total-label').textContent = 'Restaurants';
+  el('s-count-label').textContent = 'Cuisines';
+  el('s-share-label').textContent = 'Of Munich';
+  renderCountryAtlas(d);
+}
+
+function selectRegion(id) {
+  const region = state.itemById.get(id);
+  const country = state.activeCountry;
+  if (!region || !country) return;
+  state.sel = id;
+  el('d-name').textContent = country.flag + '  ' + country.name;
+  el('d-sum').textContent = region.emoji + ' ' + region.regionName + ' · ' + region.count +
+    (region.count === 1 ? ' restaurant' : ' restaurants');
+  el('d-chips').innerHTML = '<div class="chip">' + region.emoji + ' ' + region.regionName + ' · ' + region.count + '</div>';
+  el('d-list').innerHTML = region.restaurants.map(r => '<div class="li"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('');
   draw();
 }
+
 el('d-close').onclick = () => {
+  if (state.view === 'country') return restoreWorldAtlas();
   state.sel = null;
   el('detail').classList.remove('on');
   el('ranksec').style.display = '';
@@ -627,10 +1022,10 @@ function attachHover() {
     const gx = Math.floor((ev.clientX - r.left) / r.width * state.cols);
     const gy = Math.floor((ev.clientY - r.top) / r.height * state.rows);
     const id = state.lookup[gy * state.cols + gx] || null;
-    const d = id ? DATA.find(x => x.id === id) : null;
+    const d = id ? state.itemById.get(id) : null;
     if (d) {
       tip.style.opacity = 1;
-      tip.innerHTML = '<b>' + d.flag + ' ' + d.name + '</b><s>' + d.count + (d.count === 1 ? ' restaurant' : ' restaurants') + '</s>';
+      tip.innerHTML = '<b>' + (d.flag || d.emoji || '') + ' ' + (d.regionName || d.name) + '</b><s>' + d.count + (d.count === 1 ? ' restaurant' : ' restaurants') + '</s>';
       tip.style.transform = 'translate(' + (ev.clientX - wr.left + 14) + 'px,' + (ev.clientY - wr.top + 14) + 'px)';
     } else tip.style.opacity = 0;
     if (id !== state.hover) { state.hover = id; draw(); }
@@ -641,23 +1036,47 @@ function attachHover() {
     const gx = Math.floor((ev.clientX - r.left) / r.width * state.cols);
     const gy = Math.floor((ev.clientY - r.top) / r.height * state.rows);
     const id = state.lookup[gy * state.cols + gx];
-    if (id) select(id);
+    if (id) state.view === 'world' ? select(id) : selectRegion(id);
   };
 }
 
 function attachPanZoom() {
   const wrap = el('mapwrap');
   const scene = el('mapscene');
+  const syncInfiniteGrid = ({ x, y, k }) => {
+    const step = wrap.clientWidth / Math.max(1, state.cols) * k;
+    wrap.style.backgroundSize = step + 'px ' + step + 'px';
+    wrap.style.backgroundPosition = x + 'px ' + y + 'px';
+  };
   const zoom = d3.zoom()
     .scaleExtent([1, 6])
     .on('start', () => wrap.classList.add('is-panning'))
     .on('zoom', event => {
       const { x, y, k } = event.transform;
       scene.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) scale(' + k + ')';
+      syncInfiniteGrid(event.transform);
     })
     .on('end', () => wrap.classList.remove('is-panning'));
 
   d3.select(wrap).call(zoom);
+  state.zoomBehavior = zoom;
+  syncInfiniteGrid(d3.zoomIdentity);
+}
+
+function attachLegendToggle() {
+  const control = el('legend-control');
+  const button = el('legend-toggle');
+  const key = el('key');
+  const setOpen = open => {
+    control.classList.toggle('is-open', open);
+    button.setAttribute('aria-expanded', String(open));
+    button.setAttribute('aria-label', open ? 'Hide continent colour key' : 'Show continent colour key');
+    key.setAttribute('aria-hidden', String(!open));
+  };
+  button.onclick = () => setOpen(button.getAttribute('aria-expanded') !== 'true');
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setOpen(false);
+  });
 }
 
 /* ---------- build ---------- */
@@ -676,8 +1095,10 @@ function attachPanZoom() {
   for (const d of DATA) {
     const key = norm(ALIAS[d.id] || d.name);
     const f = byName.get(key) || byName.get(norm(d.name));
+    const displayFeature = f ? mainlandFeature(d.id, f, path) : null;
+    if (displayFeature) state.countryFeatures.set(d.id, displayFeature);
     const target = targetCellsForCount(d.count);
-    let sil = f ? rasterise(f, path, target) : null;
+    let sil = displayFeature ? rasterise(displayFeature, path, target) : null;
     if (!sil) {
       const w = Math.max(1, Math.round(Math.sqrt(target * 1.25))), h = Math.ceil(target / w);
       const cells = [];
@@ -685,9 +1106,8 @@ function attachPanZoom() {
       sil = { cells, w, h, scale: 1, offset: [0, 0], anchor: [0, 0] };
       console.warn('no geometry for', d.name);
     }
-    const [ax, ay] = f ? path.bounds(f)[0] : [proj([d.lng, d.lat])[0], proj([d.lng, d.lat])[1]];
     // ideal position: keep the shape's true centre where the real country sits
-    const trueC = f ? path.centroid(f) : proj([d.lng, d.lat]);
+    const trueC = displayFeature ? path.centroid(displayFeature) : proj([d.lng, d.lat]);
     const continentShiftX = { Europe: -9, Asia: 15, Africa: 3, Americas: -8, Oceania: 10 };
     items.push({
       id: d.id, name: d.name, count: d.count, continent: d.continent, lat: d.lat, lng: d.lng,
@@ -715,15 +1135,23 @@ function attachPanZoom() {
   state.placed = placed;
   state.lookup = new Array(state.cols * state.rows).fill(null);
   for (const p of placed) for (const [dx, dy] of p.cells) state.lookup[(p.oy + dy) * state.cols + (p.ox + dx)] = p.id;
+  state.itemById = new Map(DATA.map(country => [country.id, country]));
+  state.worldSnapshot = {
+    placed: state.placed,
+    lookup: state.lookup,
+    itemById: state.itemById,
+    cols: state.cols,
+    rows: state.rows,
+    off: state.off
+  };
 
-  el('key').style.left = '1.5%';
-  el('key').style.top = '2.5%';
+  attachLegendToggle();
   draw();
   layoutLabels();
   draw();
   attachHover();
   attachPanZoom();
-  el('status').textContent = state.placed.length + ' countries placed · ' + META.total + ' squares';
+  el('status').textContent = DATA.length + ' cuisines · ' + META.total + ' restaurants';
 })();
 </script>
 </body>

@@ -3,13 +3,20 @@ import {
   datasetMeta,
   regionTaxonomy,
   restaurants as sourceRestaurants,
-} from "./data/munich-restaurants.js?v=2026-07-25-2";
+} from "./data/munich-restaurants.js?v=2026-08-02-1";
+import {
+  applyMunichChinaEditorialUpdate,
+  applyMunichChinaTaxonomyUpdate,
+} from "./data/munich-china-editorial-overrides.js?v=2026-08-02-1";
 
-const regionalTaxonomyResponse = await fetch(new URL("./data/munich-regional-cuisine-taxonomy.json", import.meta.url));
+applyMunichChinaEditorialUpdate({ datasetMeta, regionTaxonomy, restaurants: sourceRestaurants });
+
+const regionalTaxonomyResponse = await fetch(new URL("./data/munich-regional-cuisine-taxonomy.json?v=2026-08-02-1", import.meta.url));
 if (!regionalTaxonomyResponse.ok) {
   throw new Error(`Regional cuisine taxonomy could not load (${regionalTaxonomyResponse.status}).`);
 }
 const regionalCuisineTaxonomy = await regionalTaxonomyResponse.json();
+applyMunichChinaTaxonomyUpdate(regionalCuisineTaxonomy, sourceRestaurants);
 
 const countryById = new Map(countryTaxonomy.map((country) => [country.id, country]));
 const regionById = new Map(regionTaxonomy.map((region) => [`${region.countryId}/${region.id}`, region]));
@@ -17,6 +24,14 @@ const regionalFoodEmoji = {
   bavaria: "🥨",
   franconia: "🍺",
   guangdong: "🥟",
+  "northeast-china": "🍲",
+  "gansu-lanzhou": "🍜",
+  "fujian-taiwan": "🐟",
+  hunan: "🥘",
+  sichuan: "🌶️",
+  "shanxi-shaanxi-noodles": "🍜",
+  "xinjiang-uyghur": "🐑",
+  yunnan: "🍄",
   "campania-pizza": "🍕",
   "sushi-tradition": "🍣",
   "ramen-tradition": "🍜",
