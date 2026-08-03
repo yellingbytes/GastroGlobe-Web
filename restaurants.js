@@ -8,6 +8,7 @@ import {
   applyMunichChinaEditorialUpdate,
   applyMunichChinaTaxonomyUpdate,
 } from "./data/munich-china-editorial-overrides.js?v=2026-08-02-1";
+import { applyMunichRichCuisineTaxonomyUpdate } from "./data/munich-rich-cuisine-editorial-overrides.js?v=2026-08-03-1";
 
 applyMunichChinaEditorialUpdate({ datasetMeta, regionTaxonomy, restaurants: sourceRestaurants });
 
@@ -17,6 +18,7 @@ if (!regionalTaxonomyResponse.ok) {
 }
 const regionalCuisineTaxonomy = await regionalTaxonomyResponse.json();
 applyMunichChinaTaxonomyUpdate(regionalCuisineTaxonomy, sourceRestaurants);
+applyMunichRichCuisineTaxonomyUpdate(regionalCuisineTaxonomy, sourceRestaurants);
 
 const countryById = new Map(countryTaxonomy.map((country) => [country.id, country]));
 const regionById = new Map(regionTaxonomy.map((region) => [`${region.countryId}/${region.id}`, region]));
@@ -190,9 +192,9 @@ function buildRegionalCuisineChildren(country, regionalCountry) {
 
   if (unclassifiedRestaurants.length) {
     regions.push({
-      id: `region-${country.id}-unclassified`,
-      name: "Uncategorized",
-      emoji: "◌",
+      id: `region-${country.id}-national`,
+      name: "National",
+      emoji: country.flag,
       countryId: country.id,
       kind: "region",
       lat: country.lat,
@@ -200,7 +202,7 @@ function buildRegionalCuisineChildren(country, regionalCountry) {
       available: unclassifiedRestaurants.length,
       unclassified: true,
       children: unclassifiedRestaurants.map((restaurant) => restaurantNode(restaurant, {
-        name: "Uncategorized",
+        name: "National",
         emoji: country.flag,
       })),
     });
