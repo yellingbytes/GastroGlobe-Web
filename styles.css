@@ -1,19 +1,19 @@
 :root {
   color-scheme: light;
-  --paper: #f2efe8;
-  --paper-deep: #e7e2d7;
-  --ink: #1d211f;
-  --ink-soft: #646760;
-  --line: rgba(29, 33, 31, 0.2);
-  --line-strong: rgba(29, 33, 31, 0.48);
+  --paper: #efeae0;
+  --paper-deep: #e5dece;
+  --ink: #23201b;
+  --ink-soft: #5c5449;
+  --line: rgba(35, 32, 27, 0.2);
+  --line-strong: rgba(35, 32, 27, 0.56);
   --americas: #df0024;
   --europe: #0085c7;
   --africa: #111111;
   --asia: #f4c300;
   --oceania: #009f3d;
-  --sans: "Manrope", system-ui, sans-serif;
-  --serif: "Newsreader", Georgia, serif;
-  --mono: "DM Mono", monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
+  --mono: "IBM Plex Mono", monospace;
 }
 
 * { box-sizing: border-box; }
@@ -1202,7 +1202,11 @@ body {
   align-content: start;
   padding: 10px;
   overflow: auto;
-  background: var(--paper);
+  background-color: #f2ede3;
+  background-image:
+    linear-gradient(to right, rgba(140, 127, 104, 0.13) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(140, 127, 104, 0.13) 1px, transparent 1px);
+  background-size: 7px 7px;
 }
 
 .metropolitan-card {
@@ -1214,7 +1218,7 @@ body {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--paper);
+  background: rgba(239, 234, 224, 0.96);
   color: var(--ink);
   text-align: left;
   cursor: pointer;
@@ -1246,14 +1250,15 @@ body {
   display: grid;
   gap: 2px;
   padding: 9px 11px 10px;
-  border-top: 1px solid var(--line-strong);
+  border-top: 1px solid var(--ink);
+  background: rgba(239, 234, 224, 0.98);
 }
 
 .metropolitan-card-caption strong {
   overflow: hidden;
   font-family: var(--serif);
   font-size: 22px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1;
   letter-spacing: -0.035em;
   text-overflow: ellipsis;
@@ -1316,8 +1321,8 @@ body {
 }
 
 .world-card {
-  border-color: rgba(29, 33, 31, 0.24);
-  background: #ebe7de;
+  border-color: rgba(35, 32, 27, 0.4);
+  background: rgba(239, 234, 224, 0.98);
 }
 
 .world-card.is-live {
@@ -1325,9 +1330,11 @@ body {
 }
 
 .world-thumbnail {
-  background:
-    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.72), transparent 68%),
-    var(--paper-deep);
+  background-color: #f2ede3;
+  background-image:
+    linear-gradient(to right, rgba(140, 127, 104, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(140, 127, 104, 0.14) 1px, transparent 1px);
+  background-size: 7px 7px;
 }
 
 .thumbnail-land path {
@@ -1371,6 +1378,8 @@ body {
 .world-map:active { cursor: grabbing; }
 
 .claude-cartogram-view {
+  width: 100vw;
+  height: 100dvh;
   overflow: hidden;
   background: #efeae0;
 }

@@ -14,11 +14,11 @@ Then open `http://localhost:4317`.
 
 The prototype is framework-free.
 
-The Munich edition currently includes **1,198 named restaurants across 43 country cuisines** from an OpenStreetMap snapshot dated 18 July 2026. Every included record has sourced latitude/longitude data and links back to its OSM object.
+The Munich edition currently includes **1,196 named restaurants across 43 country cuisines** from an OpenStreetMap snapshot dated 18 July 2026 plus a small, source-linked editorial update. Every included record has sourced latitude/longitude data and links back to its OSM object.
 
 “All” is defined reproducibly as named `amenity=restaurant` features whose `cuisine=*` tag resolves to one country or an unambiguous country-origin tradition inside Munich’s municipal boundary. The normalization pipeline excludes fusion tags, generic-only group labels such as `asian` or `international`, multi-country records, unnamed records, and nearby duplicate features.
 
-The generated snapshot lives in `data/munich-restaurants.js`; `data/munich-regional-cuisine-taxonomy.json` supplies the researched regional hierarchy for China, Japan, Italy, India, Thailand, Mexico, Türkiye, Korea, Vietnam, France, and Spain. Restaurants without sufficient regional evidence remain in an explicit unclassified branch. `scripts/normalize-osm.mjs` contains the municipal-boundary filter, national cuisine normalization, exclusions, and de-duplication rules. Data is © OpenStreetMap contributors and available under the ODbL.
+The generated snapshot lives in `data/munich-restaurants.js`; `data/munich-regional-cuisine-taxonomy.json` supplies the researched regional hierarchy for China, Japan, Italy, India, Thailand, Mexico, Türkiye, Korea, Vietnam, France, and Spain. Evidence-backed Munich assignments are applied by the China and rich-cuisine editorial override modules. Regional identity requires either an explicit first-party claim or a restaurant centered on an iconic dish with well-established regional provenance; a dish merely appearing on a broad menu is not enough. Restaurants without sufficient evidence remain in the visible `National` category. `scripts/normalize-osm.mjs` contains the municipal-boundary filter, national cuisine normalization, exclusions, and de-duplication rules. Data is © OpenStreetMap contributors and available under the ODbL.
 
 ## Interaction model
 

@@ -1,9 +1,22 @@
 import { readFile } from "node:fs/promises";
 
-import { restaurants } from "../data/munich-restaurants.js";
+import {
+  datasetMeta,
+  regionTaxonomy,
+  restaurants,
+} from "../data/munich-restaurants.js";
+import {
+  applyMunichChinaEditorialUpdate,
+  applyMunichChinaTaxonomyUpdate,
+} from "../data/munich-china-editorial-overrides.js";
+import { applyMunichRichCuisineTaxonomyUpdate } from "../data/munich-rich-cuisine-editorial-overrides.js";
 
 const taxonomyUrl = new URL("../data/munich-regional-cuisine-taxonomy.json", import.meta.url);
 const taxonomy = JSON.parse(await readFile(taxonomyUrl, "utf8"));
+applyMunichChinaEditorialUpdate({ datasetMeta, regionTaxonomy, restaurants });
+applyMunichChinaTaxonomyUpdate(taxonomy, restaurants);
+applyMunichRichCuisineTaxonomyUpdate(taxonomy, restaurants);
+
 const sourceById = new Map(restaurants.map((restaurant) => [restaurant.id, restaurant]));
 const assignedRestaurantIds = new Set();
 const errors = [];
