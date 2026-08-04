@@ -11,9 +11,10 @@
   --africa: #111111;
   --asia: #f4c300;
   --oceania: #009f3d;
-  --sans: "Manrope", system-ui, sans-serif;
-  --serif: "Newsreader", Georgia, serif;
-  --mono: "DM Mono", monospace;
+  --display: "Jersey 10", Impact, sans-serif;
+  --sans: "Atkinson Hyperlegible", Arial, sans-serif;
+  --serif: var(--display);
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -109,13 +110,13 @@ a:focus-visible,
   border: 1px solid var(--ink);
   border-radius: 50%;
   font-family: var(--serif);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .edition,
 .about-button {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -176,7 +177,7 @@ a:focus-visible,
 .eyebrow {
   margin: 0;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.4;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -229,7 +230,7 @@ h1 {
 
 .stage-index button span {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .stage-index button[aria-current="step"] {
@@ -240,14 +241,14 @@ h1 {
 .stage-index button[aria-current="step"]::after {
   justify-self: end;
   content: "●";
-  font-size: 6px;
+  font-size: 11px;
 }
 
 .data-note {
   margin: 0;
   color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.6;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -281,7 +282,7 @@ h1 {
   gap: 18px;
   align-items: center;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -461,7 +462,7 @@ h1 {
 .treemap-label span {
   overflow: hidden;
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 11px;
   line-height: 1.25;
   letter-spacing: 0.06em;
   opacity: 0.76;
@@ -476,7 +477,7 @@ h1 {
 .treemap-node.kind-region .treemap-label strong { font-size: var(--label-font-size, 17px); overflow-wrap: anywhere; word-break: normal; }
 .treemap-node.kind-region.is-zero-count .treemap-label strong { font-size: var(--label-font-size, 16px); line-height: 1.08; }
 .treemap-node.kind-restaurant .treemap-label { justify-content: center; gap: 0; padding: 4px 5px; text-align: center; }
-.treemap-node.kind-restaurant .treemap-label strong { font-family: var(--sans); font-size: var(--label-font-size, 9px); line-height: 1.08; letter-spacing: 0; -webkit-line-clamp: 3; }
+.treemap-node.kind-restaurant .treemap-label strong { font-family: var(--sans); font-size: var(--label-font-size, 11px); line-height: 1.08; letter-spacing: 0; -webkit-line-clamp: 3; }
 .treemap-node.label-compact .treemap-label {
   gap: 0;
   padding: 5px 6px;
@@ -507,7 +508,7 @@ h1 {
 .treemap-header-label em {
   color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 11px;
   font-style: normal;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -526,7 +527,7 @@ h1 {
   gap: 8px;
   text-align: center;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -568,7 +569,7 @@ h1 {
 .planned-status {
   color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -592,7 +593,7 @@ h1 {
   color: var(--paper);
   cursor: pointer;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-decoration: none;
   text-transform: uppercase;
@@ -629,7 +630,7 @@ h1 {
   color: var(--ink-soft);
   text-align: right;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
@@ -656,7 +657,7 @@ h1 {
 .metric-row {
   margin: 0;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
@@ -683,7 +684,7 @@ h1 {
   width: max-content;
   color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-underline-offset: 3px;
   text-transform: uppercase;
@@ -767,7 +768,7 @@ h1 {
 
 .coordinate-cluster > span {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: -0.04em;
 }
 
@@ -789,7 +790,7 @@ h1 {
   padding: 7px 8px;
   background: rgba(242, 239, 232, 0.93);
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -803,7 +804,7 @@ h1 {
   padding: 0 28px;
   border-top-width: 1px;
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -877,7 +878,7 @@ h1 {
   background: var(--ink);
   color: var(--paper);
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   opacity: 0;
   pointer-events: none;
@@ -1007,6 +1008,329 @@ h1 {
   }
 
   .semantic-layer { view-transition-name: none; }
+}
+
+/* Home redesign: the world is a field of metropolitan food cultures. */
+.home-world-view .scene {
+  background: #e9e4da;
+}
+
+.home-world-atlas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: #e9e4da;
+  background-image:
+    linear-gradient(rgba(29, 33, 31, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 33, 31, 0.045) 1px, transparent 1px);
+  background-size: var(--home-grid-size, 7px) var(--home-grid-size, 7px);
+  background-position: var(--home-grid-x, 0) var(--home-grid-y, 0);
+}
+
+.home-world-heading {
+  position: absolute;
+  z-index: 6;
+  top: 28px;
+  left: 34px;
+  width: min(430px, calc(100% - 68px));
+  pointer-events: none;
+}
+
+.home-world-kicker,
+.home-world-heading > p:last-child,
+.home-world-status,
+.home-world-legend,
+.home-city-snapshot p,
+.home-city-snapshot span,
+.home-city-meta {
+  font-family: var(--mono);
+}
+
+.home-world-kicker {
+  margin: 0 0 12px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-world-heading h1 {
+  max-width: none;
+  margin: 0;
+  font-family: var(--display);
+  font-size: 56px;
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.home-world-heading > p:last-child {
+  max-width: 360px;
+  margin: 17px 0 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.55;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.home-world-map {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  cursor: grab;
+  touch-action: none;
+}
+
+.home-world-map.is-panning { cursor: grabbing; }
+
+.home-world-pixels {
+  shape-rendering: crispEdges;
+}
+
+.home-world-pixel-country { fill: #cec7b9; }
+.home-world-pixel-country[data-tone="1"] { fill: #c8c1b4; }
+.home-world-pixel-country[data-tone="2"] { fill: #d2cbbe; }
+.home-world-pixel-country[data-tone="3"] { fill: #c5beb1; }
+
+.home-world-repeats { pointer-events: none; }
+
+.home-city-leaders line {
+  stroke: rgba(29, 33, 31, 0.36);
+  stroke-width: 0.75;
+  stroke-dasharray: 2 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-city-node {
+  cursor: pointer;
+  outline: none;
+}
+
+.home-city-halo {
+  fill: rgba(242, 239, 232, 0.62);
+  stroke: rgba(29, 33, 31, 0.18);
+  stroke-width: 0.7;
+  vector-effect: non-scaling-stroke;
+  transition: fill 180ms ease, stroke 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-city-node.is-preview .home-city-halo {
+  fill: rgba(242, 239, 232, 0.25);
+  stroke-dasharray: 2.5 2;
+}
+
+.home-city-core {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  transition: fill 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-city-node.is-available .home-city-core { fill: var(--ink); }
+.home-city-node.is-preview .home-city-core { fill: var(--paper); stroke-dasharray: 2.5 1.5; }
+
+.home-city-continent-ring path {
+  opacity: 0.84;
+  stroke: #e9e4da;
+  stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-city-node.is-preview .home-city-continent-ring path { opacity: 0.52; }
+
+.home-city-node:hover .home-city-halo,
+.home-city-node:focus-visible .home-city-halo,
+.home-city-node.is-selected .home-city-halo {
+  fill: rgba(242, 239, 232, 0.86);
+  stroke: var(--ink);
+  transform: scale(1.08);
+}
+
+.home-city-node:hover .home-city-core,
+.home-city-node:focus-visible .home-city-core,
+.home-city-node.is-selected .home-city-core { transform: scale(1.16); }
+
+.home-city-name,
+.home-city-meta {
+  paint-order: stroke;
+  stroke: rgba(242, 239, 232, 0.96);
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.home-city-name {
+  fill: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 700;
+  stroke-width: 3px;
+}
+
+.home-city-meta {
+  fill: var(--ink-soft);
+  font-size: 11px;
+  stroke-width: 2.4px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.home-world-legend {
+  position: absolute;
+  z-index: 7;
+  top: 28px;
+  right: 30px;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 9px 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(29, 33, 31, 0.34);
+  background: rgba(242, 239, 232, 0.9);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-world-legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.home-world-legend i {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.legend-node-solid { border: 1px solid var(--ink); background: var(--ink); }
+.legend-node-outline { border: 1px dashed var(--ink); background: var(--paper); }
+.legend-node-halo { border: 1px solid rgba(29, 33, 31, 0.24); background: rgba(242, 239, 232, 0.62); }
+.legend-node-ring { border: 3px solid var(--europe); border-right-color: var(--asia); border-bottom-color: var(--americas); background: transparent; }
+
+.home-city-snapshot {
+  position: absolute;
+  z-index: 7;
+  right: 30px;
+  bottom: 28px;
+  width: min(330px, calc(100% - 60px));
+  min-height: 112px;
+  padding: 15px 17px;
+  border: 1px solid rgba(29, 33, 31, 0.42);
+  background: rgba(242, 239, 232, 0.94);
+  pointer-events: none;
+}
+
+.home-city-snapshot p {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-city-snapshot strong {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.home-city-snapshot span {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.home-world-status {
+  position: absolute;
+  z-index: 7;
+  left: 30px;
+  bottom: 27px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-map-controls {
+  position: absolute;
+  z-index: 9;
+  left: 30px;
+  bottom: 48px;
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  border: 1px solid rgba(29, 33, 31, 0.42);
+  background: rgba(242, 239, 232, 0.94);
+}
+
+.home-map-controls button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid rgba(29, 33, 31, 0.24);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.home-map-controls button:last-child { border-right: 0; }
+.home-map-controls button:hover,
+.home-map-controls button:focus-visible { background: var(--ink); color: var(--paper); }
+
+.city-world-back {
+  position: absolute;
+  z-index: 100;
+  top: 12px;
+  left: 12px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: rgba(242, 239, 232, 0.96);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 18px;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 14px rgba(29, 33, 31, 0.1);
+}
+
+.city-world-back:hover,
+.city-world-back:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.has-city-back .map-breadcrumbs { left: 66px; }
+
+@media (max-width: 720px) {
+  .home-world-heading { top: 20px; left: 18px; width: calc(100% - 36px); }
+  .home-world-heading h1 { font-size: 56px; }
+  .home-world-heading > p:last-child { display: none; }
+  .home-world-legend { top: auto; right: 16px; bottom: 16px; grid-template-columns: 1fr 1fr; gap: 7px 12px; }
+  .home-city-snapshot { right: 16px; bottom: 92px; width: calc(100% - 32px); min-height: 98px; }
+  .home-world-status { display: none; }
+  .home-map-controls { left: 16px; bottom: 16px; }
+  .home-city-name { font-size: 15px; }
+  .city-world-back { top: 10px; left: 10px; width: 40px; height: 40px; }
+  .has-city-back .map-breadcrumbs { top: 58px; left: 10px; max-width: calc(100% - 20px); }
 }
 
 /* Treemap-first presentation: keep the visualization and its own drill header only. */
@@ -1191,7 +1515,7 @@ body {
 .breadcrumb-separator {
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .metropolitan-gallery {
@@ -1264,7 +1588,7 @@ body {
   overflow: hidden;
   color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -1420,7 +1744,7 @@ body {
   margin-top: 7px;
   color: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
@@ -1521,7 +1845,7 @@ body {
 .flag-count {
   fill: var(--ink);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   paint-order: stroke;
   stroke: var(--paper);
@@ -1544,7 +1868,7 @@ body {
   border-top: 1px solid var(--line-strong);
   background: rgba(242, 239, 232, 0.9);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -1608,7 +1932,7 @@ body {
 .cuisine-count {
   fill: var(--ink-soft);
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1650,7 +1974,7 @@ body {
 
 .cuisine-drawer-heading p > span { font-size: 30px; }
 .cuisine-drawer-heading strong { font-family: var(--serif); font-size: 24px; font-weight: 500; }
-.cuisine-drawer-heading small { color: var(--ink-soft); font-family: var(--mono); font-size: 8px; text-transform: uppercase; }
+.cuisine-drawer-heading small { color: var(--ink-soft); font-family: var(--mono); font-size: 11px; text-transform: uppercase; }
 
 .cuisine-drawer-heading button {
   width: 38px;
@@ -1693,7 +2017,7 @@ body {
 .restaurant-ribbon a:focus-visible { background: var(--paper-deep); }
 .restaurant-ribbon a > span { grid-row: 1 / 3; align-self: center; font-size: 25px; }
 .restaurant-ribbon strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.restaurant-ribbon small { overflow: hidden; color: var(--ink-soft); font-family: var(--mono); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.restaurant-ribbon small { overflow: hidden; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 
 .empty-cuisine {
   margin: 0;
@@ -1723,7 +2047,7 @@ body {
 
 .dev-visualization-menu > span {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1737,7 +2061,7 @@ body {
   color: var(--paper);
   cursor: pointer;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.03em;
 }
 
@@ -1809,7 +2133,7 @@ body {
 
 .dev-treemap-label span {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -1839,7 +2163,7 @@ body {
 .treemap-leaf-drawer > span { grid-row: 1 / 3; font-size: 28px; }
 .treemap-leaf-drawer strong { font-family: var(--serif); font-size: 20px; font-weight: 500; }
 .treemap-leaf-drawer small { grid-column: 2; overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
-.treemap-leaf-drawer a { grid-column: 3; grid-row: 1 / 3; font-family: var(--mono); font-size: 8px; text-transform: uppercase; }
+.treemap-leaf-drawer a { grid-column: 3; grid-row: 1 / 3; font-family: var(--mono); font-size: 11px; text-transform: uppercase; }
 
 .cartogram-view,
 .regional-cartogram-view {
@@ -1976,8 +2300,8 @@ body {
 }
 
 .grid-cartogram-flag { font-size: 19px; stroke-width: 1px !important; }
-.grid-cartogram-name { font-family: var(--sans); font-size: 8.5px; font-weight: 550; letter-spacing: 0.01em; }
-.grid-cartogram-count { font-family: var(--mono); font-size: 7px; opacity: 0.9; }
+.grid-cartogram-name { font-family: var(--sans); font-size: 11px; font-weight: 550; letter-spacing: 0.01em; }
+.grid-cartogram-count { font-family: var(--mono); font-size: 11px; opacity: 0.9; }
 
 .cartogram-country {
   cursor: pointer;
@@ -2022,8 +2346,8 @@ body {
 }
 
 .cartogram-flag { font-size: 23px; stroke-width: 1px !important; }
-.cartogram-name { font-family: var(--sans); font-size: 9.5px; font-weight: 550; letter-spacing: 0.01em; }
-.cartogram-count { font-family: var(--mono); font-size: 7px; opacity: 0.9; }
+.cartogram-name { font-family: var(--sans); font-size: 11px; font-weight: 550; letter-spacing: 0.01em; }
+.cartogram-count { font-family: var(--mono); font-size: 11px; opacity: 0.9; }
 
 .svg-balloon-view {
   background: #34465e;
@@ -2078,14 +2402,14 @@ body {
 
 .svg-balloon-name {
   font-family: var(--sans);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   stroke-width: 2.5px;
 }
 
 .svg-balloon-count {
   font-family: var(--mono);
-  font-size: 7px;
+  font-size: 11px;
   stroke-width: 2px;
 }
 
@@ -2131,8 +2455,8 @@ body {
 }
 
 .regional-territory-emoji { stroke-width: 1px !important; }
-.regional-territory-name { font-family: var(--sans); font-size: 10px; font-weight: 500; }
-.regional-territory-count { font-family: var(--mono); font-size: 8px; }
+.regional-territory-name { font-family: var(--sans); font-size: 11px; font-weight: 500; }
+.regional-territory-count { font-family: var(--mono); font-size: 11px; }
 
 .regional-cartogram-view .cuisine-drawer { bottom: 64px; color: var(--ink); }
 
@@ -2256,8 +2580,8 @@ body {
 }
 
 .grid-cartogram-flag { font-size: 13px; stroke-width: 1.4px !important; }
-.grid-cartogram-name { font-family: inherit; font-size: 7.5px; font-weight: 500; letter-spacing: -0.01em; }
-.grid-cartogram-count { fill: var(--atlas-print-soft) !important; font-family: inherit; font-size: 6.5px; opacity: 1; }
+.grid-cartogram-name { font-family: inherit; font-size: 11px; font-weight: 500; letter-spacing: -0.01em; }
+.grid-cartogram-count { fill: var(--atlas-print-soft) !important; font-family: inherit; font-size: 11px; opacity: 1; }
 
 .grid-cartogram-view .map-legend,
 .regional-cartogram-view .map-legend {
@@ -2504,7 +2828,7 @@ body {
 
 .editorial-country-meta {
   fill: var(--atlas-ink-soft) !important;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.02em;
   stroke-width: 2.5px;
@@ -2519,7 +2843,7 @@ body {
   gap: 18px;
   margin: 0;
   color: var(--atlas-ink-soft);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.01em;
 }
 
@@ -2605,7 +2929,7 @@ body {
 
 .editorial-cuisine-emoji { font-size: 26px; stroke-width: 1px !important; }
 .editorial-cuisine-name { font-size: 11px; font-weight: 500; }
-.editorial-cuisine-count { fill: var(--atlas-ink-soft) !important; font-size: 8px; stroke-width: 2px !important; }
+.editorial-cuisine-count { fill: var(--atlas-ink-soft) !important; font-size: 11px; stroke-width: 2px !important; }
 .editorial-country-view .cuisine-drawer { bottom: 50px; color: var(--atlas-ink); }
 
 @keyframes editorial-continent-float {
@@ -2648,10 +2972,10 @@ body {
   .emoji-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 220px; }
   .map-heading { top: 64px; }
   .map-heading p { font-size: 26px; }
-  .map-heading > span { font-size: 8px; }
+  .map-heading > span { font-size: 11px; }
   .map-breadcrumbs { max-width: calc(100% - 24px); overflow-x: auto; }
-  .map-breadcrumbs button { font-size: 10px; }
-  .map-legend { font-size: 8px; }
+  .map-breadcrumbs button { font-size: 11px; }
+  .map-legend { font-size: 11px; }
   .legend-action { display: none; }
   .cuisine-drawer-heading small { display: none; }
   .dev-visualization-menu { right: 8px; bottom: 58px; grid-template-columns: 1fr; gap: 2px; }
@@ -2661,7 +2985,7 @@ body {
   .treemap-leaf-drawer { right: 8px; left: 8px; bottom: 104px; max-width: none; }
   .editorial-atlas-heading { top: 68px; left: 16px; }
   .editorial-atlas-heading h2 { font-size: 40px; }
-  .editorial-atlas-heading .editorial-atlas-kicker { font-size: 9px; }
+  .editorial-atlas-heading .editorial-atlas-kicker { font-size: 11px; }
   .editorial-atlas-heading > p:last-child { font-size: 11px; }
   .editorial-atlas-legend { right: 12px; bottom: 18px; }
   .editorial-atlas-legend span:not(:first-child) { display: none; }
@@ -2672,6 +2996,76 @@ body {
   .emoji-gallery { grid-template-columns: 1fr; grid-auto-rows: 240px; }
   .map-heading p { font-size: 22px; }
   .map-heading > span { max-width: 280px; }
-  .cuisine-name { font-size: 10px; }
+  .cuisine-name { font-size: 11px; }
   .cuisine-drawer-heading strong { font-size: 19px; }
+}
+
+/* GastroGlobe type system: one display, reading, and data voice. */
+h1,
+.home-world-heading h1 {
+  font-family: var(--display);
+  font-size: 56px;
+  font-weight: 400;
+}
+
+.place-number {
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.selection-name strong,
+.cuisine-drawer-heading strong,
+.treemap-leaf-drawer strong,
+.map-heading p,
+.editorial-atlas-heading h2 {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.home-city-name,
+.cuisine-name,
+.regional-territory-name,
+.grid-cartogram-name,
+.cartogram-name,
+.editorial-cuisine-name {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.restaurant-ribbon strong,
+.treemap-node.kind-restaurant .treemap-label strong,
+.dev-treemap-cell.kind-restaurant .dev-treemap-label strong {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.eyebrow,
+.edition,
+.data-note,
+.stage-caption,
+.coordinates,
+.metric-label,
+.metric-row,
+.rail-source,
+.home-world-kicker,
+.home-world-heading > p:last-child,
+.home-world-status,
+.home-world-legend,
+.home-city-snapshot p,
+.home-city-snapshot span,
+.home-city-meta,
+.restaurant-ribbon small,
+.cuisine-count,
+.regional-territory-count,
+.grid-cartogram-count,
+.cartogram-count,
+.editorial-cuisine-count {
+  font-family: var(--mono);
+  font-size: 11px;
 }

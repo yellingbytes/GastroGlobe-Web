@@ -5,7 +5,7 @@
 <title>Munich Eats the World — a cuisine cartogram</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=Jersey+10&display=swap" rel="stylesheet" />
 <script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
 <style>
@@ -16,21 +16,27 @@
     --ink-soft: #5c5449;
     --ink-faint: #8c7f68;
     --rule: #cfc5b0;
+    --display: 'Jersey 10', Impact, sans-serif;
+    --body: 'Atkinson Hyperlegible', Arial, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
   }
   * { box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--paper); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; }
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; }
   a { color: #8c4a3f; text-decoration: none; }
   a:hover { color: var(--ink); }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: #c9bda6; border-radius: 8px; }
-  #app { position: absolute; top: 0; left: 0; width: 1680px; min-height: 1040px; display: grid; grid-template-columns: minmax(0, 1fr) 420px; transform-origin: top left; }
-  #left { padding: 30px 26px 26px 38px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-faint); }
-  h1 { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 56px; line-height: 0.95; margin: 6px 0 0; letter-spacing: -0.5px; }
-  #head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
+  #app { position: fixed; inset: 0; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+  #left { position: absolute; inset: 0; min-width: 0; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); }
+  h1 { font-family: var(--display); font-weight: 400; font-size: 56px; line-height: 0.95; margin: 6px 0 0; letter-spacing: 0; }
+  #head { display: none; }
   #mapwrap {
-    position: relative;
-    border: 1px solid var(--ink);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    border: 0;
     background-color: #f2ede3;
     background-image:
       linear-gradient(to right, rgba(140,127,104,0.18) 1px, transparent 1px),
@@ -42,15 +48,23 @@
     cursor: grab;
   }
   #mapwrap.is-panning { cursor: grabbing; }
-  #mapscene { position: relative; width: 100%; transform-origin: 0 0; will-change: transform; }
-  #cv { display: block; width: 100%; height: auto; }
+  #mapscene { position: relative; width: 100%; flex: none; transform-origin: 0 0; will-change: transform; }
+  #cv {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: transparent;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
   #labels { position: absolute; inset: 0; pointer-events: none; }
   .lab {
     position: absolute;
     white-space: nowrap;
     color: #1c1a16;
-    font-size: 12px;
-    font-weight: 600;
+    font-family: var(--body);
+    font-size: 15px;
+    font-weight: 700;
     text-shadow:
       -1px -1px 0 rgba(247,244,236,0.96),
        1px -1px 0 rgba(247,244,236,0.96),
@@ -60,8 +74,8 @@
   }
   .lab-out { color: inherit; font: inherit; }
   .lab-out.halo { background: rgba(244,240,230,0.92); box-shadow: 0 0 0 2px rgba(244,240,230,0.92); }
-  .lab-out span { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 500; color: #51493d; margin-left: 4px; }
-  #legend-control { position: absolute; left: 18px; top: 18px; z-index: 5; transform-origin: top left; pointer-events: none; }
+  .lab-out span { font-family: var(--mono); font-size: 11px; font-weight: 600; color: #51493d; margin-left: 4px; }
+  #legend-control { position: absolute; left: 18px; top: auto; bottom: 18px; z-index: 8; transform-origin: bottom left; pointer-events: none; }
   #legend-toggle {
     width: 38px;
     height: 38px;
@@ -72,7 +86,7 @@
     padding: 0;
     background: rgba(247,244,236,0.94);
     color: var(--ink);
-    font-family: 'Instrument Serif', serif;
+    font-family: var(--display);
     font-size: 21px;
     font-style: italic;
     line-height: 1;
@@ -85,7 +99,8 @@
   #key {
     position: absolute;
     left: 0;
-    top: 48px;
+    top: auto;
+    bottom: 48px;
     width: 224px;
     border: 1px solid #c4b9a3;
     background: rgba(247,244,236,0.96);
@@ -100,44 +115,46 @@
     pointer-events: none;
   }
   #legend-control.is-open #key { opacity: 1; visibility: visible; transform: translateY(0); }
-  #key .kt { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-faint); }
+  #key .kt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
   #key .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
-  .kk { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+  .kk { display: flex; align-items: center; gap: 7px; font-size: 14px; }
   .kk i { width: 13px; height: 13px; border: 1px solid var(--ink); display: block; }
-  #tip { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 12.5px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
+  #tip { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
   #tip b { font-weight: 600; }
-  #tip s { text-decoration: none; font-family: 'IBM Plex Mono', monospace; color: #d8c9a8; margin-left: 8px; }
-  #ctrls { display: flex; align-items: center; gap: 18px; font-size: 12px; color: var(--ink-soft); }
+  #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
+  #ctrls { display: none; }
   #ctrls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  #ghost-control[hidden] { display: none !important; }
-  aside { background: var(--paper-2); border-left: 2px solid var(--ink); padding: 30px 28px 26px; display: flex; flex-direction: column; gap: 16px; height: 1040px; position: sticky; top: 0; }
+  #ghost-control { display: none !important; }
+  aside { position: absolute; z-index: 9; top: 0; right: 0; bottom: 0; width: min(420px, 34vw); background: rgba(229,222,206,0.97); border-left: 2px solid var(--ink); padding: 30px 28px 26px; display: none; flex-direction: column; gap: 16px; height: 100%; box-shadow: -10px 0 30px rgba(35,32,27,0.12); }
+  body.country-detail-open aside { display: flex; }
   .stats { display: flex; gap: 24px; }
-  .stat b { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 38px; line-height: 1; display: block; }
-  .stat span { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
+  .stat b { font-family: var(--mono); font-weight: 600; font-size: 30px; line-height: 1; display: block; }
+  .stat span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
   .sec { border-top: 1px solid var(--rule); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
-  .sec h2 { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); font-weight: 400; margin: 0; }
+  .sec h2 { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; margin: 0; }
   #rank { overflow-y: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; padding-right: 4px; }
   .row { display: grid; grid-template-columns: 20px 1fr 34px; align-items: center; gap: 9px; cursor: pointer; padding: 3px 4px; border-radius: 2px; }
   .row:hover, .row.on { background: var(--paper); }
-  .row .nm { font-size: 12.5px; display: block; margin-bottom: 3px; }
+  .row .nm { font-size: 15px; font-weight: 400; display: block; margin-bottom: 3px; }
   .row .bar { display: block; height: 6px; border: 0.5px solid rgba(35,32,27,0.35); }
-  .row .ct { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; text-align: right; color: var(--ink-soft); }
+  .row .ct { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; color: var(--ink-soft); }
   #detail { display: none; flex-direction: column; gap: 11px; min-height: 0; flex: 1; }
   #detail.on { display: flex; }
-  #detail .dh { font-family: 'Instrument Serif', serif; font-size: 29px; line-height: 1.05; }
-  #detail .ds { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+  #detail .dh { font-family: var(--display); font-size: 26px; line-height: 1.05; }
+  #detail .ds { font-size: 14px; color: var(--ink-soft); margin-top: 3px; }
   #detail .chips { display: flex; flex-wrap: wrap; gap: 5px; }
-  #detail .chip { font-size: 11.5px; background: var(--paper); border: 1px solid var(--rule); padding: 3px 8px; }
+  #detail .chip { font-size: 14px; background: var(--paper); border: 1px solid var(--rule); padding: 3px 8px; }
   #detail .list { overflow-y: auto; min-height: 0; flex: 1; border-top: 1px solid var(--rule); padding-top: 8px; }
-  #detail .li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--rule); font-size: 12.5px; }
-  #detail .li em { font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-faint); }
-  button.close { background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 9px; cursor: pointer; }
+  #detail .li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--rule); font-size: 15px; }
+  #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  button.close { background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 9px; cursor: pointer; }
   button.close:hover { border-color: var(--ink); color: var(--ink); }
-  footer { font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
+  footer { font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
   @media (max-width: 720px) {
-    #legend-control { left: 12px; top: 12px; }
+    #legend-control { left: 12px; bottom: 12px; }
     #legend-toggle { width: 44px; height: 44px; font-size: 23px; }
-    #key { top: 52px; width: 216px; max-width: calc(100vw - 24px); }
+    #key { top: auto; bottom: 52px; width: 216px; max-width: calc(100vw - 24px); }
+    aside { top: auto; width: 100%; height: min(46vh, 430px); border-top: 2px solid var(--ink); border-left: 0; }
   }
 </style>
 </head>
@@ -171,7 +188,7 @@
       <div id="tip"></div>
     </div>
     <div id="ctrls">
-      <label id="ghost-control"><input type="checkbox" id="ghost" /> show true world outline underneath</label>
+      <label id="ghost-control" hidden aria-hidden="true"><input type="checkbox" id="ghost" /> show true world outline underneath</label>
       <span id="status" style="color:var(--ink-faint)">building cartogram…</span>
     </div>
   </div>
@@ -241,7 +258,7 @@ const DATA = SOURCE_COUNTRIES
     country.restaurants.forEach((restaurant) => {
       const sourceRegionName = restaurant.region || 'National cuisine';
       const regionName = /national cuisine|uncategorized/i.test(sourceRegionName)
-        ? 'Uncategorized'
+        ? 'National'
         : sourceRegionName;
       if (!regionData.has(regionName)) {
         regionData.set(regionName, {
@@ -314,6 +331,7 @@ const state = {
   off: null,
   worldSnapshot: null,
   activeCountry: null,
+  nationalRegion: null,
   countryFeatures: new Map(),
   countryBackdrop: null,
   zoomBehavior: null
@@ -341,11 +359,10 @@ function mainlandFeature(id, feature, path) {
 
 function fitCartogramToFrame() {
   const app = el('app');
-  const scale = Math.max(0.1, Math.min(window.innerWidth / 1680, window.innerHeight / 1040));
-  app.style.left = Math.max(0, (window.innerWidth - 1680 * scale) / 2) + 'px';
-  app.style.transform = 'scale(' + scale + ')';
+  app.style.left = '0';
+  app.style.transform = 'none';
   const legend = el('legend-control');
-  if (legend) legend.style.transform = 'scale(' + (1 / scale) + ')';
+  if (legend) legend.style.transform = 'none';
 }
 fitCartogramToFrame();
 window.addEventListener('resize', fitCartogramToFrame);
@@ -553,16 +570,7 @@ function draw() {
   cv.width = W * dpr; cv.height = H * dpr;
   cv.style.width = '100%'; cv.style.height = 'auto';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#f2ede3';
-  ctx.fillRect(0, 0, W, H);
-
-  // graticule-ish grid
-  ctx.strokeStyle = '#e0d7c4';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = 0; x <= state.cols; x++) { ctx.moveTo(x * CELL + 0.5, 0); ctx.lineTo(x * CELL + 0.5, H); }
-  for (let y = 0; y <= state.rows; y++) { ctx.moveTo(0, y * CELL + 0.5); ctx.lineTo(W, y * CELL + 0.5); }
-  ctx.stroke();
+  ctx.imageSmoothingEnabled = false;
 
   // ghost of the real world, same projection, at true scale
   if (state.view === 'world' && state.ghost && state.land) {
@@ -580,6 +588,14 @@ function draw() {
   // legible as parts of a real country rather than isolated chart marks.
   if (state.view === 'country' && state.countryBackdrop) {
     ctx.drawImage(state.countryBackdrop.layer, 0, 0);
+    const nationalActive = state.nationalRegion &&
+      (state.hover === state.nationalRegion.id || state.sel === state.nationalRegion.id);
+    if (nationalActive) {
+      ctx.fillStyle = 'rgba(35, 32, 27, 0.09)';
+      for (const [x, y] of state.countryBackdrop.cells) {
+        ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+      }
+    }
   }
 
   for (const p of state.placed) {
@@ -588,8 +604,8 @@ function draw() {
     ctx.fillStyle = active ? (p.deepColor || c.deep) : (p.fillColor || c.fill);
     for (const [dx, dy] of p.cells) ctx.fillRect((p.ox + dx) * CELL, (p.oy + dy) * CELL, CELL, CELL);
     // inner square seams
-    ctx.strokeStyle = 'rgba(247,244,236,0.2)';
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = 'rgba(140,127,104,0.18)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     for (const [dx, dy] of p.cells) ctx.rect((p.ox + dx) * CELL + 0.5, (p.oy + dy) * CELL + 0.5, CELL - 1, CELL - 1);
     ctx.stroke();
@@ -824,8 +840,10 @@ function resetMapTransform() {
 }
 
 function renderCountryAtlas(country) {
+  document.body.classList.add('country-detail-open');
   const regions = country.regions;
-  const specific = regions.filter(region => !/national cuisine|uncategorized/i.test(region.name));
+  const national = regions.find(region => /national cuisine|uncategorized|^national$/i.test(region.name)) || null;
+  const specific = regions.filter(region => region !== national);
   const source = specific.length ? specific : regions;
   const minLng = d3.min(source, region => region.lng) ?? country.lng;
   const maxLng = d3.max(source, region => region.lng) ?? country.lng;
@@ -860,25 +878,18 @@ function renderCountryAtlas(country) {
     }
     countryBackdrop = rasteriseBackdrop(countryFeature, countryPath, cols, rows);
   }
-  const countryCenter = countryBackdrop?.centroid || [cols / 2, rows / 2];
-  const countryBounds = countryBackdrop?.bounds || [[cols * 0.2, rows * 0.12], [cols * 0.8, rows * 0.82]];
   const projectedAnchor = region => {
     if (!countryProjection) return null;
     const point = countryProjection([region.lng, region.lat]);
     if (!point || !point.every(Number.isFinite)) return null;
     return point;
   };
-  const items = regions.map((region, index) => {
-    const generic = /national cuisine|uncategorized/i.test(region.name);
+  const items = specific.map((region, index) => {
     const target = targetCellsForCount(region.count);
     const shape = pixelTerritory(target, index);
     const projected = projectedAnchor(region);
-    const idealCenterX = generic
-      ? countryCenter[0]
-      : projected?.[0] ?? cols * 0.22 + ((region.lng - minLng) / lngSpan) * cols * 0.56;
-    const idealCenterY = generic
-      ? Math.min(countryBounds[1][1] - shape.h / 2 - 3, countryCenter[1] + (countryBounds[1][1] - countryBounds[0][1]) * 0.17)
-      : projected?.[1] ?? rows * 0.18 + ((maxLat - region.lat) / latSpan) * rows * 0.48;
+    const idealCenterX = projected?.[0] ?? cols * 0.22 + ((region.lng - minLng) / lngSpan) * cols * 0.56;
+    const idealCenterY = projected?.[1] ?? rows * 0.18 + ((maxLat - region.lat) / latSpan) * rows * 0.48;
     const fillColor = regionColor(country.continent, index);
     return {
       ...region,
@@ -892,18 +903,32 @@ function renderCountryAtlas(country) {
       deepColor: d3.color(fillColor).darker(0.72).formatHex(),
       idealX: idealCenterX - shape.w / 2,
       idealY: idealCenterY - shape.h / 2,
-      lat: generic ? minLat - latSpan * 0.55 : region.lat,
-      lng: generic ? (minLng + maxLng) / 2 : region.lng
+      lat: region.lat,
+      lng: region.lng
     };
   }).sort((a, b) => b.cells.length - a.cells.length);
 
   const placed = pack(items, cols, rows, { continentZones: false });
   state.view = 'country';
   state.activeCountry = country;
+  state.nationalRegion = national;
   state.countryBackdrop = countryBackdrop;
   state.hover = null;
   state.sel = null;
   commitFixedLayout(placed, cols, rows);
+  if (national) {
+    state.itemById.set(national.id, {
+      ...national,
+      name: 'National',
+      regionName: 'National',
+      emoji: national.emoji || '◌',
+      continent: country.continent
+    });
+    for (const [x, y] of countryBackdrop?.cells || []) {
+      const offset = y * cols + x;
+      if (!state.lookup[offset]) state.lookup[offset] = national.id;
+    }
+  }
   el('map-eyebrow').textContent = 'A regional cuisine cartogram of Munich';
   el('map-title').textContent = country.flag + ' ' + country.name;
   el('ghost-control').hidden = true;
@@ -916,11 +941,13 @@ function renderCountryAtlas(country) {
 
 function restoreWorldAtlas() {
   if (!state.worldSnapshot) return;
+  document.body.classList.remove('country-detail-open');
   Object.assign(state, {
     view: 'world',
     sel: null,
     hover: null,
     activeCountry: null,
+    nationalRegion: null,
     countryBackdrop: null,
     placed: state.worldSnapshot.placed,
     lookup: state.worldSnapshot.lookup,
@@ -1045,15 +1072,18 @@ function attachPanZoom() {
   const scene = el('mapscene');
   const syncInfiniteGrid = ({ x, y, k }) => {
     const step = wrap.clientWidth / Math.max(1, state.cols) * k;
+    const sceneTop = (wrap.clientHeight - scene.offsetHeight) / 2;
+    const snap = value => Math.round(value * dpr) / dpr;
     wrap.style.backgroundSize = step + 'px ' + step + 'px';
-    wrap.style.backgroundPosition = x + 'px ' + y + 'px';
+    wrap.style.backgroundPosition = snap(x) + 'px ' + snap(sceneTop + y) + 'px';
   };
   const zoom = d3.zoom()
     .scaleExtent([1, 6])
     .on('start', () => wrap.classList.add('is-panning'))
     .on('zoom', event => {
       const { x, y, k } = event.transform;
-      scene.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) scale(' + k + ')';
+      const snap = value => Math.round(value * dpr) / dpr;
+      scene.style.transform = 'translate3d(' + snap(x) + 'px,' + snap(y) + 'px,0) scale(' + k + ')';
       syncInfiniteGrid(event.transform);
     })
     .on('end', () => wrap.classList.remove('is-panning'));
@@ -1146,6 +1176,7 @@ function attachLegendToggle() {
   };
 
   attachLegendToggle();
+  document.body.classList.remove('country-detail-open');
   draw();
   layoutLabels();
   draw();

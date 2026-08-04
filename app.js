@@ -85,20 +85,327 @@ function buildDataIndex() {
 }
 
 function renderGallery() {
+  document.body.classList.add("home-world-view");
+  scene.classList.remove("has-city-back");
   state.cityId = null;
   state.countryId = null;
   state.cuisineId = null;
   state.treeFocusId = null;
+  const width = Math.max(360, scene.clientWidth || window.innerWidth || 1200);
+  const height = Math.max(540, scene.clientHeight || window.innerHeight || 760);
+  const compact = width < 720;
+  const mapInset = compact ? 16 : 28;
+  const projection = d3.geoMercator()
+    .scale((width - mapInset * 2) / (Math.PI * 2))
+    .translate([width / 2, height * (compact ? 0.5 : 0.54)])
+    .clipExtent([[mapInset, compact ? 132 : 62], [width - mapInset, height - (compact ? 138 : 24)]]);
+  const cellSize = clamp(Math.round(width / 240), 3, 6);
+  const pixelWorld = rasterizePixelWorld(projection, width, height, cellSize);
+  const worldWidth = width - mapInset * 2;
+  const worldOffsets = [-worldWidth, 0, worldWidth];
+  const profiles = cityNodes.map((city) => metropolitanProfile(city));
+  const liveMaximum = d3.max(profiles, (profile) => profile.verifiedRestaurants) || 1;
+  const volumeScale = d3.scaleSqrt().domain([0, liveMaximum]).range(compact ? [6, 23] : [8, 29]);
+  const diversityScale = d3.scaleSqrt().domain([0, d3.max(profiles, (profile) => profile.cuisineDiversity) || 1]).range(compact ? [12, 32] : [16, 44]);
+  const cityItems = profiles.map((profile) => {
+    const anchor = projection([profile.city.data.lng, profile.city.data.lat]);
+    const coreRadius = profile.live ? volumeScale(profile.verifiedRestaurants) : compact ? 6 : 8;
+    const haloRadius = profile.live ? diversityScale(profile.cuisineDiversity) : compact ? 13 : 17;
+    return {
+      ...profile,
+      anchorX: anchor[0],
+      anchorY: anchor[1],
+      x: anchor[0],
+      y: anchor[1],
+      coreRadius,
+      haloRadius,
+    };
+  });
+  const simulation = d3.forceSimulation(cityItems)
+    .force("x", d3.forceX((item) => item.anchorX).strength(0.46))
+    .force("y", d3.forceY((item) => item.anchorY).strength(0.46))
+    .force("collide", d3.forceCollide((item) => item.haloRadius + (compact ? 22 : 32)).iterations(6))
+    .stop();
+  for (let index = 0; index < 220; index += 1) simulation.tick();
+  cityItems.forEach((item) => {
+    item.x = clamp(item.x, item.haloRadius + 34, width - item.haloRadius - 34);
+    item.y = clamp(item.y, compact ? 152 : item.haloRadius + 32, height - (compact ? 160 : item.haloRadius + 38));
+    if (!compact && item.x > width - 390) item.y = Math.min(item.y, height - 210);
+  });
+  const repeatedCityItems = worldOffsets.flatMap((worldOffset, repeatIndex) => cityItems.map((item) => ({
+    ...item,
+    worldOffset,
+    renderX: item.x + worldOffset,
+    repeatIndex: repeatIndex - 1,
+  })));
+
   scene.innerHTML = `
-    <section class="metropolitan-gallery semantic-layer emoji-gallery" aria-label="Metropolitan culinary maps">
-      ${cityNodes.map(cityCardMarkup).join("")}
-      ${devMenuMarkup()}
+    <section class="home-world-atlas semantic-layer" aria-label="World atlas of metropolitan food cultures">
+      <header class="home-world-heading">
+        <p class="home-world-kicker">GastroGlobe · Metropolitan food atlas</p>
+        <h1>A city contains<br />a miniature world.</h1>
+        <p>Choose a city to reveal the food cultures living inside it.</p>
+      </header>
+      <div class="home-world-legend" aria-label="Metropolitan node legend">
+        <span><i class="legend-node-solid"></i>Available</span>
+        <span><i class="legend-node-outline"></i>Preview</span>
+        <span><i class="legend-node-halo"></i>Cuisine diversity</span>
+        <span><i class="legend-node-ring"></i>Continent mix</span>
+      </div>
+      <svg class="home-world-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="home-world-title home-world-desc">
+        <title id="home-world-title">Metropolitan food cultures across the world</title>
+        <desc id="home-world-desc">A grid-contour Web Mercator world map, matching the flat projection used by Google Maps. Cities are the primary objects. Solid node size represents verified restaurant volume, transparent halo size represents cuisine diversity, and colored rings show continent composition.</desc>
+        <defs>
+          <g id="home-world-tile">
+            <g class="home-world-pixels">${pixelWorld.countries.map((country) => `<path class="home-world-pixel-country" data-tone="${country.index % 4}" d="${country.path}"></path>`).join("")}</g>
+          </g>
+        </defs>
+        <g class="home-world-zoom-layer">
+          <g class="home-world-repeats">${worldOffsets.map((offset) => `<use href="#home-world-tile" transform="translate(${offset},0)"></use>`).join("")}</g>
+          <g class="home-city-leaders"></g>
+          <g class="home-city-nodes"></g>
+        </g>
+      </svg>
+      <aside class="home-city-snapshot" aria-live="polite">
+        <p>City food snapshot</p>
+        <strong>Explore the atlas</strong>
+        <span>Hover a metropolitan node to compare coverage and cuisine diversity.</span>
+      </aside>
+      <div class="home-map-controls" aria-label="World map controls">
+        <button type="button" data-home-zoom="in" aria-label="Zoom in">＋</button>
+        <button type="button" data-home-zoom="out" aria-label="Zoom out">−</button>
+        <button type="button" data-home-zoom="reset" aria-label="Reset world map">⌂</button>
+      </div>
+      <p class="home-world-status">${cityNodes.length} metropolitan editions · ${profiles.filter((profile) => profile.live).length} verified dataset · Web Mercator</p>
     </section>
   `;
-  scene.querySelectorAll("[data-city-id]").forEach((button) => {
-    button.addEventListener("click", () => openCity(button.dataset.cityId));
+
+  const svg = d3.select(scene.querySelector(".home-world-map"));
+  svg.select(".home-city-leaders")
+    .selectAll("line")
+    .data(repeatedCityItems.filter((item) => Math.hypot(item.x - item.anchorX, item.y - item.anchorY) > 7))
+    .join("line")
+    .attr("x1", (item) => item.anchorX + item.worldOffset)
+    .attr("y1", (item) => item.anchorY)
+    .attr("x2", (item) => item.renderX)
+    .attr("y2", (item) => item.y);
+
+  const nodes = svg.select(".home-city-nodes")
+    .selectAll("g")
+    .data(repeatedCityItems, (item) => `${item.city.data.id}-${item.repeatIndex}`)
+    .join("g")
+    .attr("class", (item) => `home-city-node ${item.live ? "is-available" : "is-preview"}`)
+    .attr("transform", (item) => `translate(${item.renderX},${item.y})`)
+    .attr("data-city-id", (item) => item.city.data.id)
+    .attr("role", (item) => item.repeatIndex === 0 ? "button" : null)
+    .attr("tabindex", (item) => item.repeatIndex === 0 ? 0 : -1)
+    .attr("aria-hidden", (item) => item.repeatIndex === 0 ? null : "true")
+    .attr("aria-label", (item) => item.repeatIndex === 0 ? cityNodeAriaLabel(item) : null)
+    .on("click", (_, item) => activateMetropolitan(item))
+    .on("keydown", (event, item) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      activateMetropolitan(item);
+    })
+    .on("pointerenter focus", (_, item) => showMetropolitanSnapshot(item))
+    .on("pointerleave blur", () => resetMetropolitanSnapshot());
+
+  nodes.append("circle")
+    .attr("class", "home-city-halo")
+    .attr("r", (item) => item.haloRadius);
+  nodes.append("g")
+    .attr("class", "home-city-continent-ring")
+    .selectAll("path")
+    .data((item) => continentRingArcs(item))
+    .join("path")
+    .attr("d", (arc) => d3.arc().innerRadius(arc.radius).outerRadius(arc.radius + 3.2).startAngle(arc.startAngle).endAngle(arc.endAngle)())
+    .attr("fill", (arc) => CONTINENT_COLORS[arc.continent]);
+  nodes.append("circle")
+    .attr("class", "home-city-core")
+    .attr("r", (item) => item.coreRadius);
+  nodes.append("text")
+    .attr("class", "home-city-name")
+    .attr("text-anchor", "middle")
+    .attr("y", (item) => item.haloRadius + 20)
+    .text((item) => item.city.data.name);
+  nodes.append("text")
+    .attr("class", "home-city-meta")
+    .attr("text-anchor", "middle")
+    .attr("y", (item) => item.haloRadius + 34)
+    .text((item) => item.live ? `${item.verifiedRestaurants.toLocaleString("en")} verified` : "Preview");
+  bindHomeWorldZoom(svg, width, height, worldWidth, {
+    scale: compact ? 1.55 : 1.45,
+    focus: projection([-32, 18]),
   });
-  bindDevMenu();
+}
+
+function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
+  const layer = svg.select(".home-world-zoom-layer");
+  const atlas = scene.querySelector(".home-world-atlas");
+  const initialTransform = d3.zoomIdentity
+    .translate(width / 2 - initialView.focus[0] * initialView.scale, height / 2 - initialView.focus[1] * initialView.scale)
+    .scale(initialView.scale);
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .extent([[0, 0], [width, height]])
+    .translateExtent([[-worldWidth * 1000, 0], [worldWidth * 1000, height]])
+    .on("start", () => svg.classed("is-panning", true))
+    .on("zoom", (event) => {
+      const { k, x, y } = event.transform;
+      const period = worldWidth * k;
+      const wrappedX = ((x + period / 2) % period + period) % period - period / 2;
+      layer.attr("transform", `translate(${wrappedX},${y}) scale(${k})`);
+      layer.selectAll(".home-city-node")
+        .attr("transform", (item) => `translate(${item.renderX},${item.y}) scale(${1 / k})`);
+      const gridSize = 7 * k;
+      atlas.style.setProperty("--home-grid-size", `${gridSize}px`);
+      atlas.style.setProperty("--home-grid-x", `${wrappedX % gridSize}px`);
+      atlas.style.setProperty("--home-grid-y", `${y % gridSize}px`);
+    })
+    .on("end", () => svg.classed("is-panning", false));
+  svg.call(zoom).on("dblclick.zoom", null);
+  scene.querySelectorAll("[data-home-zoom]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.homeZoom;
+      if (action === "reset") svg.transition().duration(320).call(zoom.transform, initialTransform);
+      else svg.transition().duration(220).call(zoom.scaleBy, action === "in" ? 1.55 : 1 / 1.55);
+    });
+  });
+  svg.call(zoom.transform, initialTransform);
+}
+
+function rasterizePixelWorld(projection, width, height, cellSize) {
+  const columns = Math.ceil(width / cellSize);
+  const rows = Math.ceil(height / cellSize);
+  const canvas = document.createElement("canvas");
+  canvas.width = columns;
+  canvas.height = rows;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  context.imageSmoothingEnabled = false;
+  context.scale(1 / cellSize, 1 / cellSize);
+  const canvasPath = d3.geoPath(projection, context);
+  worldFeatures.forEach((feature, index) => {
+    const code = index + 1;
+    context.beginPath();
+    canvasPath(feature);
+    context.fillStyle = `rgb(${code & 255},${(code >> 8) & 255},${(code >> 16) & 255})`;
+    context.fill();
+  });
+  context.setTransform(1, 0, 0, 1, 0, 0);
+
+  const image = context.getImageData(0, 0, columns, rows).data;
+  const ownership = new Int16Array(columns * rows);
+  ownership.fill(-1);
+  const cellsByCountry = new Map();
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const offset = (row * columns + column) * 4;
+      if (image[offset + 3] < 96) continue;
+      const code = image[offset] + (image[offset + 1] << 8) + (image[offset + 2] << 16);
+      const countryIndex = code - 1;
+      if (countryIndex < 0 || countryIndex >= worldFeatures.length) continue;
+      ownership[row * columns + column] = countryIndex;
+      if (!cellsByCountry.has(countryIndex)) cellsByCountry.set(countryIndex, []);
+      cellsByCountry.get(countryIndex).push({ column, row });
+    }
+  }
+
+  const squareSize = Math.max(1, cellSize - 0.52);
+  const countries = [...cellsByCountry.entries()].map(([index, cells]) => ({
+    index,
+    path: cells.map(({ column, row }) => {
+      const x = column * cellSize;
+      const y = row * cellSize;
+      return `M${x},${y}h${squareSize}v${squareSize}h-${squareSize}Z`;
+    }).join(""),
+  }));
+  return { countries };
+}
+
+function metropolitanProfile(city) {
+  const live = Boolean(city.data.live);
+  if (live) {
+    const composition = Object.fromEntries(Object.keys(CONTINENT_COLORS).map((continent) => [continent, 0]));
+    countryNodes.forEach((country) => {
+      const continent = country.parent?.data.name;
+      if (continent in composition) composition[continent] += country.data.available;
+    });
+    return {
+      city,
+      live,
+      verifiedRestaurants: city.data.available,
+      cuisineDiversity: countryNodes.filter((country) => country.data.available > 0).length,
+      completeness: 1,
+      composition,
+      highlights: [...countryNodes].sort((a, b) => b.data.available - a.data.available).slice(0, 3).map((country) => `${country.data.flag} ${country.data.name}`),
+    };
+  }
+  const random = seededRandom(`home-${city.data.id}`);
+  const composition = Object.fromEntries(Object.keys(CONTINENT_COLORS).map((continent) => [continent, 0.18 + random()]));
+  return {
+    city,
+    live,
+    verifiedRestaurants: 0,
+    cuisineDiversity: 0,
+    completeness: 0,
+    composition,
+    highlights: [],
+  };
+}
+
+function continentRingArcs(profile) {
+  const entries = Object.entries(profile.composition).filter(([, value]) => value > 0);
+  const total = d3.sum(entries, ([, value]) => value) || 1;
+  let angle = -Math.PI / 2;
+  return entries.map(([continent, value]) => {
+    const startAngle = angle;
+    const endAngle = angle + (value / total) * Math.PI * 2;
+    angle = endAngle;
+    return { continent, startAngle, endAngle, radius: profile.haloRadius + 3 };
+  });
+}
+
+function cityNodeAriaLabel(profile) {
+  if (!profile.live) return `${profile.city.data.name}, preview edition, verification pending`;
+  return `${profile.city.data.name}, ${profile.verifiedRestaurants} verified restaurants across ${profile.cuisineDiversity} cuisine origins`;
+}
+
+function activateMetropolitan(profile) {
+  showMetropolitanSnapshot(profile);
+  if (profile.live) {
+    openCity(profile.city.data.id);
+    return;
+  }
+  scene.querySelectorAll(".home-city-node").forEach((node) => {
+    node.classList.toggle("is-selected", node.dataset.cityId === profile.city.data.id);
+  });
+}
+
+function showMetropolitanSnapshot(profile) {
+  const snapshot = scene.querySelector(".home-city-snapshot");
+  if (!snapshot) return;
+  if (!profile.live) {
+    snapshot.innerHTML = `<p>${escapeHtml(profile.city.data.country)} · Preview edition</p><strong>${escapeHtml(profile.city.data.name)}</strong><span>Outlined node · restaurant verification and cuisine coverage are pending.</span>`;
+    return;
+  }
+  const total = d3.sum(Object.values(profile.composition)) || 1;
+  const leadingContinents = Object.entries(profile.composition)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([continent, count]) => `${continent} ${Math.round(count / total * 100)}%`)
+    .join(" · ");
+  snapshot.innerHTML = `<p>${escapeHtml(profile.city.data.country)} · Available now</p><strong>${escapeHtml(profile.city.data.name)}</strong><span>${profile.verifiedRestaurants.toLocaleString("en")} verified restaurants · ${profile.cuisineDiversity} origins<br>${escapeHtml(leadingContinents)}<br>${profile.highlights.map(escapeHtml).join(" · ")}</span>`;
+}
+
+function resetMetropolitanSnapshot() {
+  const snapshot = scene.querySelector(".home-city-snapshot");
+  if (!snapshot) return;
+  const selectedCityId = scene.querySelector(".home-city-node.is-selected")?.dataset.cityId;
+  if (selectedCityId) {
+    const selectedCity = cityNodes.find((city) => city.data.id === selectedCityId);
+    if (selectedCity) return showMetropolitanSnapshot(metropolitanProfile(selectedCity));
+  }
+  snapshot.innerHTML = `<p>City food snapshot</p><strong>Explore the atlas</strong><span>Hover a metropolitan node to compare coverage and cuisine diversity.</span>`;
 }
 
 function cityCardMarkup(city) {
@@ -167,6 +474,7 @@ function seededRandom(value) {
 }
 
 function openCity(cityId) {
+  document.body.classList.remove("home-world-view");
   state.cityId = cityId;
   state.countryId = null;
   state.cuisineId = null;
@@ -175,18 +483,35 @@ function openCity(cityId) {
 }
 
 function renderCurrentVisualization() {
-  if (state.visualization === "treemap") return renderInteractiveTreemap();
+  let render;
+  if (state.visualization === "treemap") render = renderInteractiveTreemap;
   if (state.visualization === "cartogram") {
-    return state.countryId ? renderRegionalCartogram() : renderCuisineCartogram();
+    render = state.countryId ? renderRegionalCartogram : renderCuisineCartogram;
   }
   if (state.visualization === "balloon") {
-    return state.countryId ? renderRegionalCartogram() : renderSvgBalloonCartogram();
+    render = state.countryId ? renderRegionalCartogram : renderSvgBalloonCartogram;
   }
-  if (state.visualization === "claude") return renderClaudeEditorialCartogram();
+  if (state.visualization === "claude") render = renderClaudeEditorialCartogram;
   if (state.visualization === "atlas") {
-    return state.countryId ? renderEditorialCountryAtlas() : renderEditorialWorldAtlas();
+    render = state.countryId ? renderEditorialCountryAtlas : renderEditorialWorldAtlas;
   }
-  return state.countryId ? renderCountryMap() : renderWorldMap();
+  render ??= state.countryId ? renderCountryMap : renderWorldMap;
+  render();
+  ensureCityBackButton();
+}
+
+function ensureCityBackButton() {
+  if (!state.cityId) return;
+  scene.classList.add("has-city-back");
+  scene.querySelector(".city-world-back")?.remove();
+  const button = document.createElement("button");
+  button.className = "city-world-back";
+  button.type = "button";
+  button.innerHTML = `<span aria-hidden="true">←</span>`;
+  button.title = "World cities";
+  button.setAttribute("aria-label", "Back to the world city atlas");
+  button.addEventListener("click", () => transitionScene(renderGallery));
+  scene.appendChild(button);
 }
 
 function renderWorldMap() {
@@ -974,7 +1299,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame"
-          src="./experiments/claude-cartogram.html?v=dev-view-5k"
+          src="./experiments/claude-cartogram.html?v=country-grid-national-2"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
@@ -1606,8 +1931,8 @@ function buildGridCartogram(values, width, height) {
     item.labelY = item.displayArea >= 20 ? centroidY : item.seedY * 0.72 + centroidY * 0.28;
     item.showName = item.displayArea >= 4.5;
     item.showCount = item.displayArea >= 10;
-    item.labelFontSize = clamp(6 + Math.sqrt(item.displayArea) * 0.62, 8, 13);
-    item.nameFontSize = clamp(5.8 + Math.sqrt(item.displayArea) * 0.38, 6.5, 10.5);
+    item.labelFontSize = clamp(8 + Math.sqrt(item.displayArea) * 0.62, 11, 15);
+    item.nameFontSize = clamp(8 + Math.sqrt(item.displayArea) * 0.38, 11, 15);
   });
   relaxCartogramLabels(items, cellSize, columns, rows);
   window.__dbg = items.map((e) => ({
@@ -2749,8 +3074,8 @@ function buildRegionalCuisineCartogram(cuisines, country, feature, width, height
     item.labelName = regionalCuisineLabel(item.node.data.name, item.displayArea);
     item.showName = true;
     item.showCount = true;
-    item.labelFontSize = clamp(7 + Math.sqrt(item.displayArea) * 0.62, 9, 17);
-    item.nameFontSize = clamp(6.4 + Math.sqrt(item.displayArea) * 0.38, 7, 12);
+    item.labelFontSize = clamp(8 + Math.sqrt(item.displayArea) * 0.62, 11, 17);
+    item.nameFontSize = clamp(8 + Math.sqrt(item.displayArea) * 0.38, 11, 15);
   });
   relaxCartogramLabels(items, cellSize, columns, rows);
   return { items, columns, rows, cellSize, gridWidth, gridHeight, originX, originY, projection };
