@@ -1,4 +1,4 @@
-import { buildAtlasHierarchy, countries, datasetMeta, googleMapsUrl, metropolitanEditions } from "./restaurants.js?v=china-editorial-2026-08-02";
+import { buildAtlasHierarchy, countries, datasetMeta, googleMapsUrl, metropolitanEditions } from "./restaurants.js?v=navigation-experiment-1";
 
 const D3_URL = "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm";
@@ -104,32 +104,30 @@ function renderGallery() {
   const worldWidth = width - mapInset * 2;
   const worldOffsets = [-worldWidth, 0, worldWidth];
   const profiles = cityNodes.map((city) => metropolitanProfile(city));
-  const liveMaximum = d3.max(profiles, (profile) => profile.verifiedRestaurants) || 1;
-  const volumeScale = d3.scaleSqrt().domain([0, liveMaximum]).range(compact ? [6, 23] : [8, 29]);
-  const diversityScale = d3.scaleSqrt().domain([0, d3.max(profiles, (profile) => profile.cuisineDiversity) || 1]).range(compact ? [12, 32] : [16, 44]);
+  const wheelScale = d3.scaleSqrt()
+    .domain([0, d3.max(profiles, (profile) => profile.cuisineDiversity) || 1])
+    .range(compact ? [12, 32] : [16, 44]);
   const cityItems = profiles.map((profile) => {
     const anchor = projection([profile.city.data.lng, profile.city.data.lat]);
-    const coreRadius = profile.live ? volumeScale(profile.verifiedRestaurants) : compact ? 6 : 8;
-    const haloRadius = profile.live ? diversityScale(profile.cuisineDiversity) : compact ? 13 : 17;
+    const wheelRadius = profile.live ? wheelScale(profile.cuisineDiversity) * 0.5 : compact ? 6.5 : 8.5;
     return {
       ...profile,
       anchorX: anchor[0],
       anchorY: anchor[1],
       x: anchor[0],
       y: anchor[1],
-      coreRadius,
-      haloRadius,
+      wheelRadius,
     };
   });
   const simulation = d3.forceSimulation(cityItems)
     .force("x", d3.forceX((item) => item.anchorX).strength(0.46))
     .force("y", d3.forceY((item) => item.anchorY).strength(0.46))
-    .force("collide", d3.forceCollide((item) => item.haloRadius + (compact ? 22 : 32)).iterations(6))
+    .force("collide", d3.forceCollide((item) => item.wheelRadius + (compact ? 22 : 30)).iterations(6))
     .stop();
   for (let index = 0; index < 220; index += 1) simulation.tick();
   cityItems.forEach((item) => {
-    item.x = clamp(item.x, item.haloRadius + 34, width - item.haloRadius - 34);
-    item.y = clamp(item.y, compact ? 152 : item.haloRadius + 32, height - (compact ? 160 : item.haloRadius + 38));
+    item.x = clamp(item.x, item.wheelRadius + 34, width - item.wheelRadius - 34);
+    item.y = clamp(item.y, compact ? 152 : item.wheelRadius + 32, height - (compact ? 160 : item.wheelRadius + 38));
     if (!compact && item.x > width - 390) item.y = Math.min(item.y, height - 210);
   });
   const repeatedCityItems = worldOffsets.flatMap((worldOffset, repeatIndex) => cityItems.map((item) => ({
@@ -146,18 +144,16 @@ function renderGallery() {
         <h1>A city contains<br />a miniature world.</h1>
         <p>Choose a city to reveal the food cultures living inside it.</p>
       </header>
-      <div class="home-world-legend" aria-label="Metropolitan node legend">
-        <span><i class="legend-node-solid"></i>Available</span>
-        <span><i class="legend-node-outline"></i>Preview</span>
-        <span><i class="legend-node-halo"></i>Cuisine diversity</span>
-        <span><i class="legend-node-ring"></i>Continent mix</span>
+      <div class="home-world-legend" aria-label="Continent color legend">
+        ${Object.entries(CARTOGRAM_CONTINENT_COLORS).map(([continent, color]) => `<span><i style="--legend-color:${color}"></i>${continent}</span>`).join("")}
+        <span class="legend-city-wheel"><i></i>City wheel = cuisine mix</span>
       </div>
       <svg class="home-world-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="home-world-title home-world-desc">
         <title id="home-world-title">Metropolitan food cultures across the world</title>
-        <desc id="home-world-desc">A grid-contour Web Mercator world map, matching the flat projection used by Google Maps. Cities are the primary objects. Solid node size represents verified restaurant volume, transparent halo size represents cuisine diversity, and colored rings show continent composition.</desc>
+        <desc id="home-world-desc">A grid-contour Web Mercator world map using the same continent colors as the culinary city atlas. Compact city wheels show the continent composition of each metropolitan food culture.</desc>
         <defs>
           <g id="home-world-tile">
-            <g class="home-world-pixels">${pixelWorld.countries.map((country) => `<path class="home-world-pixel-country" data-tone="${country.index % 4}" d="${country.path}"></path>`).join("")}</g>
+            <g class="home-world-pixels">${pixelWorld.countries.map((country) => `<path class="home-world-pixel-country" data-tone="${country.index % 4}" data-continent="${country.continent}" style="--home-country-color:${CARTOGRAM_CONTINENT_COLORS[country.continent]}" d="${country.path}"></path>`).join("")}</g>
           </g>
         </defs>
         <g class="home-world-zoom-layer">
@@ -169,7 +165,7 @@ function renderGallery() {
       <aside class="home-city-snapshot" aria-live="polite">
         <p>City food snapshot</p>
         <strong>Explore the atlas</strong>
-        <span>Hover a metropolitan node to compare coverage and cuisine diversity.</span>
+        <span>Hover a metropolitan wheel to inspect its cuisine composition.</span>
       </aside>
       <div class="home-map-controls" aria-label="World map controls">
         <button type="button" data-home-zoom="in" aria-label="Zoom in">＋</button>
@@ -211,27 +207,24 @@ function renderGallery() {
     .on("pointerleave blur", () => resetMetropolitanSnapshot());
 
   nodes.append("circle")
-    .attr("class", "home-city-halo")
-    .attr("r", (item) => item.haloRadius);
+    .attr("class", "home-city-hit")
+    .attr("r", (item) => Math.max(15, item.wheelRadius + 4));
   nodes.append("g")
     .attr("class", "home-city-continent-ring")
     .selectAll("path")
     .data((item) => continentRingArcs(item))
     .join("path")
-    .attr("d", (arc) => d3.arc().innerRadius(arc.radius).outerRadius(arc.radius + 3.2).startAngle(arc.startAngle).endAngle(arc.endAngle)())
-    .attr("fill", (arc) => CONTINENT_COLORS[arc.continent]);
-  nodes.append("circle")
-    .attr("class", "home-city-core")
-    .attr("r", (item) => item.coreRadius);
+    .attr("d", (arc) => d3.arc().innerRadius(arc.innerRadius).outerRadius(arc.outerRadius).startAngle(arc.startAngle).endAngle(arc.endAngle)())
+    .attr("fill", (arc) => CARTOGRAM_CONTINENT_COLORS[arc.continent]);
   nodes.append("text")
     .attr("class", "home-city-name")
     .attr("text-anchor", "middle")
-    .attr("y", (item) => item.haloRadius + 20)
+    .attr("y", (item) => item.wheelRadius + 19)
     .text((item) => item.city.data.name);
   nodes.append("text")
     .attr("class", "home-city-meta")
     .attr("text-anchor", "middle")
-    .attr("y", (item) => item.haloRadius + 34)
+    .attr("y", (item) => item.wheelRadius + 33)
     .text((item) => item.live ? `${item.verifiedRestaurants.toLocaleString("en")} verified` : "Preview");
   bindHomeWorldZoom(svg, width, height, worldWidth, {
     scale: compact ? 1.55 : 1.45,
@@ -284,11 +277,16 @@ function rasterizePixelWorld(projection, width, height, cellSize) {
   context.imageSmoothingEnabled = false;
   context.scale(1 / cellSize, 1 / cellSize);
   const canvasPath = d3.geoPath(projection, context);
+  const countryIndexByColor = new Map();
   worldFeatures.forEach((feature, index) => {
     const code = index + 1;
+    const red = (code * 67 + 17) % 251;
+    const green = (code * 131 + 31) % 251;
+    const blue = (code * 197 + 47) % 251;
+    countryIndexByColor.set(`${red},${green},${blue}`, index);
     context.beginPath();
     canvasPath(feature);
-    context.fillStyle = `rgb(${code & 255},${(code >> 8) & 255},${(code >> 16) & 255})`;
+    context.fillStyle = `rgb(${red},${green},${blue})`;
     context.fill();
   });
   context.setTransform(1, 0, 0, 1, 0, 0);
@@ -301,9 +299,8 @@ function rasterizePixelWorld(projection, width, height, cellSize) {
     for (let column = 0; column < columns; column += 1) {
       const offset = (row * columns + column) * 4;
       if (image[offset + 3] < 96) continue;
-      const code = image[offset] + (image[offset + 1] << 8) + (image[offset + 2] << 16);
-      const countryIndex = code - 1;
-      if (countryIndex < 0 || countryIndex >= worldFeatures.length) continue;
+      const countryIndex = countryIndexByColor.get(`${image[offset]},${image[offset + 1]},${image[offset + 2]}`);
+      if (countryIndex === undefined) continue;
       ownership[row * columns + column] = countryIndex;
       if (!cellsByCountry.has(countryIndex)) cellsByCountry.set(countryIndex, []);
       cellsByCountry.get(countryIndex).push({ column, row });
@@ -313,6 +310,7 @@ function rasterizePixelWorld(projection, width, height, cellSize) {
   const squareSize = Math.max(1, cellSize - 0.52);
   const countries = [...cellsByCountry.entries()].map(([index, cells]) => ({
     index,
+    continent: homeContinentForFeature(worldFeatures[index]),
     path: cells.map(({ column, row }) => {
       const x = column * cellSize;
       const y = row * cellSize;
@@ -320,6 +318,43 @@ function rasterizePixelWorld(projection, width, height, cellSize) {
     }).join(""),
   }));
   return { countries };
+}
+
+function homeContinentForFeature(feature) {
+  const featureName = normalizeCountryName(feature.properties?.name);
+  const representedCountry = countryNodes.find((country) => normalizeCountryName(country.data.name) === featureName);
+  if (representedCountry?.parent?.data.name) return representedCountry.parent.data.name;
+
+  const explicit = new Map([
+    ["greenland", "Americas"],
+    ["iceland", "Europe"],
+    ["russia", "Europe"],
+    ["cyprus", "Europe"],
+    ["australia", "Oceania"],
+    ["new zealand", "Oceania"],
+    ["papua new guinea", "Oceania"],
+    ["fiji", "Oceania"],
+    ["new caledonia", "Oceania"],
+    ["solomon islands", "Oceania"],
+    ["vanuatu", "Oceania"],
+    ["saudi arabia", "Asia"],
+    ["yemen", "Asia"],
+    ["oman", "Asia"],
+    ["united arab emirates", "Asia"],
+    ["qatar", "Asia"],
+    ["bahrain", "Asia"],
+    ["kuwait", "Asia"],
+    ["iraq", "Asia"],
+    ["jordan", "Asia"],
+  ]).get(featureName);
+  if (explicit) return explicit;
+
+  const [longitude, latitude] = d3.geoCentroid(feature);
+  if (longitude < -25) return "Americas";
+  if (latitude >= 34 && longitude >= -25 && longitude < 45) return "Europe";
+  if (latitude < 34 && longitude >= -25 && longitude < 55) return "Africa";
+  if ((longitude >= 110 && latitude < 15) || (longitude < -150 && latitude < 15)) return "Oceania";
+  return "Asia";
 }
 
 function metropolitanProfile(city) {
@@ -361,7 +396,13 @@ function continentRingArcs(profile) {
     const startAngle = angle;
     const endAngle = angle + (value / total) * Math.PI * 2;
     angle = endAngle;
-    return { continent, startAngle, endAngle, radius: profile.haloRadius + 3 };
+    return {
+      continent,
+      startAngle,
+      endAngle,
+      innerRadius: profile.wheelRadius * 0.42,
+      outerRadius: profile.wheelRadius,
+    };
   });
 }
 
@@ -385,7 +426,7 @@ function showMetropolitanSnapshot(profile) {
   const snapshot = scene.querySelector(".home-city-snapshot");
   if (!snapshot) return;
   if (!profile.live) {
-    snapshot.innerHTML = `<p>${escapeHtml(profile.city.data.country)} · Preview edition</p><strong>${escapeHtml(profile.city.data.name)}</strong><span>Outlined node · restaurant verification and cuisine coverage are pending.</span>`;
+    snapshot.innerHTML = `<p>${escapeHtml(profile.city.data.country)} · Preview edition</p><strong>${escapeHtml(profile.city.data.name)}</strong><span>Preview wheel · restaurant verification and cuisine coverage are pending.</span>`;
     return;
   }
   const total = d3.sum(Object.values(profile.composition)) || 1;
@@ -405,7 +446,7 @@ function resetMetropolitanSnapshot() {
     const selectedCity = cityNodes.find((city) => city.data.id === selectedCityId);
     if (selectedCity) return showMetropolitanSnapshot(metropolitanProfile(selectedCity));
   }
-  snapshot.innerHTML = `<p>City food snapshot</p><strong>Explore the atlas</strong><span>Hover a metropolitan node to compare coverage and cuisine diversity.</span>`;
+  snapshot.innerHTML = `<p>City food snapshot</p><strong>Explore the atlas</strong><span>Hover a metropolitan wheel to inspect its cuisine composition.</span>`;
 }
 
 function cityCardMarkup(city) {

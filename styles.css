@@ -1090,10 +1090,10 @@ h1 {
   shape-rendering: crispEdges;
 }
 
-.home-world-pixel-country { fill: #cec7b9; }
-.home-world-pixel-country[data-tone="1"] { fill: #c8c1b4; }
-.home-world-pixel-country[data-tone="2"] { fill: #d2cbbe; }
-.home-world-pixel-country[data-tone="3"] { fill: #c5beb1; }
+.home-world-pixel-country { fill: color-mix(in srgb, var(--home-country-color) 68%, #e9e4da); }
+.home-world-pixel-country[data-tone="1"] { fill: color-mix(in srgb, var(--home-country-color) 62%, #e9e4da); }
+.home-world-pixel-country[data-tone="2"] { fill: color-mix(in srgb, var(--home-country-color) 74%, #e9e4da); }
+.home-world-pixel-country[data-tone="3"] { fill: color-mix(in srgb, var(--home-country-color) 79%, #e9e4da); }
 
 .home-world-repeats { pointer-events: none; }
 
@@ -1109,49 +1109,36 @@ h1 {
   outline: none;
 }
 
-.home-city-halo {
-  fill: rgba(242, 239, 232, 0.62);
-  stroke: rgba(29, 33, 31, 0.18);
-  stroke-width: 0.7;
-  vector-effect: non-scaling-stroke;
-  transition: fill 180ms ease, stroke 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+.home-city-hit {
+  fill: transparent;
+  pointer-events: all;
 }
 
-.home-city-node.is-preview .home-city-halo {
-  fill: rgba(242, 239, 232, 0.25);
-  stroke-dasharray: 2.5 2;
+.home-city-continent-ring {
+  pointer-events: none;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-.home-city-core {
-  stroke: var(--ink);
-  stroke-width: 1.5;
-  vector-effect: non-scaling-stroke;
-  transition: fill 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.home-city-node.is-available .home-city-core { fill: var(--ink); }
-.home-city-node.is-preview .home-city-core { fill: var(--paper); stroke-dasharray: 2.5 1.5; }
 
 .home-city-continent-ring path {
-  opacity: 0.84;
+  opacity: 0.94;
   stroke: #e9e4da;
-  stroke-width: 0.55;
+  stroke-width: 0.7;
   vector-effect: non-scaling-stroke;
+  transition: filter 160ms ease, opacity 160ms ease;
 }
 
 .home-city-node.is-preview .home-city-continent-ring path { opacity: 0.52; }
 
-.home-city-node:hover .home-city-halo,
-.home-city-node:focus-visible .home-city-halo,
-.home-city-node.is-selected .home-city-halo {
-  fill: rgba(242, 239, 232, 0.86);
-  stroke: var(--ink);
-  transform: scale(1.08);
-}
+.home-city-node:hover .home-city-continent-ring,
+.home-city-node:focus-visible .home-city-continent-ring,
+.home-city-node.is-selected .home-city-continent-ring { transform: scale(1.12); }
 
-.home-city-node:hover .home-city-core,
-.home-city-node:focus-visible .home-city-core,
-.home-city-node.is-selected .home-city-core { transform: scale(1.16); }
+.home-city-node:hover .home-city-continent-ring path,
+.home-city-node:focus-visible .home-city-continent-ring path,
+.home-city-node.is-selected .home-city-continent-ring path {
+  filter: brightness(1.12) saturate(1.08);
+  opacity: 1;
+}
 
 .home-city-name,
 .home-city-meta {
@@ -1204,12 +1191,25 @@ h1 {
   height: 14px;
   display: inline-block;
   border-radius: 50%;
+  background: var(--legend-color);
 }
 
-.legend-node-solid { border: 1px solid var(--ink); background: var(--ink); }
-.legend-node-outline { border: 1px dashed var(--ink); background: var(--paper); }
-.legend-node-halo { border: 1px solid rgba(29, 33, 31, 0.24); background: rgba(242, 239, 232, 0.62); }
-.legend-node-ring { border: 3px solid var(--europe); border-right-color: var(--asia); border-bottom-color: var(--americas); background: transparent; }
+.home-world-legend .legend-city-wheel {
+  grid-column: 1 / -1;
+  padding-top: 3px;
+  border-top: 1px solid rgba(29, 33, 31, 0.18);
+}
+
+.home-world-legend .legend-city-wheel i {
+  background: conic-gradient(
+    #527f9c 0 34%,
+    #b99a3f 34% 65%,
+    #a95553 65% 82%,
+    #303331 82% 93%,
+    #56816b 93%
+  );
+  box-shadow: inset 0 0 0 4px #e9e4da;
+}
 
 .home-city-snapshot {
   position: absolute;
