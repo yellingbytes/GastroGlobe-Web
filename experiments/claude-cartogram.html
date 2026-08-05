@@ -218,7 +218,7 @@
 </div>
 
 <script type="module">
-import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META } from '../restaurants.js?v=claude-dev-view-5h';
+import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META } from '../restaurants.js?v=regional-report-1';
 
 const REGION_EMOJI_RULES = [
   [/national cuisine|uncategorized/i, '◌'],
@@ -255,26 +255,59 @@ function cuisineEmoji(name, fallback, countryFlag) {
 const DATA = SOURCE_COUNTRIES
   .map((country) => {
     const regionData = new Map();
-    country.restaurants.forEach((restaurant) => {
-      const sourceRegionName = restaurant.region || 'National cuisine';
-      const regionName = /national cuisine|uncategorized/i.test(sourceRegionName)
-        ? 'National'
-        : sourceRegionName;
-      if (!regionData.has(regionName)) {
-        regionData.set(regionName, {
-          id: 'region-' + country.id + '-' + regionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-          name: regionName,
-          emoji: cuisineEmoji(regionName, restaurant.symbol, country.flag),
-          lat: Number.isFinite(restaurant.originLat) ? restaurant.originLat : country.lat,
-          lng: Number.isFinite(restaurant.originLng) ? restaurant.originLng : country.lng,
-          count: 0,
-          restaurants: []
+    const classifiedIds = new Set();
+    if (country.regionalCuisines?.length) {
+      country.regionalCuisines.forEach((regionalCuisine) => {
+        const regionName = regionalCuisine.name;
+        const regionId = 'region-' + country.id + '-' + regionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const regionRestaurants = regionalCuisine.restaurants.map((restaurant) => {
+          classifiedIds.add(restaurant.id);
+          return { name: restaurant.name, cuisine: restaurant.cuisine };
         });
-      }
-      const region = regionData.get(regionName);
-      region.count += 1;
-      region.restaurants.push({ name: restaurant.name, cuisine: restaurant.cuisine });
-    });
+        regionData.set(regionId, {
+          id: regionId,
+          name: regionName,
+          emoji: regionalCuisine.emoji || cuisineEmoji(regionName, country.symbol, country.flag),
+          lat: regionalCuisine.geographicCenter?.lat ?? country.lat,
+          lng: regionalCuisine.geographicCenter?.lng ?? country.lng,
+          count: regionRestaurants.length,
+          restaurants: regionRestaurants
+        });
+      });
+    } else {
+      country.restaurants.forEach((restaurant) => {
+        const sourceRegionName = restaurant.region || 'National cuisine';
+        const regionName = /national cuisine|uncategorized/i.test(sourceRegionName) ? 'National' : sourceRegionName;
+        const regionId = 'region-' + country.id + '-' + regionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        if (!regionData.has(regionId)) {
+          regionData.set(regionId, {
+            id: regionId,
+            name: regionName,
+            emoji: cuisineEmoji(regionName, restaurant.symbol, country.flag),
+            lat: Number.isFinite(restaurant.originLat) ? restaurant.originLat : country.lat,
+            lng: Number.isFinite(restaurant.originLng) ? restaurant.originLng : country.lng,
+            count: 0,
+            restaurants: []
+          });
+        }
+        const region = regionData.get(regionId);
+        region.count += 1;
+        region.restaurants.push({ name: restaurant.name, cuisine: restaurant.cuisine });
+        classifiedIds.add(restaurant.id);
+      });
+    }
+    const nationalRestaurants = country.restaurants.filter((restaurant) => !classifiedIds.has(restaurant.id));
+    if (nationalRestaurants.length) {
+      regionData.set('region-' + country.id + '-national', {
+        id: 'region-' + country.id + '-national',
+        name: 'National',
+        emoji: '◌',
+        lat: country.lat,
+        lng: country.lng,
+        count: nationalRestaurants.length,
+        restaurants: nationalRestaurants.map((restaurant) => ({ name: restaurant.name, cuisine: restaurant.cuisine }))
+      });
+    }
     return {
       id: country.id,
       name: country.name,
@@ -284,6 +317,8 @@ const DATA = SOURCE_COUNTRIES
       lat: country.lat,
       lng: country.lng,
       count: country.restaurants.length,
+      classificationLabel: country.classificationLabel,
+      canonicalStatus: country.canonicalStatus,
       regions: [...regionData.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
       restaurants: country.restaurants.map((restaurant) => ({
         name: restaurant.name,
@@ -932,7 +967,7 @@ function renderCountryAtlas(country) {
   el('map-eyebrow').textContent = 'A regional cuisine cartogram of Munich';
   el('map-title').textContent = country.flag + ' ' + country.name;
   el('ghost-control').hidden = true;
-  el('status').textContent = regions.length + (regions.length === 1 ? ' cuisine · ' : ' cuisines · ') + country.count + ' restaurants';
+  el('status').textContent = specific.length + (specific.length === 1 ? ' region · ' : ' regions · ') + country.count + ' restaurants';
   resetMapTransform();
   draw();
   layoutLabels();
@@ -1001,19 +1036,21 @@ function buildSidebar() {
 function select(id) {
   const d = DATA.find(x => x.id === id);
   if (!d) return;
+  const regionalCount = d.regions.filter(region => !/national cuisine|uncategorized|^national$/i.test(region.name)).length;
   el('ranksec').style.display = 'none';
   el('detail').classList.add('on');
   el('d-close').textContent = 'World map';
   el('d-name').textContent = d.flag + '  ' + d.name;
   el('d-sum').textContent = d.count + (d.count === 1 ? ' restaurant · ' : ' restaurants · ') +
-    (Math.round(d.count / META.total * 1000) / 10) + '% of Munich\u2019s mapped kitchens · ' + d.continent;
+    (Math.round(d.count / META.total * 1000) / 10) + '% of Munich\u2019s mapped kitchens · ' + d.continent +
+    (d.classificationLabel ? ' · ' + d.classificationLabel : '');
   el('d-chips').innerHTML = d.regions.slice(0, 10).map(r => '<div class="chip">' + r.emoji + ' ' + r.name + ' · ' + r.count + '</div>').join('');
   el('d-list').innerHTML = d.restaurants.map(r => '<div class="li"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('');
   el('s-total').textContent = d.count;
-  el('s-count').textContent = d.regions.length;
+  el('s-count').textContent = regionalCount;
   el('s-share').textContent = (Math.round(d.count / META.total * 1000) / 10) + '%';
   el('s-total-label').textContent = 'Restaurants';
-  el('s-count-label').textContent = 'Cuisines';
+  el('s-count-label').textContent = 'Regions';
   el('s-share-label').textContent = 'Of Munich';
   renderCountryAtlas(d);
 }

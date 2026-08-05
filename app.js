@@ -1299,7 +1299,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame"
-          src="./experiments/claude-cartogram.html?v=country-grid-national-2"
+          src="./experiments/claude-cartogram.html?v=regional-report-1"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>

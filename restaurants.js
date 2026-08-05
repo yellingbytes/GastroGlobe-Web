@@ -8,6 +8,10 @@ import {
   applyMunichChinaEditorialUpdate,
   applyMunichChinaTaxonomyUpdate,
 } from "./data/munich-china-editorial-overrides.js?v=2026-08-02-1";
+import {
+  legacyGeographicAssignments,
+  researchedCountryRegions,
+} from "./data/global-culinary-regions.js?v=2026-08-05-1";
 
 applyMunichChinaEditorialUpdate({ datasetMeta, regionTaxonomy, restaurants: sourceRestaurants });
 
@@ -17,6 +21,7 @@ if (!regionalTaxonomyResponse.ok) {
 }
 const regionalCuisineTaxonomy = await regionalTaxonomyResponse.json();
 applyMunichChinaTaxonomyUpdate(regionalCuisineTaxonomy, sourceRestaurants);
+applyResearchedCountryTaxonomies(regionalCuisineTaxonomy);
 
 const countryById = new Map(countryTaxonomy.map((country) => [country.id, country]));
 const regionById = new Map(regionTaxonomy.map((region) => [`${region.countryId}/${region.id}`, region]));
@@ -42,6 +47,110 @@ const regionalFoodEmoji = {
 const taxonomyCountryAliases = new Map([
   ["Korea", "south-korea"],
 ]);
+
+function normalizeTaxonomyName(value) {
+  return value.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function applyResearchedCountryTaxonomies(taxonomy) {
+  const continentByName = new Map(taxonomy.continents.map((continent) => [continent.name, continent]));
+  const sourceRegionById = new Map(regionTaxonomy.map((region) => [region.id, region]));
+  const sourceRestaurantById = new Map(sourceRestaurants.map((restaurant) => [restaurant.id, restaurant]));
+
+  for (const [countryId, definition] of Object.entries(researchedCountryRegions)) {
+    const sourceCountry = countryTaxonomy.find((country) => country.id === countryId);
+    if (!sourceCountry) continue;
+    let continent = continentByName.get(sourceCountry.continent);
+    if (!continent) {
+      continent = { name: sourceCountry.continent, countries: [] };
+      taxonomy.continents.push(continent);
+      continentByName.set(sourceCountry.continent, continent);
+    }
+    let country = continent.countries.find((candidate) =>
+      candidate.country === sourceCountry.name || candidate.emoji === sourceCountry.flag,
+    );
+    if (!country) {
+      country = { country: sourceCountry.name, emoji: sourceCountry.flag, regions: [] };
+      continent.countries.push(country);
+    }
+
+    const existingRegions = country.regions ?? [];
+    const usedExistingRegions = new Set();
+    const claimedRestaurantIds = new Set();
+    const legacyAssignments = legacyGeographicAssignments[countryId] ?? {};
+    const regions = definition.regions.map((regionDefinition) => {
+      const acceptedNames = new Set(
+        [regionDefinition.name, ...(regionDefinition.aliases ?? [])].map(normalizeTaxonomyName),
+      );
+      const matchingExistingRegions = existingRegions.filter((existingRegion) =>
+        acceptedNames.has(normalizeTaxonomyName(existingRegion.name)),
+      );
+      matchingExistingRegions.forEach((existingRegion) => usedExistingRegions.add(existingRegion));
+      const evidenceRestaurants = matchingExistingRegions.flatMap((existingRegion) => existingRegion.restaurants ?? []);
+
+      for (const restaurant of sourceRestaurants) {
+        if (restaurant.countryId !== countryId || claimedRestaurantIds.has(restaurant.id)) continue;
+        const targetName = legacyAssignments[restaurant.regionId];
+        if (!targetName || normalizeTaxonomyName(targetName) !== normalizeTaxonomyName(regionDefinition.name)) continue;
+        const sourceRegion = sourceRegionById.get(restaurant.regionId);
+        evidenceRestaurants.push({
+          id: restaurant.id,
+          name: restaurant.name,
+          evidenceLevel: "dataset-geographic",
+          evidence: `Existing Munich dataset assignment to ${sourceRegion?.name ?? regionDefinition.name}.`,
+          sourceUrls: [restaurant.source].filter(Boolean),
+        });
+      }
+
+      const restaurants = [];
+      const localIds = new Set();
+      for (const evidenceRestaurant of evidenceRestaurants) {
+        const sourceRestaurant = sourceRestaurantById.get(evidenceRestaurant.id);
+        if (!sourceRestaurant || sourceRestaurant.countryId !== countryId || localIds.has(evidenceRestaurant.id)) continue;
+        localIds.add(evidenceRestaurant.id);
+        claimedRestaurantIds.add(evidenceRestaurant.id);
+        restaurants.push({ ...evidenceRestaurant, name: sourceRestaurant.name });
+      }
+      return {
+        name: regionDefinition.name,
+        emoji: regionDefinition.emoji,
+        geographicCenter: regionDefinition.geographicCenter,
+        restaurantCount: restaurants.length,
+        restaurants,
+      };
+    });
+
+    for (const existingRegion of existingRegions) {
+      if (usedExistingRegions.has(existingRegion) || !(existingRegion.restaurants?.length)) continue;
+      const retainedRestaurants = existingRegion.restaurants.filter((restaurant) => {
+        const sourceRestaurant = sourceRestaurantById.get(restaurant.id);
+        if (!sourceRestaurant || sourceRestaurant.countryId !== countryId || claimedRestaurantIds.has(restaurant.id)) return false;
+        claimedRestaurantIds.add(restaurant.id);
+        return true;
+      });
+      if (!retainedRestaurants.length) continue;
+      regions.push({
+        ...existingRegion,
+        restaurantCount: retainedRestaurants.length,
+        restaurants: retainedRestaurants,
+      });
+    }
+
+    const countryRestaurants = sourceRestaurants.filter((restaurant) => restaurant.countryId === countryId);
+    country.country = sourceCountry.name;
+    country.emoji = sourceCountry.flag;
+    country.sourceRestaurantCount = countryRestaurants.length;
+    country.classifiedRestaurantCount = claimedRestaurantIds.size;
+    country.unclassifiedRestaurantCount = countryRestaurants.length - claimedRestaurantIds.size;
+    country.classificationLabel = definition.classificationLabel;
+    country.canonicalStatus = definition.canonicalStatus;
+    country.researchBasis = "deep-research-report.md · 2026-08-05";
+    country.regions = regions;
+    country.auditNote = "Regional nodes follow the supplied culinary-genealogy report; only pre-existing evidence-backed restaurant assignments were retained.";
+  }
+
+  taxonomy.generatedAt = "2026-08-05";
+}
 
 const regionalCountryById = new Map(
   regionalCuisineTaxonomy.continents.flatMap((continent) =>
@@ -83,10 +192,24 @@ export const restaurants = sourceRestaurants.map((restaurant) => {
   };
 });
 
-export const countries = countryTaxonomy.map((country) => ({
-  ...country,
-  restaurants: restaurants.filter((restaurant) => restaurant.countryId === country.id),
-}));
+export const countries = countryTaxonomy.map((country) => {
+  const countryRestaurants = restaurants.filter((restaurant) => restaurant.countryId === country.id);
+  const sourceById = new Map(countryRestaurants.map((restaurant) => [restaurant.id, restaurant]));
+  const regionalCountry = regionalCountryById.get(country.id);
+  return {
+    ...country,
+    restaurants: countryRestaurants,
+    regionalCuisines: regionalCountry?.regions.map((region) => ({
+      name: region.name,
+      emoji: region.emoji,
+      geographicCenter: region.geographicCenter,
+      restaurantCount: region.restaurants.length,
+      restaurants: region.restaurants.map((restaurant) => sourceById.get(restaurant.id)).filter(Boolean),
+    })) ?? [],
+    classificationLabel: regionalCountry?.classificationLabel,
+    canonicalStatus: regionalCountry?.canonicalStatus,
+  };
+});
 
 export const metropolitanEditions = [
   { id: "munich", name: "Munich", country: "Germany", lat: 48.1351, lng: 11.582, live: true },

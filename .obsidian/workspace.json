@@ -188,13 +188,20 @@
   },
   "active": "daa23f738f83bcf2",
   "lastOpenFiles": [
-    "data/munich-china-editorial-overrides.js",
-    "experiments/claude-cartogram.html",
-    "experiments",
+    "data/global-culinary-regions.js",
+    "assets/fonts/OFL-IBMPlexMono.txt",
+    "assets/fonts/ibm-plex-mono-semibold.ttf",
+    "assets/fonts/ibm-plex-mono-regular.ttf",
+    "assets/fonts/OFL-AtkinsonHyperlegible.txt",
+    "assets/fonts/atkinson-hyperlegible-bold.ttf",
+    "assets/fonts/atkinson-hyperlegible-regular.ttf",
+    "assets/fonts/OFL-Jersey10.txt",
+    "assets/fonts/jersey10-regular.ttf",
+    "assets/fonts/OFL-Tiny5.txt",
+    "assets/fonts/tiny5-regular.ttf",
+    "assets/fonts/README.md",
     "Pasted image 20260726174255.png",
     "audit-report.md",
-    "unresolved-restaurants.json",
-    "scripts/Untitled.canvas",
-    "Prompts"
+    "scripts/Untitled.canvas"
   ]
 }
