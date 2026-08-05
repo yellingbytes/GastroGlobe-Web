@@ -313,9 +313,9 @@ function buildRegionalCuisineChildren(country, regionalCountry) {
 
   if (unclassifiedRestaurants.length) {
     regions.push({
-      id: `region-${country.id}-unclassified`,
-      name: "Uncategorized",
-      emoji: "◌",
+      id: `region-${country.id}-national`,
+      name: "National",
+      emoji: country.flag,
       countryId: country.id,
       kind: "region",
       lat: country.lat,
@@ -323,7 +323,7 @@ function buildRegionalCuisineChildren(country, regionalCountry) {
       available: unclassifiedRestaurants.length,
       unclassified: true,
       children: unclassifiedRestaurants.map((restaurant) => restaurantNode(restaurant, {
-        name: "Uncategorized",
+        name: "National",
         emoji: country.flag,
       })),
     });

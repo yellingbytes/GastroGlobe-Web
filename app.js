@@ -5,10 +5,9 @@ const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm";
 const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 const scene = document.querySelector("#scene");
 const cursorLabel = document.querySelector("#cursor-label");
-const savedVisualization = window.localStorage.getItem("gastroglobe-dev-visualization");
 
 const state = {
-  visualization: ["treemap", "cartogram", "balloon", "claude"].includes(savedVisualization) ? savedVisualization : "cartogram",
+  visualization: "claude",
   cityId: null,
   countryId: null,
   cuisineId: null,
@@ -994,7 +993,7 @@ function cuisineNodesFor(country) {
     return [{
       data: {
         id: `national-${country.data.countryId}`,
-        name: "National cuisine",
+        name: "National",
         emoji: source?.symbol ?? country.data.flag,
         kind: "region",
         lat: country.data.lat,
@@ -1088,30 +1087,11 @@ function bindBreadcrumbs() {
 }
 
 function devMenuMarkup() {
-  return `
-    <label class="dev-visualization-menu">
-      <span>Dev view</span>
-      <select aria-label="Choose visualization strategy">
-        <option value="treemap"${state.visualization === "treemap" ? " selected" : ""}>1 · Interactive treemap</option>
-        <option value="cartogram"${state.visualization === "cartogram" ? " selected" : ""}>3 · Cuisine territory map</option>
-        <option value="balloon"${state.visualization === "balloon" ? " selected" : ""}>4 · Flat SVG countries</option>
-        <option value="claude"${state.visualization === "claude" ? " selected" : ""}>5 · Editorial square cartogram</option>
-      </select>
-    </label>
-  `;
+  return "";
 }
 
 function bindDevMenu() {
-  const select = scene.querySelector(".dev-visualization-menu select");
-  if (!select) return;
-  select.addEventListener("change", () => {
-    state.visualization = select.value;
-    state.countryId = null;
-    state.cuisineId = null;
-    state.treeFocusId = null;
-    window.localStorage.setItem("gastroglobe-dev-visualization", state.visualization);
-    transitionScene(state.cityId ? renderCurrentVisualization : renderGallery);
-  });
+  // The editorial square cartogram is now the sole product view.
 }
 
 function renderInteractiveTreemap() {
@@ -1549,11 +1529,8 @@ function renderClaudeEditorialCartogram() {
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
-      ${devMenuMarkup()}
     </section>
   `;
-
-  bindDevMenu();
 }
 
 function balloonFlatWorldAnchor(width, height) {
@@ -3405,7 +3382,8 @@ function regionalLowerInteriorAnchor(feature, projection, columns, rows, radius,
 
 function regionalCuisineLabel(name, displayArea) {
   const concise = name
-    .replace("Unclassified regional identity", "Uncategorized")
+    .replace("Unclassified regional identity", "National")
+    .replace("Uncategorized", "National")
     .replace(" culinary family", "")
     .split(/\s[\/·]\s/)
     .slice(0, 2)
