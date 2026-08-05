@@ -889,6 +889,21 @@ h1 {
 
 .cursor-label.is-visible { opacity: 1; }
 
+.city-pixel-morph-canvas {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: block;
+  pointer-events: all;
+  image-rendering: pixelated;
+  contain: strict;
+}
+
+body.is-city-morphing,
+body.is-city-morphing * {
+  cursor: progress !important;
+}
+
 ::view-transition-group(atlas-layer) {
   animation-duration: 520ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
