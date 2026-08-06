@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Munich Eats the World — a cuisine cartogram</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
@@ -48,7 +49,7 @@
     cursor: grab;
   }
   #mapwrap.is-panning { cursor: grabbing; }
-  #mapscene { position: absolute; left: 0; top: 0; width: 100%; flex: none; transform-origin: 0 0; will-change: transform; }
+  #mapscene { position: absolute; left: 0; top: 0; flex: none; transform-origin: 0 0; will-change: transform; }
   #cv {
     display: block;
     width: 100%;
@@ -111,8 +112,16 @@
   button.close:hover { border-color: var(--ink); color: var(--ink); }
   footer { font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
   @media (max-width: 720px) {
-    aside { top: auto; width: 100%; height: min(46vh, 430px); border-top: 2px solid var(--ink); border-left: 0; }
+    aside { top: auto; width: 100%; height: min(43dvh, 390px); border-top: 2px solid var(--ink); border-left: 0; padding: 16px 16px 12px; gap: 12px; }
+    .stats { gap: 18px; }
+    .stat b { font-size: 26px; }
+    .row { min-height: 44px; padding: 6px 4px; }
+    #detail .list { overscroll-behavior: contain; }
+    #detail .li { min-height: 40px; align-items: center; }
+    button.close { min-width: 44px; min-height: 44px; }
+    footer { display: none; }
   }
+  @media (hover: none) { #tip { display: none; } }
 </style>
 </head>
 <body>
@@ -296,6 +305,7 @@ const ALIAS = {
 
 const el = id => document.getElementById(id);
 const norm = s => s.toLowerCase().replace(/[^a-z]/g, '');
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const state = {
   view: 'world',
@@ -356,7 +366,17 @@ function fitCartogramToFrame() {
   app.style.transform = 'none';
 }
 fitCartogramToFrame();
-window.addEventListener('resize', fitCartogramToFrame);
+let resizeTimer;
+window.addEventListener('resize', () => {
+  fitCartogramToFrame();
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!state.zoomBehavior) return;
+    resetMapTransform();
+    layoutLabels();
+    draw();
+  }, 140);
+});
 
 /* ---------- silhouette rasterisation ---------- */
 function rasterise(feature, path, targetCells) {
@@ -427,6 +447,7 @@ function rasteriseBackdrop(feature, path, cols, rows) {
   return {
     cells,
     set,
+    layer: cvs,
     vectorPath: shape,
     bounds: path.bounds(feature),
     centroid: path.centroid(feature)
@@ -542,9 +563,13 @@ let dpr = Math.min(2, window.devicePixelRatio || 1);
 function draw() {
   const cv = el('cv'), ctx = cv.getContext('2d');
   const W = state.cols * CELL, H = state.rows * CELL;
-  cv.width = W * dpr; cv.height = H * dpr;
-  cv.style.width = '100%'; cv.style.height = 'auto';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const scene = el('mapscene');
+  const renderRatio = Math.min(3, dpr * state.renderScale);
+  scene.style.width = W + 'px';
+  scene.style.height = H + 'px';
+  cv.width = Math.ceil(W * renderRatio); cv.height = Math.ceil(H * renderRatio);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(renderRatio, 0, 0, renderRatio, 0, 0);
   ctx.imageSmoothingEnabled = false;
 
   // ghost of the real world, same projection, at true scale
@@ -562,7 +587,10 @@ function draw() {
   // A quiet, geographically true silhouette keeps regional cuisine territories
   // legible as parts of a real country rather than isolated chart marks.
   if (state.view === 'country' && state.countryBackdrop) {
-    ctx.drawImage(state.countryBackdrop.layer, 0, 0);
+    ctx.save();
+    ctx.globalAlpha = 0.1;
+    ctx.drawImage(state.countryBackdrop.layer, 0, 0, state.cols * CELL, state.rows * CELL);
+    ctx.restore();
     const nationalActive = state.nationalRegion &&
       (state.hover === state.nationalRegion.id || state.sel === state.nationalRegion.id);
     if (nationalActive) {
@@ -831,16 +859,31 @@ function commitFixedLayout(placed, cols, rows) {
 function resetMapTransform() {
   if (!state.zoomBehavior) return;
   const wrap = el('mapwrap');
-  const scene = el('mapscene');
-  const width = Math.max(1, scene.offsetWidth);
-  const height = Math.max(1, scene.offsetHeight);
-  const padding = wrap.clientWidth <= 720 ? 20 : 36;
-  const scale = Math.min(
-    Math.max(1, wrap.clientWidth - padding * 2) / width,
-    Math.max(1, wrap.clientHeight - padding * 2) / height
+  const width = Math.max(1, state.cols * CELL);
+  const height = Math.max(1, state.rows * CELL);
+  const mobile = wrap.clientWidth <= 720;
+  const detailOpen = document.body.classList.contains('country-detail-open');
+  const panelRect = detailOpen ? document.querySelector('aside')?.getBoundingClientRect() : null;
+  const sheet = mobile ? panelRect?.height || 0 : 0;
+  const rail = !mobile ? panelRect?.width || 0 : 0;
+  const usableWidth = Math.max(280, wrap.clientWidth - rail);
+  const usableHeight = Math.max(240, wrap.clientHeight - sheet);
+  const padding = mobile ? 20 : 36;
+  const fitScale = Math.min(
+    Math.max(1, usableWidth - padding * 2) / width,
+    Math.max(1, usableHeight - padding * 2) / height
   );
+  const scale = mobile ? Math.max(fitScale, state.view === 'country' ? 0.3 : 0.44) : fitScale;
+  const weight = item => Math.max(1, Math.sqrt(item.count || 1));
+  const totalWeight = d3.sum(state.placed, weight) || 1;
+  const focusX = state.view === 'country'
+    ? width * 0.5
+    : d3.sum(state.placed, item => (item.ox + item.w / 2) * CELL * weight(item)) / totalWeight;
+  const focusY = state.view === 'country'
+    ? height * 0.47
+    : d3.sum(state.placed, item => (item.oy + item.h / 2) * CELL * weight(item)) / totalWeight;
   const transform = d3.zoomIdentity
-    .translate((wrap.clientWidth - width * scale) / 2, (wrap.clientHeight - height * scale) / 2)
+    .translate(usableWidth / 2 - focusX * scale, usableHeight / 2 - focusY * scale)
     .scale(scale);
   d3.select(wrap).call(state.zoomBehavior.transform, transform);
 }
@@ -848,8 +891,7 @@ function resetMapTransform() {
 function updateMapLabelPresentation(transform) {
   const host = el('labels');
   const wrap = el('mapwrap');
-  const scene = el('mapscene');
-  if (!host || !wrap || !scene) return;
+  if (!host || !wrap) return;
   const k = Math.max(0.01, transform?.k || 1);
   host.style.setProperty('--map-label-scale', String(1 / k));
   const labels = [...host.querySelectorAll('.lab')];
@@ -952,13 +994,6 @@ function renderCountryAtlas(country) {
     };
   }).sort((a, b) => b.cells.length - a.cells.length);
 
-  const nationalRegion = nationalSource ? {
-    ...nationalSource,
-    name: nationalSource.emoji + ' ' + nationalSource.name,
-    regionName: nationalSource.name,
-    continent: country.continent
-  } : null;
-
   const placed = pack(items, cols, rows, { continentZones: false });
   state.view = 'country';
   state.activeCountry = country;
@@ -966,6 +1001,7 @@ function renderCountryAtlas(country) {
   state.countryBackdrop = countryBackdrop;
   state.hover = null;
   state.sel = null;
+  el('tip').style.opacity = 0;
   commitFixedLayout(placed, cols, rows);
   if (national) {
     state.itemById.set(national.id, {
@@ -1083,6 +1119,32 @@ function selectRegion(id) {
   el('d-chips').innerHTML = '<div class="chip">' + region.emoji + ' ' + region.regionName + ' · ' + region.count + '</div>';
   el('d-list').innerHTML = region.restaurants.map(r => '<div class="li"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('');
   draw();
+  if (state.itemById.has(id)) focusMapItem(region);
+}
+
+function focusMapItem(item) {
+  if (!state.zoomBehavior || !item) return;
+  const wrap = el('mapwrap');
+  const mobile = wrap.clientWidth <= 720;
+  const detailOpen = document.body.classList.contains('country-detail-open');
+  const panelRect = detailOpen ? document.querySelector('aside')?.getBoundingClientRect() : null;
+  const sheet = mobile ? panelRect?.height || 0 : 0;
+  const rail = !mobile ? panelRect?.width || 0 : 0;
+  const usableWidth = Math.max(280, wrap.clientWidth - rail);
+  const usableHeight = Math.max(240, wrap.clientHeight - sheet);
+  const itemWidth = Math.max(CELL * 4, item.w * CELL);
+  const itemHeight = Math.max(CELL * 4, item.h * CELL);
+  const targetScale = clamp(
+    Math.min(usableWidth * 0.48 / itemWidth, usableHeight * 0.42 / itemHeight),
+    mobile ? 0.95 : 0.75,
+    mobile ? 1.8 : 2.2
+  );
+  const centerX = (item.ox + item.w / 2) * CELL;
+  const centerY = (item.oy + item.h / 2) * CELL;
+  const transform = d3.zoomIdentity
+    .translate(usableWidth / 2 - centerX * targetScale, usableHeight / 2 - centerY * targetScale)
+    .scale(targetScale);
+  d3.select(wrap).transition().duration(420).ease(d3.easeCubicOut).call(state.zoomBehavior.transform, transform);
 }
 
 el('d-close').onclick = () => {
@@ -1244,6 +1306,17 @@ function attachPanZoom() {
     rows: state.rows,
     off: state.off
   };
+
+  window.getGastroGlobeMorphSnapshot = () => ({
+    cellSize: CELL,
+    cols: state.cols,
+    rows: state.rows,
+    items: state.placed.map(country => ({
+      id: country.id,
+      color: country.fillColor || (CONT[country.continent] || CONT.Europe).fill,
+      cells: country.cells.map(([x, y]) => [country.ox + x, country.oy + y])
+    }))
+  });
 
   document.body.classList.remove('country-detail-open');
   draw();

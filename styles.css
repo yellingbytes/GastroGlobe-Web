@@ -889,13 +889,29 @@ h1 {
 
 .cursor-label.is-visible { opacity: 1; }
 
-.city-pixel-morph-canvas {
+.city-grid-morph-overlay {
   position: fixed;
-  z-index: 120;
+  z-index: 110;
+  overflow: hidden;
+  pointer-events: all;
+  contain: strict;
+}
+
+.city-grid-morph-source {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  will-change: opacity, transform;
+}
+
+.city-grid-morph-canvas {
+  position: fixed;
+  z-index: 111;
   inset: 0;
   display: block;
-  pointer-events: all;
-  image-rendering: pixelated;
+  pointer-events: none;
   contain: strict;
 }
 
@@ -1225,7 +1241,8 @@ body.is-city-morphing * {
   .home-world-heading > p:last-child { display: none; }
   .home-world-status { display: none; }
   .home-city-name { font-size: 15px; }
-  .city-world-back { top: 10px; left: 10px; width: 40px; height: 40px; }
+  .home-city-node.is-preview .home-city-meta { display: none; }
+  .city-world-back { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: 44px; height: 44px; }
   .has-city-back .map-breadcrumbs { top: 58px; left: 10px; max-width: calc(100% - 20px); }
 }
 

@@ -122,9 +122,9 @@ function renderGallery() {
   const simulation = d3.forceSimulation(cityItems)
     .force("x", d3.forceX((item) => item.anchorX).strength(0.46))
     .force("y", d3.forceY((item) => item.anchorY).strength(0.46))
-    .force("collide", d3.forceCollide((item) => item.wheelRadius + (compact ? 22 : 30)).iterations(6))
+    .force("collide", d3.forceCollide((item) => item.wheelRadius + (compact ? 34 : 30)).iterations(7))
     .stop();
-  for (let index = 0; index < 220; index += 1) simulation.tick();
+  for (let index = 0; index < (compact ? 300 : 220); index += 1) simulation.tick();
   cityItems.forEach((item) => {
     item.x = clamp(item.x, item.wheelRadius + 34, width - item.wheelRadius - 34);
     item.y = clamp(item.y, compact ? 152 : item.wheelRadius + 32, height - (compact ? 160 : item.wheelRadius + 38));
@@ -149,7 +149,7 @@ function renderGallery() {
         <desc id="home-world-desc">A grid-contour Web Mercator world map using the same continent colors as the culinary city atlas. Compact city wheels show the continent composition of each metropolitan food culture.</desc>
         <defs>
           <g id="home-world-tile">
-            <g class="home-world-pixels">${pixelWorld.countries.map((country) => `<path class="home-world-pixel-country" data-tone="${country.index % 4}" data-continent="${country.continent}" style="--home-country-color:${CARTOGRAM_CONTINENT_COLORS[country.continent]}" d="${country.path}"></path>`).join("")}</g>
+            <g class="home-world-pixels">${pixelWorld.countries.map((country) => `<path class="home-world-pixel-country" data-tone="${country.index % 4}" data-continent="${country.continent}"${country.countryId ? ` data-country-id="${country.countryId}"` : ""} style="--home-country-color:${CARTOGRAM_CONTINENT_COLORS[country.continent]}" d="${country.path}"></path>`).join("")}</g>
           </g>
         </defs>
         <g class="home-world-zoom-layer">
@@ -163,6 +163,15 @@ function renderGallery() {
   `;
 
   const svg = d3.select(scene.querySelector(".home-world-map"));
+  svg.node().__homeMorph = {
+    cellSize,
+    countries: pixelWorld.countries,
+    projection,
+    transform: d3.zoomIdentity,
+    viewHeight: height,
+    viewWidth: width,
+    worldWidth,
+  };
   svg.select(".home-city-leaders")
     .selectAll("line")
     .data(repeatedCityItems.filter((item) => Math.hypot(item.x - item.anchorX, item.y - item.anchorY) > 7))
@@ -233,6 +242,9 @@ function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
       const period = worldWidth * k;
       const wrappedX = ((x + period / 2) % period + period) % period - period / 2;
       layer.attr("transform", `translate(${wrappedX},${y}) scale(${k})`);
+      if (svg.node().__homeMorph) {
+        svg.node().__homeMorph.transform = d3.zoomIdentity.translate(wrappedX, y).scale(k);
+      }
       layer.selectAll(".home-city-node")
         .attr("transform", (item) => `translate(${item.renderX},${item.y}) scale(${1 / k})`);
       const gridSize = initialView.cellSize * k;
@@ -325,21 +337,31 @@ function rasterizePixelWorld(projection, width, height, cellSize) {
   }
 
   const squareSize = cellSize + 0.08;
-  const countries = [...cellsByCountry.entries()].map(([index, cells]) => ({
-    index,
-    continent: homeContinentForFeature(worldFeatures[index]),
-    path: cells.map(({ column, row }) => {
+  const countries = [...cellsByCountry.entries()].map(([index, cells]) => {
+    const representedCountry = homeCountryForFeature(worldFeatures[index]);
+    return {
+      index,
+      cells,
+      countryId: representedCountry?.data.countryId ?? null,
+      continent: representedCountry?.parent?.data.name ?? homeContinentForFeature(worldFeatures[index]),
+      path: cells.map(({ column, row }) => {
       const x = column * cellSize;
       const y = row * cellSize;
       return `M${x},${y}h${squareSize}v${squareSize}h-${squareSize}Z`;
-    }).join(""),
-  }));
+      }).join(""),
+    };
+  });
   return { countries };
+}
+
+function homeCountryForFeature(feature) {
+  const featureName = normalizeCountryName(feature.properties?.name);
+  return countryNodes.find((country) => normalizeCountryName(country.data.name) === featureName) ?? null;
 }
 
 function homeContinentForFeature(feature) {
   const featureName = normalizeCountryName(feature.properties?.name);
-  const representedCountry = countryNodes.find((country) => normalizeCountryName(country.data.name) === featureName);
+  const representedCountry = homeCountryForFeature(feature);
   if (representedCountry?.parent?.data.name) return representedCountry.parent.data.name;
 
   const explicit = new Map([
@@ -515,6 +537,7 @@ function openCity(cityId) {
   cityTransitionInFlight = true;
   animateCityDrilldown(cityId, selectedWheel).catch((error) => {
     console.error("City transition failed", error);
+    cleanupCityMorphArtifacts();
     if (state.cityId !== cityId) commitCityOpen(cityId);
   }).finally(() => {
     cityTransitionInFlight = false;
@@ -530,150 +553,260 @@ function commitCityOpen(cityId) {
   renderCurrentVisualization();
 }
 
-function animateCityDrilldown(cityId, selectedWheel) {
-  const sourceRect = selectedWheel.getBoundingClientRect();
-  const sourceX = sourceRect.left + sourceRect.width / 2;
-  const sourceY = sourceRect.top + sourceRect.height / 2;
+async function animateCityDrilldown(cityId, selectedWheel) {
+  const sourceMap = scene.querySelector(".home-world-map");
+  const sourceAtlas = scene.querySelector(".home-world-atlas");
+  const sourceLayer = sourceMap?.querySelector(".home-world-zoom-layer");
+  const sourceMeta = sourceMap?.__homeMorph;
+  const sourceMatrix = sourceLayer?.getScreenCTM();
+  if (!sourceAtlas || !sourceMap || !sourceMeta || !sourceMatrix) {
+    transitionScene(() => commitCityOpen(cityId));
+    return;
+  }
+
+  const wheelRect = selectedWheel.getBoundingClientRect();
+  const sourceX = wheelRect.left + wheelRect.width / 2;
+  const sourceY = wheelRect.top + wheelRect.height / 2;
   const viewportWidth = document.documentElement.clientWidth;
   const viewportHeight = document.documentElement.clientHeight;
-  const pixelSize = clamp(Math.round(Math.min(viewportWidth, viewportHeight) / 32), 16, 24);
+  const atlasRect = sourceAtlas.getBoundingClientRect();
+  const sourceSnapshot = captureHomeGridSnapshot(sourceMeta, sourceMatrix, viewportWidth, viewportHeight);
+
+  const overlay = document.createElement("div");
+  overlay.className = "city-grid-morph-overlay";
+  overlay.setAttribute("aria-hidden", "true");
+  Object.assign(overlay.style, {
+    left: `${atlasRect.left}px`,
+    top: `${atlasRect.top}px`,
+    width: `${atlasRect.width}px`,
+    height: `${atlasRect.height}px`,
+  });
+  const sourceClone = sourceAtlas.cloneNode(true);
+  sourceClone.classList.add("city-grid-morph-source");
+  sourceClone.querySelectorAll("[id]").forEach((element) => element.removeAttribute("id"));
+  sourceClone.querySelectorAll("[tabindex]").forEach((element) => element.setAttribute("tabindex", "-1"));
+  const sourceChrome = sourceClone.querySelectorAll(".home-world-heading, .home-world-status, .home-city-nodes, .home-city-leaders");
+  overlay.appendChild(sourceClone);
+  document.body.appendChild(overlay);
+  document.body.classList.add("is-city-morphing");
+
+  commitCityOpen(cityId);
+  const destination = scene.querySelector(".semantic-layer");
+  const iframe = destination?.querySelector(".claude-cartogram-frame");
+  if (!iframe) {
+    await animateCityFallback(overlay, destination, sourceX, sourceY);
+    document.body.classList.remove("is-city-morphing");
+    return;
+  }
+
+  iframe.style.opacity = "0";
+  const targetSnapshot = await waitForCuisineGridSnapshot(iframe);
+  if (!targetSnapshot) {
+    iframe.style.opacity = "1";
+    await animateCityFallback(overlay, destination, sourceX, sourceY);
+    document.body.classList.remove("is-city-morphing");
+    return;
+  }
+
+  const targetCanvas = iframe.contentDocument?.querySelector("#cv");
+  if (!targetCanvas) {
+    iframe.style.opacity = "1";
+    await animateCityFallback(overlay, destination, sourceX, sourceY);
+    document.body.classList.remove("is-city-morphing");
+    return;
+  }
+
+  const frameRect = iframe.getBoundingClientRect();
+  const targetCanvasRect = targetCanvas.getBoundingClientRect();
+  const targetRect = {
+    left: frameRect.left + targetCanvasRect.left,
+    top: frameRect.top + targetCanvasRect.top,
+    width: targetCanvasRect.width,
+    height: targetCanvasRect.height,
+  };
+  const movements = buildCuisineGridMovements(sourceSnapshot, targetSnapshot, targetRect, viewportWidth);
+  if (!movements.length) {
+    iframe.style.opacity = "1";
+    await animateCityFallback(overlay, destination, sourceX, sourceY);
+    document.body.classList.remove("is-city-morphing");
+    return;
+  }
+
   const canvas = document.createElement("canvas");
   const pixelRatio = clamp(window.devicePixelRatio || 1, 1, 2);
-  canvas.className = "city-pixel-morph-canvas";
+  canvas.className = "city-grid-morph-canvas";
   canvas.setAttribute("aria-hidden", "true");
   canvas.width = Math.ceil(viewportWidth * pixelRatio);
   canvas.height = Math.ceil(viewportHeight * pixelRatio);
   canvas.style.width = `${viewportWidth}px`;
   canvas.style.height = `${viewportHeight}px`;
   document.body.appendChild(canvas);
-  document.body.classList.add("is-city-morphing");
-
   const context = canvas.getContext("2d");
-  context.scale(pixelRatio, pixelRatio);
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   context.imageSmoothingEnabled = false;
-  const columns = Math.ceil(viewportWidth / pixelSize);
-  const rows = Math.ceil(viewportHeight / pixelSize);
-  const maxDistance = Math.max(1, Math.hypot(
-    Math.max(sourceX, viewportWidth - sourceX),
-    Math.max(sourceY, viewportHeight - sourceY),
-  ));
-  const paperTones = ["#e9e4da", "#eee9df", "#ddd6ca"];
-  const continentTones = Object.values(CARTOGRAM_CONTINENT_COLORS);
-  const tiles = [];
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const x = column * pixelSize;
-      const y = row * pixelSize;
-      const centerX = x + pixelSize / 2;
-      const centerY = y + pixelSize / 2;
-      const distance = Math.hypot(centerX - sourceX, centerY - sourceY) / maxDistance;
-      const hash = Math.abs(Math.imul(column + 11, 73856093) ^ Math.imul(row + 17, 19349663));
-      const color = hash % 9 < 3
-        ? continentTones[hash % continentTones.length]
-        : paperTones[hash % paperTones.length];
-      tiles.push({
-        x,
-        y,
-        color,
-        coverDelay: (1 - distance) * 150,
-        revealDelay: distance * 170,
-      });
-    }
-  }
 
-  const homeMap = scene.querySelector(".home-world-map");
-  const mapRect = homeMap?.getBoundingClientRect();
-  if (homeMap && mapRect) {
-    homeMap.style.transformOrigin = `${sourceX - mapRect.left}px ${sourceY - mapRect.top}px`;
-    homeMap.animate([
-      { transform: "scale(1)", filter: "contrast(1) saturate(1)" },
-      { transform: "scale(2.35)", filter: "contrast(1.12) saturate(0.82)" },
-    ], {
-      duration: 460,
-      easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-      fill: "forwards",
-    });
-  }
-  scene.querySelectorAll(".home-world-heading, .home-world-status").forEach((element) => {
-    element.animate([
-      { opacity: 1, transform: "translateY(0)" },
-      { opacity: 0, transform: "translateY(-10px)" },
-    ], { duration: 260, easing: "ease-in", fill: "forwards" });
-  });
-  scene.querySelectorAll(`.home-city-node:not([data-city-id="${cityId}"])`).forEach((element) => {
-    element.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: "ease-in", fill: "forwards" });
-  });
-  selectedWheel.parentElement?.querySelector(".home-city-continent-ring")?.animate([
-    { transform: "scale(1)", opacity: 1 },
-    { transform: "scale(1.7)", opacity: 0 },
-  ], { duration: 410, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" });
-
-  const coverDuration = 430;
-  const coverGrowth = 280;
-  const revealDuration = 300;
-  const totalDuration = coverDuration + 170 + revealDuration + 40;
-  const easeOut = (value) => 1 - Math.pow(1 - value, 3);
-  const easeInOut = (value) => value < 0.5
+  const duration = 860;
+  const ease = (value) => value < 0.5
     ? 4 * value * value * value
     : 1 - Math.pow(-2 * value + 2, 3) / 2;
-
-  return new Promise((resolve) => {
+  await new Promise((resolve) => {
     let startTime;
-    let destinationRendered = false;
     const renderFrame = (time) => {
       if (startTime === undefined) startTime = time;
-      const elapsed = time - startTime;
-      if (!destinationRendered && elapsed >= coverDuration) {
-        destinationRendered = true;
-        commitCityOpen(cityId);
-        const destination = scene.querySelector(".semantic-layer");
-        const destinationMap = destination?.querySelector(".world-map, .treemap-svg, .claude-cartogram-frame") ?? destination;
-        if (destinationMap) {
-          const destinationRect = destinationMap.getBoundingClientRect();
-          destinationMap.style.transformOrigin = `${sourceX - destinationRect.left}px ${sourceY - destinationRect.top}px`;
-          destinationMap.animate([
-            { transform: "scale(0.72)", filter: "contrast(1.16) saturate(0.8)" },
-            { transform: "scale(1)", filter: "contrast(1) saturate(1)" },
-          ], {
-            duration: 520,
-            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-          });
-        }
-        destination?.querySelectorAll(".map-heading, .map-breadcrumbs, .map-legend, .city-world-back, .dev-visualization-menu").forEach((element) => {
-          element.animate([
-            { opacity: 0, transform: "translateY(10px)" },
-            { opacity: 1, transform: "translateY(0)" },
-          ], { duration: 360, delay: 100, easing: "ease-out" });
-        });
-      }
-
-      context.clearRect(0, 0, viewportWidth, viewportHeight);
-      tiles.forEach((tile) => {
-        let scale;
-        if (elapsed < coverDuration) {
-          const progress = clamp((elapsed - tile.coverDelay) / coverGrowth, 0, 1);
-          scale = easeOut(progress);
-        } else {
-          const progress = clamp((elapsed - coverDuration - tile.revealDelay) / revealDuration, 0, 1);
-          scale = 1 - easeInOut(progress);
-        }
-        if (scale <= 0.002) return;
-        const size = (pixelSize + 0.8) * scale;
-        const inset = (pixelSize - size) / 2;
-        context.fillStyle = tile.color;
-        context.fillRect(tile.x + inset, tile.y + inset, size, size);
+      const rawProgress = clamp((time - startTime) / duration, 0, 1);
+      const progress = ease(rawProgress);
+      const destinationOpacity = clamp((rawProgress - 0.3) / 0.55, 0, 1);
+      iframe.style.opacity = destinationOpacity.toFixed(3);
+      sourceClone.style.opacity = String(1 - clamp(rawProgress / 0.78, 0, 1));
+      sourceClone.style.transformOrigin = `${sourceX - atlasRect.left}px ${sourceY - atlasRect.top}px`;
+      sourceClone.style.transform = `scale(${1 + progress * 0.055})`;
+      const sourceChromeOpacity = 1 - clamp(rawProgress / 0.36, 0, 1);
+      sourceChrome.forEach((element) => {
+        element.style.opacity = String(sourceChromeOpacity);
       });
-
-      if (elapsed < totalDuration) {
-        requestAnimationFrame(renderFrame);
-        return;
-      }
-      canvas.remove();
-      document.body.classList.remove("is-city-morphing");
-      resolve();
+      context.clearRect(0, 0, viewportWidth, viewportHeight);
+      context.globalAlpha = 1 - clamp((rawProgress - 0.76) / 0.24, 0, 1);
+      movements.forEach((movement) => {
+        const x = movement.startX + (movement.endX - movement.startX) * progress;
+        const y = movement.startY + (movement.endY - movement.startY) * progress;
+        const size = movement.startSize + (movement.endSize - movement.startSize) * progress;
+        context.fillStyle = movement.color;
+        context.fillRect(x - size / 2, y - size / 2, size + 0.25, size + 0.25);
+      });
+      context.globalAlpha = 1;
+      if (rawProgress < 1) requestAnimationFrame(renderFrame);
+      else resolve();
     };
     requestAnimationFrame(renderFrame);
   });
+
+  iframe.style.opacity = "1";
+  iframe.style.removeProperty("opacity");
+  canvas.remove();
+  overlay.remove();
+  document.body.classList.remove("is-city-morphing");
+}
+
+function cleanupCityMorphArtifacts() {
+  document.querySelectorAll(".city-grid-morph-overlay, .city-grid-morph-canvas").forEach((element) => element.remove());
+  scene.querySelector(".claude-cartogram-frame")?.style.removeProperty("opacity");
+  document.body.classList.remove("is-city-morphing");
+}
+
+function captureHomeGridSnapshot(meta, matrix, viewportWidth, viewportHeight) {
+  const repetitions = [-meta.worldWidth, 0, meta.worldWidth];
+  const toScreen = (x, y) => ({
+    x: matrix.a * x + matrix.c * y + matrix.e,
+    y: matrix.b * x + matrix.d * y + matrix.f,
+  });
+  const visiblePoint = (x, y) => repetitions
+    .map((offset) => toScreen(x + offset, y))
+    .sort((a, b) => {
+      const aVisible = a.x >= 0 && a.x <= viewportWidth;
+      const bVisible = b.x >= 0 && b.x <= viewportWidth;
+      if (aVisible !== bVisible) return aVisible ? -1 : 1;
+      return Math.abs(a.x - viewportWidth / 2) - Math.abs(b.x - viewportWidth / 2);
+    })[0];
+  const countries = new Map();
+  meta.countries.filter((country) => country.countryId).forEach((country) => {
+    countries.set(country.countryId, {
+      cells: country.cells,
+      pointForCell: ({ column, row }) => visiblePoint(
+        (column + 0.5) * meta.cellSize,
+        (row + 0.5) * meta.cellSize,
+      ),
+    });
+  });
+  const cellScaleX = Math.hypot(matrix.a, matrix.b) * meta.cellSize;
+  const cellScaleY = Math.hypot(matrix.c, matrix.d) * meta.cellSize;
+  return {
+    cellSize: Math.max(1, Math.min(cellScaleX, cellScaleY)),
+    countries,
+    fallback: (countryId) => {
+      const country = countryNodes.find((node) => node.data.countryId === countryId);
+      const projected = country ? meta.projection([country.data.lng, country.data.lat]) : null;
+      return projected ? visiblePoint(projected[0], projected[1]) : { x: viewportWidth / 2, y: viewportHeight / 2 };
+    },
+  };
+}
+
+function waitForCuisineGridSnapshot(iframe, timeout = 4200) {
+  return new Promise((resolve) => {
+    const started = performance.now();
+    const inspect = () => {
+      try {
+        const snapshot = iframe.contentWindow?.getGastroGlobeMorphSnapshot?.();
+        if (snapshot?.items?.length) {
+          resolve(snapshot);
+          return;
+        }
+      } catch (error) {
+        console.warn("Cuisine transition target is not readable", error);
+        resolve(null);
+        return;
+      }
+      if (performance.now() - started >= timeout) {
+        resolve(null);
+        return;
+      }
+      requestAnimationFrame(inspect);
+    };
+    inspect();
+  });
+}
+
+function buildCuisineGridMovements(source, target, targetRect, viewportWidth) {
+  const targetScaleX = targetRect.width / Math.max(1, target.cols * target.cellSize);
+  const targetScaleY = targetRect.height / Math.max(1, target.rows * target.cellSize);
+  const targetCellSize = Math.max(1, Math.min(target.cellSize * targetScaleX, target.cellSize * targetScaleY));
+  const movements = [];
+  target.items.forEach((country) => {
+    const sourceCountry = source.countries.get(country.id);
+    const sourceCells = sourceCountry?.cells ?? [];
+    const fallback = source.fallback(country.id);
+    country.cells.forEach(([column, row], index) => {
+      const sourceCell = sourceCells.length
+        ? sourceCells[Math.floor(index * sourceCells.length / country.cells.length)]
+        : null;
+      const start = sourceCell ? sourceCountry.pointForCell(sourceCell) : fallback;
+      let endX = targetRect.left + (column + 0.5) * target.cellSize * targetScaleX;
+      const period = targetRect.width;
+      while (endX < -targetCellSize) endX += period;
+      while (endX > viewportWidth + targetCellSize) endX -= period;
+      movements.push({
+        startX: start.x,
+        startY: start.y,
+        endX,
+        endY: targetRect.top + (row + 0.5) * target.cellSize * targetScaleY,
+        startSize: source.cellSize,
+        endSize: targetCellSize,
+        color: country.color,
+      });
+    });
+  });
+  return movements;
+}
+
+function animateCityFallback(overlay, destination, sourceX, sourceY) {
+  const source = overlay.querySelector(".city-grid-morph-source");
+  const atlasRect = overlay.getBoundingClientRect();
+  const target = destination?.querySelector(".world-map, .treemap-svg, .claude-cartogram-frame") ?? destination;
+  if (target) {
+    target.animate([
+      { opacity: 0, transform: "scale(0.96)" },
+      { opacity: 1, transform: "scale(1)" },
+    ], { duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+  }
+  const animation = source?.animate([
+    { opacity: 1, transform: "scale(1)" },
+    { opacity: 0, transform: "scale(1.05)" },
+  ], {
+    duration: 420,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    fill: "forwards",
+  });
+  if (source) source.style.transformOrigin = `${sourceX - atlasRect.left}px ${sourceY - atlasRect.top}px`;
+  return (animation?.finished ?? Promise.resolve()).catch(() => {}).finally(() => overlay.remove());
 }
 
 function renderCurrentVisualization() {
@@ -1474,7 +1607,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame"
-          src="./experiments/claude-cartogram.html?v=regional-report-1"
+          src="./experiments/claude-cartogram.html?v=mobile-atlas-6"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
