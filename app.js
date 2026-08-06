@@ -162,11 +162,6 @@ function renderGallery() {
           <g class="home-city-nodes"></g>
         </g>
       </svg>
-      <aside class="home-city-snapshot" aria-live="polite">
-        <p>City food snapshot</p>
-        <strong>Explore the atlas</strong>
-        <span>Hover a metropolitan wheel to inspect its cuisine composition.</span>
-      </aside>
       <div class="home-map-controls" aria-label="World map controls">
         <button type="button" data-home-zoom="in" aria-label="Zoom in">＋</button>
         <button type="button" data-home-zoom="out" aria-label="Zoom out">−</button>
@@ -202,9 +197,7 @@ function renderGallery() {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       activateMetropolitan(item);
-    })
-    .on("pointerenter focus", (_, item) => showMetropolitanSnapshot(item))
-    .on("pointerleave blur", () => resetMetropolitanSnapshot());
+    });
 
   nodes.append("circle")
     .attr("class", "home-city-hit")
@@ -452,7 +445,6 @@ function cityNodeAriaLabel(profile) {
 }
 
 function activateMetropolitan(profile) {
-  showMetropolitanSnapshot(profile);
   if (profile.live) {
     openCity(profile.city.data.id);
     return;
@@ -460,33 +452,6 @@ function activateMetropolitan(profile) {
   scene.querySelectorAll(".home-city-node").forEach((node) => {
     node.classList.toggle("is-selected", node.dataset.cityId === profile.city.data.id);
   });
-}
-
-function showMetropolitanSnapshot(profile) {
-  const snapshot = scene.querySelector(".home-city-snapshot");
-  if (!snapshot) return;
-  if (!profile.live) {
-    snapshot.innerHTML = `<p>${escapeHtml(profile.city.data.country)} · Preview edition</p><strong>${escapeHtml(profile.city.data.name)}</strong><span>Preview wheel · restaurant verification and cuisine coverage are pending.</span>`;
-    return;
-  }
-  const total = d3.sum(Object.values(profile.composition)) || 1;
-  const leadingContinents = Object.entries(profile.composition)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 2)
-    .map(([continent, count]) => `${continent} ${Math.round(count / total * 100)}%`)
-    .join(" · ");
-  snapshot.innerHTML = `<p>${escapeHtml(profile.city.data.country)} · Available now</p><strong>${escapeHtml(profile.city.data.name)}</strong><span>${profile.verifiedRestaurants.toLocaleString("en")} verified restaurants · ${profile.cuisineDiversity} origins<br>${escapeHtml(leadingContinents)}<br>${profile.highlights.map(escapeHtml).join(" · ")}</span>`;
-}
-
-function resetMetropolitanSnapshot() {
-  const snapshot = scene.querySelector(".home-city-snapshot");
-  if (!snapshot) return;
-  const selectedCityId = scene.querySelector(".home-city-node.is-selected")?.dataset.cityId;
-  if (selectedCityId) {
-    const selectedCity = cityNodes.find((city) => city.data.id === selectedCityId);
-    if (selectedCity) return showMetropolitanSnapshot(metropolitanProfile(selectedCity));
-  }
-  snapshot.innerHTML = `<p>City food snapshot</p><strong>Explore the atlas</strong><span>Hover a metropolitan wheel to inspect its cuisine composition.</span>`;
 }
 
 function cityCardMarkup(city) {
@@ -645,7 +610,7 @@ function animateCityDrilldown(cityId, selectedWheel) {
       fill: "forwards",
     });
   }
-  scene.querySelectorAll(".home-world-heading, .home-world-legend, .home-world-status, .home-city-snapshot, .home-map-controls").forEach((element) => {
+  scene.querySelectorAll(".home-world-heading, .home-world-legend, .home-world-status, .home-map-controls").forEach((element) => {
     element.animate([
       { opacity: 1, transform: "translateY(0)" },
       { opacity: 0, transform: "translateY(-10px)" },
