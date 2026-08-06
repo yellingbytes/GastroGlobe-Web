@@ -144,10 +144,6 @@ function renderGallery() {
         <h1>A city contains<br />a miniature world.</h1>
         <p>Choose a city to reveal the food cultures living inside it.</p>
       </header>
-      <div class="home-world-legend" aria-label="Continent color legend">
-        ${Object.entries(CARTOGRAM_CONTINENT_COLORS).map(([continent, color]) => `<span><i style="--legend-color:${color}"></i>${continent}</span>`).join("")}
-        <span class="legend-city-wheel"><i></i>City wheel = cuisine mix</span>
-      </div>
       <svg class="home-world-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="home-world-title home-world-desc">
         <title id="home-world-title">Metropolitan food cultures across the world</title>
         <desc id="home-world-desc">A grid-contour Web Mercator world map using the same continent colors as the culinary city atlas. Compact city wheels show the continent composition of each metropolitan food culture.</desc>
@@ -162,11 +158,6 @@ function renderGallery() {
           <g class="home-city-nodes"></g>
         </g>
       </svg>
-      <div class="home-map-controls" aria-label="World map controls">
-        <button type="button" data-home-zoom="in" aria-label="Zoom in">＋</button>
-        <button type="button" data-home-zoom="out" aria-label="Zoom out">−</button>
-        <button type="button" data-home-zoom="reset" aria-label="Reset world map">⌂</button>
-      </div>
       <p class="home-world-status">${cityNodes.length} metropolitan editions · ${profiles.filter((profile) => profile.live).length} verified dataset · Web Mercator</p>
     </section>
   `;
@@ -251,13 +242,6 @@ function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
     })
     .on("end", () => svg.classed("is-panning", false));
   svg.call(zoom).on("dblclick.zoom", null);
-  scene.querySelectorAll("[data-home-zoom]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const action = button.dataset.homeZoom;
-      if (action === "reset") svg.transition().duration(320).call(zoom.transform, initialTransform);
-      else svg.transition().duration(220).call(zoom.scaleBy, action === "in" ? 1.55 : 1 / 1.55);
-    });
-  });
   svg.call(zoom.transform, initialTransform);
 }
 
@@ -610,7 +594,7 @@ function animateCityDrilldown(cityId, selectedWheel) {
       fill: "forwards",
     });
   }
-  scene.querySelectorAll(".home-world-heading, .home-world-legend, .home-world-status, .home-map-controls").forEach((element) => {
+  scene.querySelectorAll(".home-world-heading, .home-world-status").forEach((element) => {
     element.animate([
       { opacity: 1, transform: "translateY(0)" },
       { opacity: 0, transform: "translateY(-10px)" },

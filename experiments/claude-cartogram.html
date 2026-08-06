@@ -48,7 +48,7 @@
     cursor: grab;
   }
   #mapwrap.is-panning { cursor: grabbing; }
-  #mapscene { position: relative; width: 100%; flex: none; transform-origin: 0 0; will-change: transform; }
+  #mapscene { position: absolute; left: 0; top: 0; width: 100%; flex: none; transform-origin: 0 0; will-change: transform; }
   #cv {
     display: block;
     width: 100%;
@@ -63,7 +63,8 @@
     white-space: nowrap;
     color: #1c1a16;
     font-family: var(--body);
-    font-size: 15px;
+    font-size: 16px;
+    line-height: 1.25;
     font-weight: 700;
     text-shadow:
       -1px -1px 0 rgba(247,244,236,0.96),
@@ -71,54 +72,13 @@
       -1px  1px 0 rgba(247,244,236,0.96),
        1px  1px 0 rgba(247,244,236,0.96),
        0 0 4px rgba(247,244,236,0.9);
+    transform: scale(var(--map-label-scale, 1));
+    transform-origin: center;
   }
+  .lab[hidden] { display: none; }
   .lab-out { color: inherit; font: inherit; }
   .lab-out.halo { background: rgba(244,240,230,0.92); box-shadow: 0 0 0 2px rgba(244,240,230,0.92); }
-  .lab-out span { font-family: var(--mono); font-size: 11px; font-weight: 600; color: #51493d; margin-left: 4px; }
-  #legend-control { position: absolute; left: 18px; top: auto; bottom: 18px; z-index: 8; transform-origin: bottom left; pointer-events: none; }
-  #legend-toggle {
-    width: 38px;
-    height: 38px;
-    border: 1px solid rgba(35,32,27,0.72);
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    background: rgba(247,244,236,0.94);
-    color: var(--ink);
-    font-family: var(--display);
-    font-size: 21px;
-    font-style: italic;
-    line-height: 1;
-    box-shadow: 0 2px 8px rgba(35,32,27,0.12);
-    cursor: pointer;
-    pointer-events: auto;
-  }
-  #legend-toggle:hover { background: #fffaf0; }
-  #legend-toggle:focus-visible { outline: 3px solid rgba(82,127,156,0.55); outline-offset: 2px; }
-  #key {
-    position: absolute;
-    left: 0;
-    top: auto;
-    bottom: 48px;
-    width: 224px;
-    border: 1px solid #c4b9a3;
-    background: rgba(247,244,236,0.96);
-    padding: 13px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-5px);
-    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms;
-    pointer-events: none;
-  }
-  #legend-control.is-open #key { opacity: 1; visibility: visible; transform: translateY(0); }
-  #key .kt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
-  #key .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
-  .kk { display: flex; align-items: center; gap: 7px; font-size: 14px; }
-  .kk i { width: 13px; height: 13px; border: 1px solid var(--ink); display: block; }
+  .lab-out span { font-family: var(--mono); font-size: 12px; font-weight: 600; color: #51493d; margin-left: 4px; }
   #tip { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
   #tip b { font-weight: 600; }
   #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
@@ -151,9 +111,6 @@
   button.close:hover { border-color: var(--ink); color: var(--ink); }
   footer { font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
   @media (max-width: 720px) {
-    #legend-control { left: 12px; bottom: 12px; }
-    #legend-toggle { width: 44px; height: 44px; font-size: 23px; }
-    #key { top: auto; bottom: 52px; width: 216px; max-width: calc(100vw - 24px); }
     aside { top: auto; width: 100%; height: min(46vh, 430px); border-top: 2px solid var(--ink); border-left: 0; }
   }
 </style>
@@ -171,19 +128,6 @@
       <div id="mapscene">
         <canvas id="cv"></canvas>
         <div id="labels"></div>
-      </div>
-      <div id="legend-control">
-        <button id="legend-toggle" type="button" aria-label="Show continent colour key" aria-controls="key" aria-expanded="false">i</button>
-        <div id="key" aria-hidden="true">
-          <div class="kt">Colour key by continent</div>
-          <div class="grid">
-            <div class="kk"><i style="background:#527f9c"></i>Europe</div>
-            <div class="kk"><i style="background:#b99a3f"></i>Asia</div>
-            <div class="kk"><i style="background:#303331"></i>Africa</div>
-            <div class="kk"><i style="background:#a95553"></i>Americas</div>
-            <div class="kk"><i style="background:#56816b"></i>Oceania</div>
-          </div>
-        </div>
       </div>
       <div id="tip"></div>
     </div>
@@ -359,6 +303,7 @@ const state = {
   hover: null,
   ghost: false,
   leaders: [],
+  visibleLabelIds: new Set(),
   placed: [],
   lookup: null,
   itemById: new Map(),
@@ -373,7 +318,8 @@ const state = {
   countryFeatures: new Map(),
   countryBackdrop: null,
   zoomBehavior: null,
-  renderScale: 1
+  renderScale: 1,
+  currentTransform: null
 };
 
 function targetCellsForCount(count) {
@@ -408,8 +354,6 @@ function fitCartogramToFrame() {
   const app = el('app');
   app.style.left = '0';
   app.style.transform = 'none';
-  const legend = el('legend-control');
-  if (legend) legend.style.transform = 'none';
 }
 fitCartogramToFrame();
 window.addEventListener('resize', fitCartogramToFrame);
@@ -673,10 +617,15 @@ function draw() {
   ctx.strokeStyle = 'rgba(35,32,27,0.62)';
   ctx.lineWidth = 1.2;
   ctx.beginPath();
-  for (const l of state.leaders) { ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); }
+  for (const l of state.leaders) {
+    if (!state.visibleLabelIds.has(l.id)) continue;
+    ctx.moveTo(l.x1, l.y1);
+    ctx.lineTo(l.x2, l.y2);
+  }
   ctx.stroke();
   ctx.fillStyle = 'rgba(35,32,27,0.72)';
   for (const l of state.leaders) {
+    if (!state.visibleLabelIds.has(l.id)) continue;
     if (!l.dot) continue;
     ctx.beginPath();
     ctx.arc(l.x2, l.y2, 2, 0, Math.PI * 2);
@@ -704,9 +653,6 @@ function layoutLabels() {
     return n;
   };
   const boxes = [];
-  const kb = el('key').getBoundingClientRect(), wb = el('mapwrap').getBoundingClientRect();
-  const sc = W / Math.max(1, wb.width);
-  boxes.push({ x: (kb.left - wb.left) * sc - 6, y: (kb.top - wb.top) * sc - 6, w: kb.width * sc + 12, h: kb.height * sc + 12 });
   const overlap = r => boxes.some(t => r.x < t.x + t.w && r.x + r.w > t.x && r.y < t.y + t.h && r.y + r.h > t.y);
 
   const closeLabelPriority = new Set(['united-kingdom', 'israel']);
@@ -719,6 +665,7 @@ function layoutLabels() {
   for (const p of outside) {
     const d = document.createElement('div');
     d.className = 'lab lab-out';
+    d.dataset.id = p.id;
     d.innerHTML = p.name + '<span>' + p.count + '</span>';
     d.style.left = '0px';
     d.style.top = '-999px';
@@ -801,12 +748,14 @@ function layoutLabels() {
     if (bestD > 9 || ambiguous) {
       const ux = (tx - lcx) / bestD, uy = (ty - lcy) / bestD;
       state.leaders.push({
+        id: p.id,
         x1: lcx + ux * (lw / 2 + 3), y1: lcy + uy * (lh / 2 + 3),
         x2: tx - ux * CELL * 0.5, y2: ty - uy * CELL * 0.5,
         dot: ambiguous || bestD > 30
       });
     }
   }
+  updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
 }
 
 function pixelTerritory(target, index) {
@@ -882,13 +831,56 @@ function commitFixedLayout(placed, cols, rows) {
 function resetMapTransform() {
   if (!state.zoomBehavior) return;
   const wrap = el('mapwrap');
-  const width = Math.max(1, state.cols * CELL);
-  const height = Math.max(1, state.rows * CELL);
-  const scale = Math.min(wrap.clientWidth / width, wrap.clientHeight / height) * 0.97;
+  const scene = el('mapscene');
+  const width = Math.max(1, scene.offsetWidth);
+  const height = Math.max(1, scene.offsetHeight);
+  const padding = wrap.clientWidth <= 720 ? 20 : 36;
+  const scale = Math.min(
+    Math.max(1, wrap.clientWidth - padding * 2) / width,
+    Math.max(1, wrap.clientHeight - padding * 2) / height
+  );
   const transform = d3.zoomIdentity
     .translate((wrap.clientWidth - width * scale) / 2, (wrap.clientHeight - height * scale) / 2)
     .scale(scale);
   d3.select(wrap).call(state.zoomBehavior.transform, transform);
+}
+
+function updateMapLabelPresentation(transform) {
+  const host = el('labels');
+  const wrap = el('mapwrap');
+  const scene = el('mapscene');
+  if (!host || !wrap || !scene) return;
+  const k = Math.max(0.01, transform?.k || 1);
+  host.style.setProperty('--map-label-scale', String(1 / k));
+  const labels = [...host.querySelectorAll('.lab')];
+  labels.forEach(label => { label.hidden = false; });
+  const occupied = [];
+  const visibleLabelIds = new Set();
+  const gap = 4;
+  for (const label of labels) {
+    const width = label.offsetWidth;
+    const height = label.offsetHeight;
+    const centerX = (transform?.x || 0) + (label.offsetLeft + width / 2) * k;
+    const centerY = (transform?.y || 0) + (label.offsetTop + height / 2) * k;
+    const rect = {
+      x: centerX - width / 2 - gap,
+      y: centerY - height / 2 - gap,
+      width: width + gap * 2,
+      height: height + gap * 2
+    };
+    const active = label.dataset.id === state.sel || label.dataset.id === state.hover;
+    const outside = rect.x + rect.width < 0 || rect.y + rect.height < 0 || rect.x > wrap.clientWidth || rect.y > wrap.clientHeight;
+    const collision = occupied.some(box =>
+      rect.x < box.x + box.width && rect.x + rect.width > box.x &&
+      rect.y < box.y + box.height && rect.y + rect.height > box.y
+    );
+    label.hidden = !active && (outside || collision);
+    if (!label.hidden) {
+      occupied.push(rect);
+      visibleLabelIds.add(label.dataset.id);
+    }
+  }
+  state.visibleLabelIds = visibleLabelIds;
 }
 
 function renderCountryAtlas(country) {
@@ -1119,11 +1111,11 @@ function attachHover() {
     wrap.style.cursor = '';
     if (state.hover !== null) {
       state.hover = null;
+      updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
       draw();
     }
   };
   wrap.onmousemove = ev => {
-    if (ev.target.closest('#legend-control')) return clearHover();
     const r = cv.getBoundingClientRect();
     const wr = wrap.getBoundingClientRect();
     const gx = Math.floor((ev.clientX - r.left) / r.width * state.cols);
@@ -1135,11 +1127,15 @@ function attachHover() {
       tip.style.transform = 'translate(' + (ev.clientX - wr.left + 14) + 'px,' + (ev.clientY - wr.top + 14) + 'px)';
     } else tip.style.opacity = 0;
     wrap.style.cursor = d ? 'pointer' : '';
-    if (id !== state.hover) { state.hover = id; draw(); }
+    if (id !== state.hover) {
+      state.hover = id;
+      updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
+      draw();
+    }
   };
   wrap.onmouseleave = clearHover;
   wrap.onclick = ev => {
-    if (ev.defaultPrevented || ev.target.closest('#legend-control')) return;
+    if (ev.defaultPrevented) return;
     const r = cv.getBoundingClientRect();
     const gx = Math.floor((ev.clientX - r.left) / r.width * state.cols);
     const gy = Math.floor((ev.clientY - r.top) / r.height * state.rows);
@@ -1154,10 +1150,9 @@ function attachPanZoom() {
   const scene = el('mapscene');
   const syncInfiniteGrid = ({ x, y, k }) => {
     const step = wrap.clientWidth / Math.max(1, state.cols) * k;
-    const sceneTop = (wrap.clientHeight - scene.offsetHeight) / 2;
     const snap = value => Math.round(value * dpr) / dpr;
     wrap.style.backgroundSize = step + 'px ' + step + 'px';
-    wrap.style.backgroundPosition = snap(x) + 'px ' + snap(sceneTop + y) + 'px';
+    wrap.style.backgroundPosition = snap(x) + 'px ' + snap(y) + 'px';
   };
   const zoom = d3.zoom()
     .scaleExtent([0.2, 6])
@@ -1166,36 +1161,22 @@ function attachPanZoom() {
       const { x, y, k } = event.transform;
       const snap = value => Math.round(value * dpr) / dpr;
       scene.style.transform = 'translate3d(' + snap(x) + 'px,' + snap(y) + 'px,0) scale(' + k + ')';
+      state.currentTransform = event.transform;
       syncInfiniteGrid(event.transform);
+      updateMapLabelPresentation(event.transform);
     })
     .on('end', event => {
       wrap.classList.remove('is-panning');
       const nextRenderScale = Math.min(2, Math.max(1, event.transform.k));
       if (Math.abs(nextRenderScale - state.renderScale) > 0.05) {
         state.renderScale = nextRenderScale;
-        draw();
       }
+      draw();
     });
 
   d3.select(wrap).call(zoom);
   state.zoomBehavior = zoom;
   resetMapTransform();
-}
-
-function attachLegendToggle() {
-  const control = el('legend-control');
-  const button = el('legend-toggle');
-  const key = el('key');
-  const setOpen = open => {
-    control.classList.toggle('is-open', open);
-    button.setAttribute('aria-expanded', String(open));
-    button.setAttribute('aria-label', open ? 'Hide continent colour key' : 'Show continent colour key');
-    key.setAttribute('aria-hidden', String(!open));
-  };
-  button.onclick = () => setOpen(button.getAttribute('aria-expanded') !== 'true');
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') setOpen(false);
-  });
 }
 
 /* ---------- build ---------- */
@@ -1264,7 +1245,6 @@ function attachLegendToggle() {
     off: state.off
   };
 
-  attachLegendToggle();
   document.body.classList.remove('country-detail-open');
   draw();
   layoutLabels();

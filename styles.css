@@ -1054,7 +1054,6 @@ body.is-city-morphing * {
 .home-world-kicker,
 .home-world-heading > p:last-child,
 .home-world-status,
-.home-world-legend,
 .home-city-meta {
   font-family: var(--mono);
 }
@@ -1177,53 +1176,6 @@ body.is-city-morphing * {
   text-transform: uppercase;
 }
 
-.home-world-legend {
-  position: absolute;
-  z-index: 7;
-  top: 28px;
-  right: 30px;
-  display: grid;
-  grid-template-columns: repeat(2, max-content);
-  gap: 9px 18px;
-  padding: 12px 14px;
-  border: 1px solid rgba(29, 33, 31, 0.34);
-  background: rgba(242, 239, 232, 0.9);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.home-world-legend span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.home-world-legend i {
-  width: 14px;
-  height: 14px;
-  display: inline-block;
-  border-radius: 50%;
-  background: var(--legend-color);
-}
-
-.home-world-legend .legend-city-wheel {
-  grid-column: 1 / -1;
-  padding-top: 3px;
-  border-top: 1px solid rgba(29, 33, 31, 0.18);
-}
-
-.home-world-legend .legend-city-wheel i {
-  background: conic-gradient(
-    #527f9c 0 34%,
-    #b99a3f 34% 65%,
-    #a95553 65% 82%,
-    #303331 82% 93%,
-    #56816b 93%
-  );
-  box-shadow: inset 0 0 0 4px #e9e4da;
-}
-
 .home-world-status {
   position: absolute;
   z-index: 7;
@@ -1235,35 +1187,6 @@ body.is-city-morphing * {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-
-.home-map-controls {
-  position: absolute;
-  z-index: 9;
-  left: 30px;
-  bottom: 48px;
-  display: grid;
-  grid-template-columns: repeat(3, 34px);
-  border: 1px solid rgba(29, 33, 31, 0.42);
-  background: rgba(242, 239, 232, 0.94);
-}
-
-.home-map-controls button {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  border-right: 1px solid rgba(29, 33, 31, 0.24);
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 17px;
-  line-height: 1;
-}
-
-.home-map-controls button:last-child { border-right: 0; }
-.home-map-controls button:hover,
-.home-map-controls button:focus-visible { background: var(--ink); color: var(--paper); }
 
 .city-world-back {
   position: absolute;
@@ -1300,9 +1223,7 @@ body.is-city-morphing * {
   .home-world-heading { top: 20px; left: 18px; width: calc(100% - 36px); }
   .home-world-heading h1 { font-size: 56px; }
   .home-world-heading > p:last-child { display: none; }
-  .home-world-legend { top: auto; right: 16px; bottom: 16px; grid-template-columns: 1fr 1fr; gap: 7px 12px; }
   .home-world-status { display: none; }
-  .home-map-controls { left: 16px; bottom: 16px; }
   .home-city-name { font-size: 15px; }
   .city-world-back { top: 10px; left: 10px; width: 40px; height: 40px; }
   .has-city-back .map-breadcrumbs { top: 58px; left: 10px; max-width: calc(100% - 20px); }
@@ -3040,7 +2961,6 @@ h1,
 .home-world-kicker,
 .home-world-heading > p:last-child,
 .home-world-status,
-.home-world-legend,
 .home-city-meta,
 .restaurant-ribbon small,
 .cuisine-count,
