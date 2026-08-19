@@ -1096,16 +1096,31 @@ h1 {
 .home-world-pixel-country[data-tone="2"] { fill: color-mix(in srgb, var(--home-country-color) 74%, #f2ede3); }
 .home-world-pixel-country[data-tone="3"] { fill: color-mix(in srgb, var(--home-country-color) 79%, #f2ede3); }
 
-body.is-home-cuisine-morphing .home-world-map {
+body.is-home-cuisine-morphing .home-world-map,
+body.is-home-cuisine-returning .home-world-map {
   cursor: wait;
   pointer-events: none;
 }
 
 body.is-home-cuisine-morphing .home-world-heading,
 body.is-home-cuisine-morphing .home-city-leaders,
-body.is-home-cuisine-morphing .home-city-nodes {
+body.is-home-cuisine-morphing .home-city-nodes,
+body.is-home-cuisine-returning .home-world-heading,
+body.is-home-cuisine-returning .home-city-leaders,
+body.is-home-cuisine-returning .home-city-nodes {
   opacity: 0;
   transition: opacity 320ms ease;
+}
+
+.cuisine-handoff-overlay {
+  position: fixed !important;
+  z-index: 120;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100dvh;
+  margin: 0;
+  pointer-events: none;
+  contain: strict;
 }
 
 .home-world-repeats { pointer-events: none; }
