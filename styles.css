@@ -1096,6 +1096,18 @@ h1 {
 .home-world-pixel-country[data-tone="2"] { fill: color-mix(in srgb, var(--home-country-color) 74%, #f2ede3); }
 .home-world-pixel-country[data-tone="3"] { fill: color-mix(in srgb, var(--home-country-color) 79%, #f2ede3); }
 
+body.is-home-cuisine-morphing .home-world-map {
+  cursor: wait;
+  pointer-events: none;
+}
+
+body.is-home-cuisine-morphing .home-world-heading,
+body.is-home-cuisine-morphing .home-city-leaders,
+body.is-home-cuisine-morphing .home-city-nodes {
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+
 .home-world-repeats { pointer-events: none; }
 
 .home-city-leaders line {

@@ -42,6 +42,9 @@ let resizeTimer;
 let cursorMoveFrame = 0;
 let cursorClientX = 0;
 let cursorClientY = 0;
+let cityTransitionInFlight = false;
+
+const HOME_CUISINE_MORPH_DURATION = 1100;
 
 const countryNameAliases = new Map([
   ["bosnia and herz", "bosnia & herzegovina"],
@@ -148,7 +151,7 @@ function renderGallery() {
         <desc id="home-world-desc">A grid-contour Web Mercator world map using the same continent colors as the culinary city atlas. Compact city wheels show the continent composition of each metropolitan food culture.</desc>
         <defs>
           <g id="home-world-tile">
-            <g class="home-world-pixels">${pixelWorld.countries.map((country) => `<path class="home-world-pixel-country" data-tone="${country.index % 4}" data-continent="${country.continent}"${country.countryId ? ` data-country-id="${country.countryId}"` : ""} style="--home-country-color:${CARTOGRAM_CONTINENT_COLORS[country.continent]}" d="${country.path}"></path>`).join("")}</g>
+            <g class="home-world-pixels">${pixelWorld.countries.map((country) => `<path class="home-world-pixel-country" data-home-country-index="${country.index}" data-country-name="${escapeHtml(country.name)}" data-tone="${country.index % 4}" data-continent="${country.continent}"${country.countryId ? ` data-country-id="${country.countryId}"` : ""} style="--home-country-color:${CARTOGRAM_CONTINENT_COLORS[country.continent]}" d="${country.path}"></path>`).join("")}</g>
           </g>
         </defs>
         <g class="home-world-zoom-layer">
@@ -157,11 +160,16 @@ function renderGallery() {
           <g class="home-city-nodes"></g>
         </g>
       </svg>
-      <p class="home-world-status">${cityNodes.length} metropolitan editions · ${profiles.filter((profile) => profile.live).length} verified dataset · Web Mercator</p>
+      <p class="home-world-status" aria-live="polite">${cityNodes.length} metropolitan editions · ${profiles.filter((profile) => profile.live).length} verified dataset · Web Mercator</p>
     </section>
   `;
 
   const svg = d3.select(scene.querySelector(".home-world-map"));
+  svg.node().__homeGrid = {
+    cellSize,
+    countries: pixelWorld.countries,
+    projection,
+  };
   svg.select(".home-city-leaders")
     .selectAll("line")
     .data(repeatedCityItems.filter((item) => Math.hypot(item.x - item.anchorX, item.y - item.anchorY) > 7))
@@ -329,16 +337,21 @@ function rasterizePixelWorld(projection, width, height, cellSize) {
     return {
       index,
       cells,
+      name: worldFeatures[index].properties?.name ?? `Country ${index + 1}`,
       countryId: representedCountry?.data.countryId ?? null,
       continent: representedCountry?.parent?.data.name ?? homeContinentForFeature(worldFeatures[index]),
-      path: cells.map(({ column, row }) => {
-      const x = column * cellSize;
-      const y = row * cellSize;
-      return `M${x},${y}h${squareSize}v${squareSize}h-${squareSize}Z`;
-      }).join(""),
+      path: homeGridCellPath(cells, cellSize, squareSize),
     };
   });
   return { countries };
+}
+
+function homeGridCellPath(cells, cellSize, squareSize = cellSize + 0.08) {
+  return cells.map(({ column, row }) => {
+    const x = column * cellSize;
+    const y = row * cellSize;
+    return `M${x},${y}h${squareSize}v${squareSize}h-${squareSize}Z`;
+  }).join("");
 }
 
 function homeCountryForFeature(feature) {
@@ -513,7 +526,146 @@ function seededRandom(value) {
 }
 
 function openCity(cityId) {
-  commitCityOpen(cityId);
+  if (cityTransitionInFlight) return;
+  const homeMap = scene.querySelector(".home-world-map");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (cityId !== "munich" || !homeMap?.__homeGrid || reduceMotion) {
+    commitCityOpen(cityId);
+    return;
+  }
+
+  cityTransitionInFlight = true;
+  animateHomeCuisineMorph(homeMap)
+    .catch((error) => console.error("Cuisine contraction failed", error))
+    .then(() => commitCityOpen(cityId))
+    .finally(() => {
+      cityTransitionInFlight = false;
+      document.body.classList.remove("is-home-cuisine-morphing");
+      scene.removeAttribute("aria-busy");
+    });
+}
+
+function animateHomeCuisineMorph(homeMap) {
+  const { cellSize, countries: homeCountries, projection } = homeMap.__homeGrid;
+  const countryNodeById = new Map(countryNodes.map((node) => [node.data.countryId, node]));
+  const referenceNode = d3.greatest(countryNodes, (node) => node.data.available);
+  const referenceCountry = homeCountries.find((country) => country.countryId === referenceNode?.data.countryId);
+  const referenceCellCount = Math.max(1, referenceCountry?.cells.length ?? 1);
+  const referenceRestaurantCount = Math.max(1, referenceNode?.data.available ?? 1);
+  const pathsByIndex = new Map(
+    [...homeMap.querySelectorAll(".home-world-pixel-country")]
+      .map((path) => [Number(path.dataset.homeCountryIndex), path]),
+  );
+  const plans = homeCountries.map((country) => {
+    const node = country.countryId ? countryNodeById.get(country.countryId) : null;
+    const restaurantCount = node?.data.available ?? 0;
+    const targetCount = targetHomeCuisineCellCount(
+      restaurantCount,
+      country.cells.length,
+      referenceCellCount,
+      referenceRestaurantCount,
+    );
+    const anchor = homeCountryCellAnchor(country.cells, node, projection, cellSize);
+    const targetScale = targetCount > 0
+      ? fitHomeCuisineScale(country.cells, anchor, targetCount)
+      : 0;
+    const path = pathsByIndex.get(country.index);
+    if (path) {
+      path.dataset.sourceCells = String(country.cells.length);
+      path.dataset.targetCells = String(targetCount);
+      path.dataset.restaurantCount = String(restaurantCount);
+    }
+    return {
+      anchor,
+      path,
+      sourceCells: country.cells,
+      sourceCount: country.cells.length,
+      targetCount,
+      targetScale,
+      visiblePath: country.path,
+    };
+  }).filter((plan) => plan.path);
+
+  const status = scene.querySelector(".home-world-status");
+  if (status) status.textContent = `${datasetMeta.includedRestaurants.toLocaleString("en")} Munich restaurants · reshaping the world`;
+  scene.setAttribute("aria-busy", "true");
+  document.body.classList.add("is-home-cuisine-morphing");
+
+  return new Promise((resolve) => {
+    let startedAt;
+    const renderFrame = (timestamp) => {
+      if (startedAt === undefined) startedAt = timestamp;
+      const rawProgress = clamp((timestamp - startedAt) / HOME_CUISINE_MORPH_DURATION, 0, 1);
+      const progress = rawProgress < 0.5
+        ? 4 * rawProgress * rawProgress * rawProgress
+        : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2;
+      plans.forEach((plan) => {
+        const scale = 1 + (plan.targetScale - 1) * progress;
+        const visibleCells = plan.targetCount === 0 && rawProgress === 1
+          ? []
+          : scaleHomeCountryCells(plan.sourceCells, plan.anchor, scale);
+        const nextPath = homeGridCellPath(visibleCells, cellSize);
+        if (nextPath === plan.visiblePath) return;
+        plan.visiblePath = nextPath;
+        plan.path.dataset.visibleCells = String(visibleCells.length);
+        plan.path.setAttribute("d", nextPath);
+      });
+      if (rawProgress < 1) requestAnimationFrame(renderFrame);
+      else window.setTimeout(resolve, 220);
+    };
+    requestAnimationFrame(renderFrame);
+  });
+}
+
+function targetHomeCuisineCellCount(restaurantCount, availableCells, referenceCellCount, referenceRestaurantCount) {
+  if (restaurantCount <= 0) return 0;
+  const requestedCells = restaurantCount <= 2
+    ? restaurantCount
+    : Math.max(3, Math.round(referenceCellCount * restaurantCount / referenceRestaurantCount));
+  return Math.min(availableCells, requestedCells);
+}
+
+function homeCountryCellAnchor(cells, countryNode, projection, cellSize) {
+  const projectedAnchor = countryNode
+    ? projection([countryNode.data.lng, countryNode.data.lat])
+    : null;
+  const preferredColumn = projectedAnchor
+    ? projectedAnchor[0] / cellSize - 0.5
+    : d3.mean(cells, (cell) => cell.column);
+  const preferredRow = projectedAnchor
+    ? projectedAnchor[1] / cellSize - 0.5
+    : d3.mean(cells, (cell) => cell.row);
+  return d3.least(cells, (cell) => Math.hypot(cell.column - preferredColumn, cell.row - preferredRow)) ?? cells[0];
+}
+
+function fitHomeCuisineScale(cells, anchor, targetCount) {
+  if (targetCount >= cells.length) return 1;
+  let lower = 0;
+  let upper = 1;
+  let bestScale = Math.sqrt(targetCount / cells.length);
+  let bestDifference = Infinity;
+  for (let iteration = 0; iteration < 14; iteration += 1) {
+    const scale = iteration === 0 ? bestScale : (lower + upper) / 2;
+    const scaledCount = scaleHomeCountryCells(cells, anchor, scale).length;
+    const difference = Math.abs(scaledCount - targetCount);
+    if (difference < bestDifference) {
+      bestDifference = difference;
+      bestScale = scale;
+    }
+    if (scaledCount < targetCount) lower = scale;
+    else upper = scale;
+  }
+  return bestScale;
+}
+
+function scaleHomeCountryCells(cells, anchor, scale) {
+  const uniqueCells = new Map();
+  cells.forEach((cell) => {
+    const column = Math.round(anchor.column + (cell.column - anchor.column) * scale);
+    const row = Math.round(anchor.row + (cell.row - anchor.row) * scale);
+    uniqueCells.set(`${column},${row}`, { column, row });
+  });
+  return [...uniqueCells.values()];
 }
 
 function commitCityOpen(cityId) {
@@ -3248,6 +3400,7 @@ function escapeHtml(value) {
 window.addEventListener("resize", () => {
   window.clearTimeout(resizeTimer);
   resizeTimer = window.setTimeout(() => {
+    if (cityTransitionInFlight) return;
     if (!state.cityId) renderGallery();
     else renderCurrentVisualization();
   }, 180);
