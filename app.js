@@ -43,8 +43,10 @@ let cursorMoveFrame = 0;
 let cursorClientX = 0;
 let cursorClientY = 0;
 let cityTransitionInFlight = false;
+let pendingCuisineClusterReveal = null;
 
 const HOME_CUISINE_MORPH_DURATION = 1100;
+const HOME_CUISINE_CLUSTER_DURATION = 820;
 
 const countryNameAliases = new Map([
   ["bosnia and herz", "bosnia & herzegovina"],
@@ -169,6 +171,7 @@ function renderGallery() {
     cellSize,
     countries: pixelWorld.countries,
     projection,
+    worldWidth,
   };
   svg.select(".home-city-leaders")
     .selectAll("line")
@@ -536,17 +539,25 @@ function openCity(cityId) {
 
   cityTransitionInFlight = true;
   animateHomeCuisineMorph(homeMap)
-    .catch((error) => console.error("Cuisine contraction failed", error))
-    .then(() => commitCityOpen(cityId))
+    .catch((error) => {
+      console.error("Cuisine contraction failed", error);
+      return null;
+    })
+    .then(async (clusterReveal) => {
+      pendingCuisineClusterReveal = clusterReveal;
+      commitCityOpen(cityId);
+      if (clusterReveal) await animateCuisineClustersIntoPlace(clusterReveal);
+    })
     .finally(() => {
       cityTransitionInFlight = false;
+      pendingCuisineClusterReveal = null;
       document.body.classList.remove("is-home-cuisine-morphing");
       scene.removeAttribute("aria-busy");
     });
 }
 
 function animateHomeCuisineMorph(homeMap) {
-  const { cellSize, countries: homeCountries, projection } = homeMap.__homeGrid;
+  const { cellSize, countries: homeCountries, projection, worldWidth } = homeMap.__homeGrid;
   const countryNodeById = new Map(countryNodes.map((node) => [node.data.countryId, node]));
   const referenceNode = d3.greatest(countryNodes, (node) => node.data.available);
   const referenceCountry = homeCountries.find((country) => country.countryId === referenceNode?.data.countryId);
@@ -577,6 +588,7 @@ function animateHomeCuisineMorph(homeMap) {
     }
     return {
       anchor,
+      countryId: country.countryId,
       path,
       sourceCells: country.cells,
       sourceCount: country.cells.length,
@@ -611,10 +623,71 @@ function animateHomeCuisineMorph(homeMap) {
         plan.path.setAttribute("d", nextPath);
       });
       if (rawProgress < 1) requestAnimationFrame(renderFrame);
-      else window.setTimeout(resolve, 220);
+      else window.setTimeout(() => resolve(captureHomeCuisineClusters(homeMap, plans, cellSize, worldWidth)), 220);
     };
     requestAnimationFrame(renderFrame);
   });
+}
+
+function captureHomeCuisineClusters(homeMap, plans, cellSize, worldWidth) {
+  const layer = homeMap.querySelector(".home-world-zoom-layer");
+  const matrix = layer?.getScreenCTM();
+  if (!matrix) return null;
+  const viewportWidth = document.documentElement.clientWidth;
+  const viewportHeight = document.documentElement.clientHeight;
+  const toScreen = (x, y) => ({
+    x: matrix.a * x + matrix.c * y + matrix.e,
+    y: matrix.b * x + matrix.d * y + matrix.f,
+  });
+  const visibleAnchor = (anchor) => [-worldWidth, 0, worldWidth]
+    .map((offset) => toScreen((anchor.column + 0.5) * cellSize + offset, (anchor.row + 0.5) * cellSize))
+    .sort((a, b) => {
+      const aVisible = a.x >= 0 && a.x <= viewportWidth && a.y >= 0 && a.y <= viewportHeight;
+      const bVisible = b.x >= 0 && b.x <= viewportWidth && b.y >= 0 && b.y <= viewportHeight;
+      if (aVisible !== bVisible) return aVisible ? -1 : 1;
+      return Math.hypot(a.x - viewportWidth / 2, a.y - viewportHeight / 2)
+        - Math.hypot(b.x - viewportWidth / 2, b.y - viewportHeight / 2);
+    })[0];
+  const items = plans.filter((plan) => plan.countryId && plan.targetCount > 0).map((plan) => {
+    const anchor = visibleAnchor(plan.anchor);
+    const visibleCells = scaleHomeCountryCells(plan.sourceCells, plan.anchor, plan.targetScale).length;
+    return {
+      id: plan.countryId,
+      sourceX: anchor.x,
+      sourceY: anchor.y,
+      visibleCells,
+    };
+  });
+  return items.length ? { items } : null;
+}
+
+async function animateCuisineClustersIntoPlace(clusterReveal) {
+  const iframe = scene.querySelector(".claude-cartogram-frame");
+  if (!iframe) return;
+  try {
+    const startedAt = performance.now();
+    while (typeof iframe.contentWindow?.startGastroGlobeClusterReveal !== "function") {
+      if (performance.now() - startedAt > 4200) return;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    const frameRect = iframe.getBoundingClientRect();
+    const payload = {
+      duration: HOME_CUISINE_CLUSTER_DURATION,
+      items: clusterReveal.items.map((item) => ({
+        id: item.id,
+        sourceX: (item.sourceX - frameRect.left) / Math.max(1, frameRect.width),
+        sourceY: (item.sourceY - frameRect.top) / Math.max(1, frameRect.height),
+        visibleCells: item.visibleCells,
+      })),
+    };
+    const animation = iframe.contentWindow.startGastroGlobeClusterReveal(payload);
+    iframe.classList.remove("is-cluster-reveal-pending");
+    await animation;
+  } catch (error) {
+    console.error("Cuisine clustering failed", error);
+  } finally {
+    iframe.classList.remove("is-cluster-reveal-pending");
+  }
 }
 
 function targetHomeCuisineCellCount(restaurantCount, availableCells, referenceCellCount, referenceRestaurantCount) {
@@ -1474,8 +1547,8 @@ function renderClaudeEditorialCartogram() {
     <section class="claude-cartogram-view semantic-layer" aria-label="${escapeHtml(city.data.name)} editorial square cuisine cartogram">
       <div class="claude-cartogram-frame-shell">
         <iframe
-          class="claude-cartogram-frame"
-          src="./experiments/claude-cartogram.html?v=home-grid-7"
+          class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
+          src="./experiments/claude-cartogram.html?v=morphing-3"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
@@ -3404,6 +3477,13 @@ window.addEventListener("resize", () => {
     if (!state.cityId) renderGallery();
     else renderCurrentVisualization();
   }, 180);
+});
+
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin || event.data?.type !== "gastroglobe:return-world") return;
+  const iframe = scene.querySelector(".claude-cartogram-frame");
+  if (!iframe || event.source !== iframe.contentWindow || !state.cityId || cityTransitionInFlight) return;
+  renderGallery();
 });
 
 initialize();

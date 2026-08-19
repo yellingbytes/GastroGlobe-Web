@@ -1620,7 +1620,11 @@ body {
   width: 100%;
   height: 100%;
   border: 0;
+  opacity: 1;
+  transition: opacity 180ms ease;
 }
+
+.claude-cartogram-frame.is-cluster-reveal-pending { opacity: 0; }
 
 .claude-cartogram-view .dev-visualization-menu {
   right: 14px;

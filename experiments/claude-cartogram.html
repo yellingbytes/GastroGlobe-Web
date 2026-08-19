@@ -59,6 +59,9 @@
     image-rendering: crisp-edges;
   }
   #labels { position: absolute; inset: 0; pointer-events: none; }
+  #labels { transition: opacity 220ms ease; }
+  body.cluster-reveal-active #labels { opacity: 0; }
+  body.cluster-reveal-active #mapwrap { cursor: wait; pointer-events: none; }
   .lab {
     position: absolute;
     white-space: nowrap;
@@ -329,7 +332,8 @@ const state = {
   countryBackdrop: null,
   zoomBehavior: null,
   renderScale: 1,
-  currentTransform: null
+  currentTransform: null,
+  clusterReveal: null
 };
 
 function targetCellsForCount(count) {
@@ -604,44 +608,66 @@ function draw() {
   for (const p of state.placed) {
     const c = CONT[p.continent] || CONT.Europe;
     const active = state.hover === p.id || state.sel === p.id;
+    const reveal = state.clusterReveal?.items.get(p.id) || null;
+    const visibleCells = reveal?.visibleCells || p.cells;
+    const visibleSet = reveal?.visibleSet || p.set;
+    ctx.save();
+    if (reveal) ctx.translate(reveal.offsetX, reveal.offsetY);
     ctx.fillStyle = active ? (p.deepColor || c.deep) : (p.fillColor || c.fill);
-    for (const [dx, dy] of p.cells) ctx.fillRect((p.ox + dx) * CELL, (p.oy + dy) * CELL, CELL, CELL);
+    for (const [dx, dy] of visibleCells) ctx.fillRect((p.ox + dx) * CELL, (p.oy + dy) * CELL, CELL, CELL);
     // inner square seams
     ctx.strokeStyle = 'rgba(140,127,104,0.18)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (const [dx, dy] of p.cells) ctx.rect((p.ox + dx) * CELL + 0.5, (p.oy + dy) * CELL + 0.5, CELL - 1, CELL - 1);
+    for (const [dx, dy] of visibleCells) ctx.rect((p.ox + dx) * CELL + 0.5, (p.oy + dy) * CELL + 0.5, CELL - 1, CELL - 1);
     ctx.stroke();
     // The territory retains its square-density fill, but country outlines use
     // the original geographic path so zooming never turns borders into stairs.
     if (state.view === 'world' && p.vectorPath && p.anchor && p.offset && p.scale) {
-      ctx.save();
-      ctx.translate((p.ox - p.offset[0]) * CELL, (p.oy - p.offset[1]) * CELL);
-      ctx.scale(p.scale * CELL, p.scale * CELL);
-      ctx.translate(-p.anchor[0], -p.anchor[1]);
-      ctx.strokeStyle = active ? '#23201b' : 'rgba(35,32,27,0.78)';
-      ctx.lineWidth = (active ? 2 : 1.15) / (p.scale * CELL);
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.stroke(p.vectorPath);
-      ctx.restore();
+      if (reveal && reveal.progress < 0.82) {
+        ctx.strokeStyle = 'rgba(35,32,27,' + (0.74 * (1 - reveal.progress / 0.82)) + ')';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        for (const [dx, dy] of visibleCells) {
+          const X = (p.ox + dx) * CELL, Y = (p.oy + dy) * CELL;
+          if (!visibleSet.has(dx + ',' + (dy - 1))) { ctx.moveTo(X, Y); ctx.lineTo(X + CELL, Y); }
+          if (!visibleSet.has(dx + ',' + (dy + 1))) { ctx.moveTo(X, Y + CELL); ctx.lineTo(X + CELL, Y + CELL); }
+          if (!visibleSet.has((dx - 1) + ',' + dy)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + CELL); }
+          if (!visibleSet.has((dx + 1) + ',' + dy)) { ctx.moveTo(X + CELL, Y); ctx.lineTo(X + CELL, Y + CELL); }
+        }
+        ctx.stroke();
+      }
+      if (!reveal || reveal.progress > 0.58) {
+        ctx.save();
+        if (reveal) ctx.globalAlpha = clamp((reveal.progress - 0.58) / 0.42, 0, 1);
+        ctx.translate((p.ox - p.offset[0]) * CELL, (p.oy - p.offset[1]) * CELL);
+        ctx.scale(p.scale * CELL, p.scale * CELL);
+        ctx.translate(-p.anchor[0], -p.anchor[1]);
+        ctx.strokeStyle = active ? '#23201b' : 'rgba(35,32,27,0.78)';
+        ctx.lineWidth = (active ? 2 : 1.15) / (p.scale * CELL);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.stroke(p.vectorPath);
+        ctx.restore();
+      }
     } else {
-      const set = p.set;
       ctx.strokeStyle = active ? '#23201b' : 'rgba(35,32,27,0.8)';
       ctx.lineWidth = active ? 2 : 1.2;
       ctx.beginPath();
-      for (const [dx, dy] of p.cells) {
+      for (const [dx, dy] of visibleCells) {
         const X = (p.ox + dx) * CELL, Y = (p.oy + dy) * CELL;
-        if (!set.has((dx) + ',' + (dy - 1))) { ctx.moveTo(X, Y); ctx.lineTo(X + CELL, Y); }
-        if (!set.has((dx) + ',' + (dy + 1))) { ctx.moveTo(X, Y + CELL); ctx.lineTo(X + CELL, Y + CELL); }
-        if (!set.has((dx - 1) + ',' + dy)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + CELL); }
-        if (!set.has((dx + 1) + ',' + dy)) { ctx.moveTo(X + CELL, Y); ctx.lineTo(X + CELL, Y + CELL); }
+        if (!visibleSet.has((dx) + ',' + (dy - 1))) { ctx.moveTo(X, Y); ctx.lineTo(X + CELL, Y); }
+          if (!visibleSet.has((dx) + ',' + (dy + 1))) { ctx.moveTo(X, Y + CELL); ctx.lineTo(X + CELL, Y + CELL); }
+        if (!visibleSet.has((dx - 1) + ',' + dy)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + CELL); }
+        if (!visibleSet.has((dx + 1) + ',' + dy)) { ctx.moveTo(X + CELL, Y); ctx.lineTo(X + CELL, Y + CELL); }
       }
       ctx.stroke();
     }
+    ctx.restore();
   }
 
   // leader lines
+  if (state.clusterReveal) return;
   ctx.strokeStyle = 'rgba(35,32,27,0.62)';
   ctx.lineWidth = 1.2;
   ctx.beginPath();
@@ -1204,6 +1230,7 @@ function attachHover() {
     const { id } = mapHitAt(gx, gy);
     if (id) state.view === 'world' ? select(id) : selectRegion(id);
     else if (state.view === 'country') restoreWorldAtlas();
+    else window.parent.postMessage({ type: 'gastroglobe:return-world' }, window.location.origin);
   };
 }
 
@@ -1239,6 +1266,73 @@ function attachPanZoom() {
   d3.select(wrap).call(zoom);
   state.zoomBehavior = zoom;
   resetMapTransform();
+}
+
+function startGastroGlobeClusterReveal({ items = [], duration = 820 } = {}) {
+  if (state.view !== 'world' || !state.currentTransform || !state.placed.length) return Promise.resolve();
+  const wrap = el('mapwrap');
+  const transform = state.currentTransform;
+  const sources = new Map(items.map(item => [item.id, item]));
+  const reveals = new Map();
+  for (const country of state.placed) {
+    const source = sources.get(country.id);
+    if (!source) continue;
+    const centerX = (country.ox + d3.mean(country.cells, cell => cell[0] + 0.5)) * CELL;
+    const centerY = (country.oy + d3.mean(country.cells, cell => cell[1] + 0.5)) * CELL;
+    const sourceX = source.sourceX * wrap.clientWidth;
+    const sourceY = source.sourceY * wrap.clientHeight;
+    const finalScreenX = transform.x + centerX * transform.k;
+    const finalScreenY = transform.y + centerY * transform.k;
+    const orderedCells = [...country.cells].sort((a, b) => {
+      const aDistance = Math.hypot(a[0] + 0.5 - country.w / 2, a[1] + 0.5 - country.h / 2);
+      const bDistance = Math.hypot(b[0] + 0.5 - country.w / 2, b[1] + 0.5 - country.h / 2);
+      return aDistance - bDistance;
+    });
+    const initialCount = clamp(Math.round(source.visibleCells || 1), 1, orderedCells.length);
+    const visibleCells = orderedCells.slice(0, initialCount);
+    reveals.set(country.id, {
+      initialCount,
+      startOffsetX: (sourceX - finalScreenX) / Math.max(0.01, transform.k),
+      startOffsetY: (sourceY - finalScreenY) / Math.max(0.01, transform.k),
+      offsetX: (sourceX - finalScreenX) / Math.max(0.01, transform.k),
+      offsetY: (sourceY - finalScreenY) / Math.max(0.01, transform.k),
+      orderedCells,
+      progress: 0,
+      visibleCells,
+      visibleSet: new Set(visibleCells.map(cell => cell[0] + ',' + cell[1]))
+    });
+  }
+  if (!reveals.size) return Promise.resolve();
+  state.clusterReveal = { items: reveals };
+  document.body.classList.add('cluster-reveal-active');
+  draw();
+
+  return new Promise(resolve => {
+    let startedAt;
+    const frame = timestamp => {
+      if (startedAt === undefined) startedAt = timestamp;
+      const rawProgress = clamp((timestamp - startedAt) / Math.max(1, duration), 0, 1);
+      const progress = 1 - Math.pow(1 - rawProgress, 3);
+      for (const reveal of reveals.values()) {
+        reveal.progress = progress;
+        reveal.offsetX = reveal.startOffsetX * (1 - progress);
+        reveal.offsetY = reveal.startOffsetY * (1 - progress);
+        const visibleCount = Math.round(reveal.initialCount + (reveal.orderedCells.length - reveal.initialCount) * progress);
+        reveal.visibleCells = reveal.orderedCells.slice(0, visibleCount);
+        reveal.visibleSet = new Set(reveal.visibleCells.map(cell => cell[0] + ',' + cell[1]));
+      }
+      draw();
+      if (rawProgress < 1) requestAnimationFrame(frame);
+      else {
+        state.clusterReveal = null;
+        document.body.classList.remove('cluster-reveal-active');
+        updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
+        draw();
+        resolve();
+      }
+    };
+    requestAnimationFrame(frame);
+  });
 }
 
 /* ---------- build ---------- */
@@ -1313,6 +1407,7 @@ function attachPanZoom() {
   draw();
   attachHover();
   attachPanZoom();
+  window.startGastroGlobeClusterReveal = startGastroGlobeClusterReveal;
   el('status').textContent = DATA.length + ' cuisines · ' + META.total + ' restaurants';
 })();
 </script>
