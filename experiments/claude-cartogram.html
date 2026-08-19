@@ -1307,17 +1307,6 @@ function attachPanZoom() {
     off: state.off
   };
 
-  window.getGastroGlobeMorphSnapshot = () => ({
-    cellSize: CELL,
-    cols: state.cols,
-    rows: state.rows,
-    items: state.placed.map(country => ({
-      id: country.id,
-      color: country.fillColor || (CONT[country.continent] || CONT.Europe).fill,
-      cells: country.cells.map(([x, y]) => [country.ox + x, country.oy + y])
-    }))
-  });
-
   document.body.classList.remove('country-detail-open');
   draw();
   layoutLabels();

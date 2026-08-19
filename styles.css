@@ -889,37 +889,6 @@ h1 {
 
 .cursor-label.is-visible { opacity: 1; }
 
-.city-grid-morph-overlay {
-  position: fixed;
-  z-index: 110;
-  overflow: hidden;
-  pointer-events: all;
-  contain: strict;
-}
-
-.city-grid-morph-source {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  pointer-events: none !important;
-  will-change: opacity, transform;
-}
-
-.city-grid-morph-canvas {
-  position: fixed;
-  z-index: 111;
-  inset: 0;
-  display: block;
-  pointer-events: none;
-  contain: strict;
-}
-
-body.is-city-morphing,
-body.is-city-morphing * {
-  cursor: progress !important;
-}
-
 ::view-transition-group(atlas-layer) {
   animation-duration: 520ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
@@ -1043,17 +1012,17 @@ body.is-city-morphing * {
 
 /* Home redesign: the world is a field of metropolitan food cultures. */
 .home-world-view .scene {
-  background: #e9e4da;
+  background: #f2ede3;
 }
 
 .home-world-atlas {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background-color: #e9e4da;
+  background-color: #f2ede3;
   background-image:
-    linear-gradient(rgba(29, 33, 31, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(29, 33, 31, 0.045) 1px, transparent 1px);
+    linear-gradient(to right, #e0d7c4 1px, transparent 1px),
+    linear-gradient(to bottom, #e0d7c4 1px, transparent 1px);
   background-size: var(--home-grid-size, 7px) var(--home-grid-size, 7px);
   background-position: var(--home-grid-x, 0) var(--home-grid-y, 0);
 }
@@ -1118,10 +1087,14 @@ body.is-city-morphing * {
   shape-rendering: crispEdges;
 }
 
-.home-world-pixel-country { fill: color-mix(in srgb, var(--home-country-color) 68%, #e9e4da); }
-.home-world-pixel-country[data-tone="1"] { fill: color-mix(in srgb, var(--home-country-color) 62%, #e9e4da); }
-.home-world-pixel-country[data-tone="2"] { fill: color-mix(in srgb, var(--home-country-color) 74%, #e9e4da); }
-.home-world-pixel-country[data-tone="3"] { fill: color-mix(in srgb, var(--home-country-color) 79%, #e9e4da); }
+.home-world-pixel-country {
+  fill: color-mix(in srgb, var(--home-country-color) 68%, #f2ede3);
+  stroke: rgba(140, 127, 104, 0.18);
+  stroke-width: 0.68px;
+}
+.home-world-pixel-country[data-tone="1"] { fill: color-mix(in srgb, var(--home-country-color) 62%, #f2ede3); }
+.home-world-pixel-country[data-tone="2"] { fill: color-mix(in srgb, var(--home-country-color) 74%, #f2ede3); }
+.home-world-pixel-country[data-tone="3"] { fill: color-mix(in srgb, var(--home-country-color) 79%, #f2ede3); }
 
 .home-world-repeats { pointer-events: none; }
 
