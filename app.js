@@ -88,7 +88,7 @@ function buildDataIndex() {
   countryNodes = (munich?.children ?? []).flatMap((continent) => continent.children ?? []);
 }
 
-function renderGallery() {
+function renderGallery({ initialHomeTransform = null } = {}) {
   document.body.classList.add("home-world-view");
   scene.classList.remove("has-city-back");
   state.cityId = null;
@@ -224,15 +224,21 @@ function renderGallery() {
     cellSize,
     scale: 1,
     focus: projection([0, 10]),
+    transform: initialHomeTransform,
   });
 }
 
 function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
   const layer = svg.select(".home-world-zoom-layer");
   const atlas = scene.querySelector(".home-world-atlas");
-  const initialTransform = d3.zoomIdentity
-    .translate(width / 2 - initialView.focus[0] * initialView.scale, height / 2 - initialView.focus[1] * initialView.scale)
-    .scale(initialView.scale);
+  const requestedTransform = initialView.transform;
+  const initialTransform = requestedTransform
+    ? d3.zoomIdentity
+      .translate(requestedTransform.x, requestedTransform.y)
+      .scale(clamp(requestedTransform.k, 1, 8))
+    : d3.zoomIdentity
+      .translate(width / 2 - initialView.focus[0] * initialView.scale, height / 2 - initialView.focus[1] * initialView.scale)
+      .scale(initialView.scale);
   const zoom = d3.zoom()
     .scaleExtent([1, 8])
     .extent([[0, 0], [width, height]])
@@ -242,6 +248,7 @@ function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
       const { k, x, y } = event.transform;
       const period = worldWidth * k;
       const wrappedX = ((x + period / 2) % period + period) % period - period / 2;
+      svg.node().__homeTransform = { x: wrappedX, y, k };
       layer.attr("transform", `translate(${wrappedX},${y}) scale(${k})`);
       layer.selectAll(".home-city-node")
         .attr("transform", (item) => `translate(${item.renderX},${item.y}) scale(${1 / k})`);
@@ -668,6 +675,10 @@ function captureHomeCuisineClusters(homeMap, cityId = "munich") {
   const selectedCity = cityNodes.find((city) => city.data.id === cityId);
   const selectedCityElement = homeMap.querySelector(`.home-city-node[data-city-id="${CSS.escape(cityId)}"][role="button"]`);
   const selectedCityMatrix = selectedCityElement?.getScreenCTM();
+  const homeMapMatrix = homeMap.getScreenCTM();
+  const homeAnchorPoint = selectedCityMatrix && homeMapMatrix
+    ? new DOMPoint(selectedCityMatrix.e, selectedCityMatrix.f).matrixTransform(homeMapMatrix.inverse())
+    : null;
   const anchorCountry = countryNodes.find((country) =>
     normalizeCountryName(country.data.name) === normalizeCountryName(selectedCity?.data.country ?? "")
   );
@@ -682,6 +693,8 @@ function captureHomeCuisineClusters(homeMap, cityId = "munich") {
     cityAnchor,
     gridX: matrix.e,
     gridY: matrix.f,
+    homeAnchor: homeAnchorPoint ? { x: homeAnchorPoint.x, y: homeAnchorPoint.y } : null,
+    homeTransform: homeMap.__homeTransform ? { ...homeMap.__homeTransform } : null,
     items,
     sourceCellSize: cellSize * Math.hypot(matrix.a, matrix.b),
   } : null;
@@ -721,8 +734,38 @@ async function fadeCuisineHandoffOverlay(overlay) {
   }
 }
 
-function cuisineClusterAnimationPayload(clusterReveal, iframe) {
+function cuisineReturnHomeView(clusterReveal, iframe) {
+  const baseTransform = clusterReveal.homeTransform;
+  if (!baseTransform || !Number.isFinite(baseTransform.k) || baseTransform.k <= 0) return null;
+  const camera = iframe?.contentWindow?.getGastroGlobeCameraTransform?.();
+  const desiredScale = clamp(Number(camera?.k) || baseTransform.k, 1, 8);
+  const factor = desiredScale / baseTransform.k;
+  const localAnchor = clusterReveal.homeAnchor || {
+    x: document.documentElement.clientWidth / 2,
+    y: document.documentElement.clientHeight / 2,
+  };
+  const screenAnchor = clusterReveal.cityAnchor || localAnchor;
+  return {
+    factor,
+    screenAnchor: { x: screenAnchor.x, y: screenAnchor.y },
+    transform: {
+      x: localAnchor.x + (baseTransform.x - localAnchor.x) * factor,
+      y: localAnchor.y + (baseTransform.y - localAnchor.y) * factor,
+      k: desiredScale,
+    },
+  };
+}
+
+function cuisineClusterAnimationPayload(clusterReveal, iframe, returnHomeView = null) {
   const frameRect = iframe.getBoundingClientRect();
+  const scaleHomePoint = (x, y) => {
+    if (!returnHomeView) return { x, y };
+    return {
+      x: returnHomeView.screenAnchor.x + (x - returnHomeView.screenAnchor.x) * returnHomeView.factor,
+      y: returnHomeView.screenAnchor.y + (y - returnHomeView.screenAnchor.y) * returnHomeView.factor,
+    };
+  };
+  const scaledGridOrigin = scaleHomePoint(clusterReveal.gridX, clusterReveal.gridY);
   return {
     cityAnchor: clusterReveal.cityAnchor ? {
       countryId: clusterReveal.cityAnchor.countryId,
@@ -732,21 +775,27 @@ function cuisineClusterAnimationPayload(clusterReveal, iframe) {
       y: (clusterReveal.cityAnchor.y - frameRect.top) / Math.max(1, frameRect.height),
     } : null,
     duration: HOME_CUISINE_CLUSTER_DURATION,
-    sourceGridX: clusterReveal.gridX - frameRect.left,
-    sourceGridY: clusterReveal.gridY - frameRect.top,
-    sourceCellSize: clusterReveal.sourceCellSize,
-    items: clusterReveal.items.map((item) => ({
-      cells: item.cells.map((cell) => ({
-        x: (cell.x - frameRect.left) / Math.max(1, frameRect.width),
-        y: (cell.y - frameRect.top) / Math.max(1, frameRect.height),
-      })),
-      color: item.color,
-      continent: item.continent,
-      id: item.id,
-      sourceX: clamp((item.sourceX - frameRect.left) / Math.max(1, frameRect.width), 0.055, 0.945),
-      sourceY: clamp((item.sourceY - frameRect.top) / Math.max(1, frameRect.height), 0.075, 0.925),
-      targetId: item.targetId,
-    })),
+    sourceGridX: scaledGridOrigin.x - frameRect.left,
+    sourceGridY: scaledGridOrigin.y - frameRect.top,
+    sourceCellSize: clusterReveal.sourceCellSize * (returnHomeView?.factor || 1),
+    items: clusterReveal.items.map((item) => {
+      const sourcePoint = scaleHomePoint(item.sourceX, item.sourceY);
+      return {
+        cells: item.cells.map((cell) => {
+          const point = scaleHomePoint(cell.x, cell.y);
+          return {
+            x: (point.x - frameRect.left) / Math.max(1, frameRect.width),
+            y: (point.y - frameRect.top) / Math.max(1, frameRect.height),
+          };
+        }),
+        color: item.color,
+        continent: item.continent,
+        id: item.id,
+        sourceX: (sourcePoint.x - frameRect.left) / Math.max(1, frameRect.width),
+        sourceY: (sourcePoint.y - frameRect.top) / Math.max(1, frameRect.height),
+        targetId: item.targetId,
+      };
+    }),
   };
 }
 
@@ -779,9 +828,18 @@ async function returnToWorld() {
   if (cityTransitionInFlight || !state.cityId) return;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const clusterReveal = state.cityId === "munich" ? activeCuisineClusterReveal : null;
-  if (!clusterReveal || reduceMotion) {
+  if (!clusterReveal) {
     activeCuisineClusterReveal = null;
     renderGallery();
+    return;
+  }
+  const fallbackReturnHomeView = cuisineReturnHomeView(
+    clusterReveal,
+    scene.querySelector(".claude-cartogram-frame"),
+  );
+  if (reduceMotion) {
+    activeCuisineClusterReveal = null;
+    renderGallery({ initialHomeTransform: fallbackReturnHomeView?.transform || null });
     return;
   }
 
@@ -789,11 +847,11 @@ async function returnToWorld() {
   scene.setAttribute("aria-busy", "true");
   document.body.classList.add("is-home-cuisine-returning");
   try {
-    await animateCuisineClustersBack(clusterReveal);
-    renderGallery();
+    const returnHomeView = await animateCuisineClustersBack(clusterReveal);
+    renderGallery({ initialHomeTransform: (returnHomeView || fallbackReturnHomeView)?.transform || null });
   } catch (error) {
     console.error("Cuisine return failed", error);
-    renderGallery();
+    renderGallery({ initialHomeTransform: fallbackReturnHomeView?.transform || null });
   } finally {
     activeCuisineClusterReveal = null;
     cityTransitionInFlight = false;
@@ -804,14 +862,18 @@ async function returnToWorld() {
 
 async function animateCuisineClustersBack(clusterReveal) {
   const iframe = scene.querySelector(".claude-cartogram-frame");
-  if (!iframe) return;
+  if (!iframe) return null;
   const startedAt = performance.now();
   while (typeof iframe.contentWindow?.startGastroGlobeClusterReturn !== "function") {
-    if (performance.now() - startedAt > 4200) return;
+    if (performance.now() - startedAt > 4200) return null;
     await new Promise((resolve) => requestAnimationFrame(resolve));
   }
-  const morphStats = await iframe.contentWindow.startGastroGlobeClusterReturn(cuisineClusterAnimationPayload(clusterReveal, iframe));
+  const returnHomeView = cuisineReturnHomeView(clusterReveal, iframe);
+  const morphStats = await iframe.contentWindow.startGastroGlobeClusterReturn(
+    cuisineClusterAnimationPayload(clusterReveal, iframe, returnHomeView),
+  );
   if (morphStats) scene.dataset.morphStats = JSON.stringify(morphStats);
+  return returnHomeView;
 }
 
 function homeCountryCellAnchor(cells, countryNode, projection, cellSize) {
@@ -1634,7 +1696,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=morphing-17"
+          src="./experiments/claude-cartogram.html?v=morphing-18"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>

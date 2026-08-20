@@ -1820,6 +1820,11 @@ function startGastroGlobeClusterReturn(options = {}) {
   window.startGastroGlobeClusterReveal = startGastroGlobeClusterReveal;
   window.startGastroGlobeClusterReturn = startGastroGlobeClusterReturn;
   window.getGastroGlobeMorphStats = () => state.lastMorphStats;
+  window.getGastroGlobeCameraTransform = () => state.currentTransform ? {
+    x: state.currentTransform.x,
+    y: state.currentTransform.y,
+    k: state.currentTransform.k
+  } : null;
   el('status').textContent = DATA.length + ' cuisines · ' + META.total + ' restaurants';
 })();
 </script>
