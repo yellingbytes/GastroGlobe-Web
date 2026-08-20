@@ -352,8 +352,10 @@ const state = {
   clusterReveal: null,
   continuitySources: null,
   continuityCellSize: CELL,
+  continuityCityAnchor: null,
   continuityGridX: 0,
   continuityGridY: 0,
+  anchorLock: null,
   morphColors: new Map(),
   lastMorphStats: null
 };
@@ -911,11 +913,29 @@ function commitFixedLayout(placed, cols, rows) {
   }
 }
 
+function targetCityAnchor(cityAnchor) {
+  if (!cityAnchor?.countryId || !Number.isFinite(cityAnchor.lng) || !Number.isFinite(cityAnchor.lat)) return null;
+  const country = state.placed.find(candidate => candidate.id === cityAnchor.countryId);
+  const projected = state.proj?.([cityAnchor.lng, cityAnchor.lat]);
+  if (!country || !projected?.every(Number.isFinite)) return null;
+  if (country.morphAnchor && country.morphOffset && Number.isFinite(country.morphScale)) {
+    return {
+      x: (country.ox - country.morphOffset[0] + country.morphScale * (projected[0] - country.morphAnchor[0])) * CELL,
+      y: (country.oy - country.morphOffset[1] + country.morphScale * (projected[1] - country.morphAnchor[1])) * CELL
+    };
+  }
+  return {
+    x: (country.ox + country.w / 2) * CELL,
+    y: (country.oy + country.h / 2) * CELL
+  };
+}
+
 function worldContinuityTransform(
   items,
   sourceCellSize = state.continuityCellSize || CELL,
   sourceGridX = state.continuityGridX || 0,
-  sourceGridY = state.continuityGridY || 0
+  sourceGridY = state.continuityGridY || 0,
+  cityAnchor = state.continuityCityAnchor
 ) {
   const wrap = el('mapwrap');
   if (!wrap || !state.placed.length) return null;
@@ -936,12 +956,19 @@ function worldContinuityTransform(
   // and position change; the camera never scales the squares between maps.
   const scale = Math.max(0.1, sourceCellSize / CELL);
   const unit = CELL * scale;
-  const alignToSourceGrid = (value, phase) => value + Math.round((phase - value) / unit) * unit;
-  let x = d3.median(pairs, pair => pair.sourceX - pair.targetX * scale);
-  let y = d3.median(pairs, pair => pair.sourceY - pair.targetY * scale);
+  const alignToSourceGrid = (value, phase) => phase + Math.round((value - phase) / unit) * unit;
+  const targetAnchor = targetCityAnchor(cityAnchor);
+  const hasCityAnchor = targetAnchor && Number.isFinite(cityAnchor?.x) && Number.isFinite(cityAnchor?.y);
+  const anchoredX = hasCityAnchor ? cityAnchor.x * wrap.clientWidth - targetAnchor.x * scale : null;
+  const anchoredY = hasCityAnchor ? cityAnchor.y * wrap.clientHeight - targetAnchor.y * scale : null;
+  let x = hasCityAnchor
+    ? anchoredX
+    : d3.median(pairs, pair => pair.sourceX - pair.targetX * scale);
+  let y = hasCityAnchor
+    ? anchoredY
+    : d3.median(pairs, pair => pair.sourceY - pair.targetY * scale);
   x = alignToSourceGrid(x, sourceGridX);
   y = alignToSourceGrid(y, sourceGridY);
-
   const content = {
     left: d3.min(state.placed, country => country.ox) * CELL,
     right: d3.max(state.placed, country => country.ox + country.w) * CELL,
@@ -955,16 +982,32 @@ function worldContinuityTransform(
   const right = x + content.right * scale;
   const top = y + content.top * scale;
   const bottom = y + content.bottom * scale;
-  if (right - left <= wrap.clientWidth - paddingX * 2) {
+  if (!hasCityAnchor && right - left <= wrap.clientWidth - paddingX * 2) {
     if (left < paddingX) x += paddingX - left;
     if (right > wrap.clientWidth - paddingX) x -= right - (wrap.clientWidth - paddingX);
   }
-  if (bottom - top <= wrap.clientHeight - paddingY * 2) {
+  if (!hasCityAnchor && bottom - top <= wrap.clientHeight - paddingY * 2) {
     if (top < paddingY) y += paddingY - top;
     if (bottom > wrap.clientHeight - paddingY) y -= bottom - (wrap.clientHeight - paddingY);
   }
   x = alignToSourceGrid(x, sourceGridX);
   y = alignToSourceGrid(y, sourceGridY);
+  state.anchorLock = {
+    hasCityAnchor: Boolean(hasCityAnchor),
+    source: hasCityAnchor ? {
+      x: Math.round(cityAnchor.x * wrap.clientWidth * 10) / 10,
+      y: Math.round(cityAnchor.y * wrap.clientHeight * 10) / 10
+    } : null,
+    target: targetAnchor ? {
+      x: Math.round((x + targetAnchor.x * scale) * 10) / 10,
+      y: Math.round((y + targetAnchor.y * scale) * 10) / 10
+    } : null,
+    transform: {
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      k: Math.round(scale * 1000) / 1000
+    }
+  };
   return d3.zoomIdentity.translate(x, y).scale(scale);
 }
 
@@ -976,7 +1019,8 @@ function resetMapTransform() {
       state.continuitySources,
       state.continuityCellSize,
       state.continuityGridX,
-      state.continuityGridY
+      state.continuityGridY,
+      state.continuityCityAnchor
     );
     if (continuityTransform) {
       d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
@@ -1506,6 +1550,7 @@ function drawGridMorphFrame(context, wrap, groups, unit, phase) {
 
 function runGastroGlobeGridMorph({
   items = [],
+  cityAnchor = null,
   duration = 900,
   sourceCellSize = CELL,
   sourceGridX = 0,
@@ -1515,11 +1560,14 @@ function runGastroGlobeGridMorph({
   const wrap = el('mapwrap');
   state.continuitySources = items;
   state.continuityCellSize = sourceCellSize;
+  state.continuityCityAnchor = cityAnchor;
   state.continuityGridX = sourceGridX;
   state.continuityGridY = sourceGridY;
   state.morphColors = new Map(items.filter(item => item.targetId).map(item => [item.targetId, item.color]));
-  const continuityTransform = worldContinuityTransform(items, sourceCellSize, sourceGridX, sourceGridY);
-  if (continuityTransform) d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
+  const continuityTransform = worldContinuityTransform(items, sourceCellSize, sourceGridX, sourceGridY, cityAnchor);
+  if (continuityTransform) {
+    d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
+  }
   const transform = state.currentTransform;
   const unit = CELL * transform.k;
   const groups = gridMorphGroups(items, transform, wrap);
@@ -1548,6 +1596,12 @@ function runGastroGlobeGridMorph({
           duration: Math.round(timestamp - startedAt),
           frames,
           maxGap: Math.round(maxGap * 10) / 10,
+          anchorLock: state.anchorLock,
+          camera: state.currentTransform ? {
+            x: Math.round(state.currentTransform.x * 10) / 10,
+            y: Math.round(state.currentTransform.y * 10) / 10,
+            k: Math.round(state.currentTransform.k * 1000) / 1000
+          } : null,
           unit: Math.round(unit * 100) / 100
         };
         document.body.dataset.morphStats = JSON.stringify(state.lastMorphStats);
@@ -1556,7 +1610,7 @@ function runGastroGlobeGridMorph({
           updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
           draw();
         }
-        resolve();
+        resolve(state.lastMorphStats);
       }
     };
     requestAnimationFrame(frame);
@@ -1606,7 +1660,10 @@ function startGastroGlobeClusterReturn(options = {}) {
       id: d.id, name: d.name, count: d.count, continent: d.continent, lat: d.lat, lng: d.lng,
       cells: sil.cells, w: sil.w, h: sil.h,
       idealX: PAD + trueC[0] - sil.w / 2,
-      idealY: PAD + trueC[1] - sil.h / 2
+      idealY: PAD + trueC[1] - sil.h / 2,
+      morphAnchor: sil.anchor,
+      morphOffset: sil.offset,
+      morphScale: sil.scale
     });
   }
   items.sort((a, b) => b.cells.length - a.cells.length);

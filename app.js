@@ -579,7 +579,7 @@ async function openCity(cityId) {
   const status = scene.querySelector(".home-world-status");
   if (status) status.textContent = `${datasetMeta.includedRestaurants.toLocaleString("en")} Munich restaurants · reshaping the world`;
   try {
-    const clusterReveal = captureHomeCuisineClusters(homeMap);
+    const clusterReveal = captureHomeCuisineClusters(homeMap, cityId);
     pendingCuisineClusterReveal = clusterReveal;
     activeCuisineClusterReveal = clusterReveal;
     const handoffOverlay = clusterReveal ? createCuisineHandoffOverlay() : null;
@@ -627,7 +627,7 @@ function buildHomeCuisineSourcePlans(homeMap) {
   return { cellSize, plans, worldWidth };
 }
 
-function captureHomeCuisineClusters(homeMap) {
+function captureHomeCuisineClusters(homeMap, cityId = "munich") {
   const { cellSize, plans, worldWidth } = buildHomeCuisineSourcePlans(homeMap);
   const layer = homeMap.querySelector(".home-world-zoom-layer");
   const matrix = layer?.getScreenCTM();
@@ -665,7 +665,21 @@ function captureHomeCuisineClusters(homeMap) {
       targetId: plan.restaurantCount > 0 ? plan.countryId : null,
     };
   });
+  const selectedCity = cityNodes.find((city) => city.data.id === cityId);
+  const selectedCityElement = homeMap.querySelector(`.home-city-node[data-city-id="${CSS.escape(cityId)}"][role="button"]`);
+  const selectedCityMatrix = selectedCityElement?.getScreenCTM();
+  const anchorCountry = countryNodes.find((country) =>
+    normalizeCountryName(country.data.name) === normalizeCountryName(selectedCity?.data.country ?? "")
+  );
+  const cityAnchor = selectedCity && selectedCityMatrix ? {
+    countryId: anchorCountry?.data.countryId ?? null,
+    lat: selectedCity.data.lat,
+    lng: selectedCity.data.lng,
+    x: selectedCityMatrix.e,
+    y: selectedCityMatrix.f,
+  } : null;
   return items.length ? {
+    cityAnchor,
     gridX: matrix.e,
     gridY: matrix.f,
     items,
@@ -710,6 +724,13 @@ async function fadeCuisineHandoffOverlay(overlay) {
 function cuisineClusterAnimationPayload(clusterReveal, iframe) {
   const frameRect = iframe.getBoundingClientRect();
   return {
+    cityAnchor: clusterReveal.cityAnchor ? {
+      countryId: clusterReveal.cityAnchor.countryId,
+      lat: clusterReveal.cityAnchor.lat,
+      lng: clusterReveal.cityAnchor.lng,
+      x: (clusterReveal.cityAnchor.x - frameRect.left) / Math.max(1, frameRect.width),
+      y: (clusterReveal.cityAnchor.y - frameRect.top) / Math.max(1, frameRect.height),
+    } : null,
     duration: HOME_CUISINE_CLUSTER_DURATION,
     sourceGridX: clusterReveal.gridX - frameRect.left,
     sourceGridY: clusterReveal.gridY - frameRect.top,
@@ -744,7 +765,8 @@ async function animateCuisineClustersIntoPlace(clusterReveal, handoffOverlay) {
     const payload = cuisineClusterAnimationPayload(clusterReveal, iframe);
     const animation = iframe.contentWindow.startGastroGlobeClusterReveal(payload);
     iframe.classList.remove("is-cluster-reveal-pending");
-    await Promise.all([animation, fadeCuisineHandoffOverlay(handoffOverlay)]);
+    const [morphStats] = await Promise.all([animation, fadeCuisineHandoffOverlay(handoffOverlay)]);
+    if (morphStats) scene.dataset.morphStats = JSON.stringify(morphStats);
   } catch (error) {
     console.error("Cuisine clustering failed", error);
   } finally {
@@ -788,7 +810,8 @@ async function animateCuisineClustersBack(clusterReveal) {
     if (performance.now() - startedAt > 4200) return;
     await new Promise((resolve) => requestAnimationFrame(resolve));
   }
-  await iframe.contentWindow.startGastroGlobeClusterReturn(cuisineClusterAnimationPayload(clusterReveal, iframe));
+  const morphStats = await iframe.contentWindow.startGastroGlobeClusterReturn(cuisineClusterAnimationPayload(clusterReveal, iframe));
+  if (morphStats) scene.dataset.morphStats = JSON.stringify(morphStats);
 }
 
 function homeCountryCellAnchor(cells, countryNode, projection, cellSize) {
@@ -1611,7 +1634,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=morphing-7"
+          src="./experiments/claude-cartogram.html?v=morphing-13"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
