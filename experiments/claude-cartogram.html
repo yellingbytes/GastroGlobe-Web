@@ -68,9 +68,43 @@
     image-rendering: pixelated;
     image-rendering: crisp-edges;
   }
-  #labels { position: absolute; inset: 0; pointer-events: none; }
-  #labels { transition: opacity 220ms ease; }
+  #sharp-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    shape-rendering: geometricPrecision;
+  }
+  .sharp-border {
+    fill: none;
+    stroke: rgba(35,32,27,0.82);
+    stroke-width: 1.2px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .sharp-leader {
+    fill: none;
+    stroke: rgba(35,32,27,0.66);
+    stroke-width: 1.2px;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .sharp-leader-dot { fill: rgba(35,32,27,0.74); }
+  .sharp-leader-group[hidden] { display: none; }
+  #labels {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+  }
   body.cluster-reveal-active #labels { opacity: 0; transition: none; }
+  body.cluster-reveal-active #sharp-overlay { opacity: 0; }
   body.cluster-reveal-active #mapscene { visibility: hidden; }
   body.cluster-reveal-active #morphcv { display: block; }
   body.cluster-reveal-active #mapwrap { cursor: wait; pointer-events: none; }
@@ -82,20 +116,19 @@
     font-size: 16px;
     line-height: 1.25;
     font-weight: 700;
+    text-rendering: geometricPrecision;
     text-shadow:
       -1px -1px 0 rgba(247,244,236,0.96),
        1px -1px 0 rgba(247,244,236,0.96),
       -1px  1px 0 rgba(247,244,236,0.96),
        1px  1px 0 rgba(247,244,236,0.96),
        0 0 4px rgba(247,244,236,0.9);
-    transform: scale(var(--map-label-scale, 1));
-    transform-origin: center;
   }
   .lab[hidden] { display: none; }
-  .lab-out { color: inherit; font: inherit; }
+  .lab-out { color: inherit; }
   .lab-out.halo { background: rgba(244,240,230,0.92); box-shadow: 0 0 0 2px rgba(244,240,230,0.92); }
   .lab-out span { font-family: var(--mono); font-size: 12px; font-weight: 600; color: #51493d; margin-left: 4px; }
-  #tip { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
+  #tip { position: absolute; z-index: 6; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
   #tip b { font-weight: 600; }
   #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
   #ctrls { display: none; }
@@ -151,9 +184,13 @@
     <div id="mapwrap">
       <div id="mapscene">
         <canvas id="cv"></canvas>
-        <div id="labels"></div>
       </div>
+      <svg id="sharp-overlay" aria-hidden="true">
+        <g id="sharp-border-camera"></g>
+        <g id="sharp-leaders"></g>
+      </svg>
       <canvas id="morphcv" aria-hidden="true"></canvas>
+      <div id="labels"></div>
       <div id="tip"></div>
     </div>
     <div id="ctrls">
@@ -332,6 +369,7 @@ const state = {
   hover: null,
   ghost: false,
   leaders: [],
+  labelInk: null,
   visibleLabelIds: new Set(),
   placed: [],
   lookup: null,
@@ -444,6 +482,7 @@ function rasterise(feature, path, targetCells) {
     anchor: [b[0][0], b[0][1]],
     scale: s,
     offset: [minx - 1, miny - 1],
+    vectorD: d,
     vectorPath: p2d
   };
 }
@@ -474,6 +513,7 @@ function rasteriseBackdrop(feature, path, cols, rows) {
     cells,
     set,
     layer: cvs,
+    vectorD: d,
     vectorPath: shape,
     bounds: path.bounds(feature),
     centroid: path.centroid(feature)
@@ -586,6 +626,122 @@ function pack(items, cols, rows, options = {}) {
 
 /* ---------- drawing ---------- */
 let dpr = Math.min(2, window.devicePixelRatio || 1);
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function sharpSvgNode(name, attributes = {}) {
+  const node = document.createElementNS(SVG_NS, name);
+  for (const [key, value] of Object.entries(attributes)) {
+    if (value !== null && value !== undefined) node.setAttribute(key, String(value));
+  }
+  return node;
+}
+
+function sharpGridBoundaryPath(cells, cellSet, ox = 0, oy = 0) {
+  const segments = [];
+  for (const [dx, dy] of cells) {
+    const x = (ox + dx) * CELL;
+    const y = (oy + dy) * CELL;
+    if (!cellSet.has(dx + ',' + (dy - 1))) segments.push('M' + x + ',' + y + 'h' + CELL);
+    if (!cellSet.has(dx + ',' + (dy + 1))) segments.push('M' + x + ',' + (y + CELL) + 'h' + CELL);
+    if (!cellSet.has((dx - 1) + ',' + dy)) segments.push('M' + x + ',' + y + 'v' + CELL);
+    if (!cellSet.has((dx + 1) + ',' + dy)) segments.push('M' + (x + CELL) + ',' + y + 'v' + CELL);
+  }
+  return segments.join('');
+}
+
+function renderSharpOverlays() {
+  const overlay = el('sharp-overlay');
+  const borderCamera = el('sharp-border-camera');
+  const leaderHost = el('sharp-leaders');
+  const wrap = el('mapwrap');
+  if (!overlay || !borderCamera || !leaderHost || !wrap) return;
+  overlay.setAttribute('viewBox', '0 0 ' + Math.max(1, wrap.clientWidth) + ' ' + Math.max(1, wrap.clientHeight));
+  borderCamera.replaceChildren();
+  leaderHost.replaceChildren();
+
+  if (state.view === 'country' && state.countryBackdrop?.vectorD) {
+    borderCamera.append(sharpSvgNode('path', {
+      class: 'sharp-border',
+      d: state.countryBackdrop.vectorD,
+      stroke: 'rgba(35,32,27,0.46)',
+      transform: 'scale(' + CELL + ')'
+    }));
+  }
+
+  for (const p of state.placed) {
+    const active = state.hover === p.id || state.sel === p.id;
+    const attributes = {
+      class: 'sharp-border',
+      'data-id': p.id,
+      stroke: active ? '#23201b' : 'rgba(35,32,27,0.82)',
+      'stroke-width': active ? 2 : 1.2
+    };
+    if (state.view === 'world' && p.vectorD && p.morphAnchor && p.morphOffset && p.morphScale) {
+      attributes.d = p.vectorD;
+      attributes.transform =
+        'translate(' + ((p.ox - p.morphOffset[0]) * CELL) + ',' + ((p.oy - p.morphOffset[1]) * CELL) + ') ' +
+        'scale(' + (p.morphScale * CELL) + ') ' +
+        'translate(' + (-p.morphAnchor[0]) + ',' + (-p.morphAnchor[1]) + ')';
+    } else {
+      attributes.d = sharpGridBoundaryPath(p.cells, p.set, p.ox, p.oy);
+    }
+    borderCamera.append(sharpSvgNode('path', attributes));
+  }
+
+  state.leaders.forEach((leader, index) => {
+    const group = sharpSvgNode('g', { class: 'sharp-leader-group', 'data-index': index });
+    group.append(sharpSvgNode('line', { class: 'sharp-leader' }));
+    if (leader.dot) group.append(sharpSvgNode('circle', { class: 'sharp-leader-dot', r: 2 }));
+    leaderHost.append(group);
+  });
+  updateSharpOverlay(state.currentTransform || d3.zoomIdentity);
+}
+
+function updateSharpOverlay(transform) {
+  const overlay = el('sharp-overlay');
+  const borderCamera = el('sharp-border-camera');
+  const wrap = el('mapwrap');
+  if (!overlay || !borderCamera || !wrap) return;
+  overlay.setAttribute('viewBox', '0 0 ' + Math.max(1, wrap.clientWidth) + ' ' + Math.max(1, wrap.clientHeight));
+  const k = Math.max(0.01, transform?.k || 1);
+  const snap = value => Math.round(value * dpr) / dpr;
+  borderCamera.setAttribute(
+    'transform',
+    'translate(' + snap(transform?.x || 0) + ',' + snap(transform?.y || 0) + ') scale(' + k + ')'
+  );
+  for (const group of el('sharp-leaders').querySelectorAll('.sharp-leader-group')) {
+    const leader = state.leaders[Number(group.dataset.index)];
+    const visible = leader && state.visibleLabelIds.has(leader.id);
+    group.toggleAttribute('hidden', !visible);
+    if (!visible) continue;
+    const labelX = (transform?.x || 0) + leader.labelX * k;
+    const labelY = (transform?.y || 0) + leader.labelY * k;
+    const centerX = labelX + leader.labelWidth / 2;
+    const centerY = labelY + leader.labelHeight / 2;
+    const targetX = (transform?.x || 0) + leader.targetX * k;
+    const targetY = (transform?.y || 0) + leader.targetY * k;
+    const dx = targetX - centerX;
+    const dy = targetY - centerY;
+    const distance = Math.max(0.001, Math.hypot(dx, dy));
+    const edgeRatio = Math.min(1,
+      1 / Math.max(
+        Math.abs(dx) / Math.max(1, leader.labelWidth / 2 + 2),
+        Math.abs(dy) / Math.max(1, leader.labelHeight / 2 + 2)
+      )
+    );
+    const line = group.querySelector('line');
+    line.setAttribute('x1', snap(centerX + dx * edgeRatio));
+    line.setAttribute('y1', snap(centerY + dy * edgeRatio));
+    line.setAttribute('x2', snap(targetX - dx / distance * 2.5));
+    line.setAttribute('y2', snap(targetY - dy / distance * 2.5));
+    const dot = group.querySelector('circle');
+    if (dot) {
+      dot.setAttribute('cx', snap(targetX));
+      dot.setAttribute('cy', snap(targetY));
+    }
+  }
+}
+
 function draw() {
   const cv = el('cv'), ctx = cv.getContext('2d');
   const W = state.cols * CELL, H = state.rows * CELL;
@@ -632,7 +788,6 @@ function draw() {
     const active = state.hover === p.id || state.sel === p.id;
     const reveal = state.clusterReveal?.items.get(p.id) || null;
     const visibleCells = reveal?.visibleCells || p.cells;
-    const visibleSet = reveal?.visibleSet || p.set;
     ctx.save();
     if (reveal) {
       const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
@@ -652,70 +807,9 @@ function draw() {
     ctx.beginPath();
     for (const [dx, dy] of visibleCells) ctx.rect((p.ox + dx) * CELL + 0.5, (p.oy + dy) * CELL + 0.5, CELL - 1, CELL - 1);
     ctx.stroke();
-    // The territory retains its square-density fill, but country outlines use
-    // the original geographic path so zooming never turns borders into stairs.
-    if (state.view === 'world' && p.vectorPath && p.anchor && p.offset && p.scale) {
-      if (reveal && reveal.progress < 0.82) {
-        ctx.strokeStyle = 'rgba(35,32,27,' + (0.74 * (1 - reveal.progress / 0.82)) + ')';
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        for (const [dx, dy] of visibleCells) {
-          const X = (p.ox + dx) * CELL, Y = (p.oy + dy) * CELL;
-          if (!visibleSet.has(dx + ',' + (dy - 1))) { ctx.moveTo(X, Y); ctx.lineTo(X + CELL, Y); }
-          if (!visibleSet.has(dx + ',' + (dy + 1))) { ctx.moveTo(X, Y + CELL); ctx.lineTo(X + CELL, Y + CELL); }
-          if (!visibleSet.has((dx - 1) + ',' + dy)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + CELL); }
-          if (!visibleSet.has((dx + 1) + ',' + dy)) { ctx.moveTo(X + CELL, Y); ctx.lineTo(X + CELL, Y + CELL); }
-        }
-        ctx.stroke();
-      }
-      if (!reveal || reveal.progress > 0.58) {
-        ctx.save();
-        if (reveal) ctx.globalAlpha = clamp((reveal.progress - 0.58) / 0.42, 0, 1);
-        ctx.translate((p.ox - p.offset[0]) * CELL, (p.oy - p.offset[1]) * CELL);
-        ctx.scale(p.scale * CELL, p.scale * CELL);
-        ctx.translate(-p.anchor[0], -p.anchor[1]);
-        ctx.strokeStyle = active ? '#23201b' : 'rgba(35,32,27,0.78)';
-        ctx.lineWidth = (active ? 2 : 1.15) / (p.scale * CELL);
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.stroke(p.vectorPath);
-        ctx.restore();
-      }
-    } else {
-      ctx.strokeStyle = active ? '#23201b' : 'rgba(35,32,27,0.8)';
-      ctx.lineWidth = active ? 2 : 1.2;
-      ctx.beginPath();
-      for (const [dx, dy] of visibleCells) {
-        const X = (p.ox + dx) * CELL, Y = (p.oy + dy) * CELL;
-        if (!visibleSet.has((dx) + ',' + (dy - 1))) { ctx.moveTo(X, Y); ctx.lineTo(X + CELL, Y); }
-          if (!visibleSet.has((dx) + ',' + (dy + 1))) { ctx.moveTo(X, Y + CELL); ctx.lineTo(X + CELL, Y + CELL); }
-        if (!visibleSet.has((dx - 1) + ',' + dy)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + CELL); }
-        if (!visibleSet.has((dx + 1) + ',' + dy)) { ctx.moveTo(X + CELL, Y); ctx.lineTo(X + CELL, Y + CELL); }
-      }
-      ctx.stroke();
-    }
     ctx.restore();
   }
-
-  // leader lines
-  if (state.clusterReveal) return;
-  ctx.strokeStyle = 'rgba(35,32,27,0.62)';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  for (const l of state.leaders) {
-    if (!state.visibleLabelIds.has(l.id)) continue;
-    ctx.moveTo(l.x1, l.y1);
-    ctx.lineTo(l.x2, l.y2);
-  }
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(35,32,27,0.72)';
-  for (const l of state.leaders) {
-    if (!state.visibleLabelIds.has(l.id)) continue;
-    if (!l.dot) continue;
-    ctx.beginPath();
-    ctx.arc(l.x2, l.y2, 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  renderSharpOverlays();
 }
 
 /* ---------- labels ---------- */
@@ -728,9 +822,11 @@ function layoutLabels() {
   // exact ink mask: which grid cells are covered by a country silhouette
   const ink = new Uint8Array(state.cols * state.rows);
   for (const p of state.placed) for (const [dx, dy] of p.cells) ink[(p.oy + dy) * state.cols + (p.ox + dx)] = 1;
+  state.labelInk = ink;
+  const landGap = 6;
   const inkHit = r => {
-    const x0 = Math.floor((r.x - 2) / CELL), x1 = Math.ceil((r.x + r.w + 2) / CELL);
-    const y0 = Math.floor((r.y - 2) / CELL), y1 = Math.ceil((r.y + r.h + 2) / CELL);
+    const x0 = Math.floor((r.x - landGap) / CELL), x1 = Math.ceil((r.x + r.w + landGap) / CELL);
+    const y0 = Math.floor((r.y - landGap) / CELL), y1 = Math.ceil((r.y + r.h + landGap) / CELL);
     let n = 0;
     for (let y = Math.max(0, y0); y < Math.min(state.rows, y1); y++)
       for (let x = Math.max(0, x0); x < Math.min(state.cols, x1); x++)
@@ -740,7 +836,7 @@ function layoutLabels() {
   const boxes = [];
   const overlap = r => boxes.some(t => r.x < t.x + t.w && r.x + r.w > t.x && r.y < t.y + t.h && r.y + r.h > t.y);
 
-  const closeLabelPriority = new Set(['united-kingdom', 'israel']);
+  const closeLabelPriority = new Set(['united-kingdom', 'israel', 'greece', 'bulgaria']);
   const outside = [...state.placed]
     .sort((a, b) =>
       Number(closeLabelPriority.has(b.id)) - Number(closeLabelPriority.has(a.id)) ||
@@ -819,8 +915,10 @@ function layoutLabels() {
     }
     const ambiguous = !pick;
     if (!pick) pick = fallback || [Math.min(W - lw - 4, Math.max(4, bx)), Math.min(H - lh - 4, by + bh + 4)];
-    d.style.left = (pick[0] / W * 100) + '%';
-    d.style.top = (pick[1] / H * 100) + '%';
+    d.dataset.mapX = pick[0];
+    d.dataset.mapY = pick[1];
+    d.style.left = '0px';
+    d.style.top = '0px';
     boxes.push({ x: pick[0] - 2, y: pick[1] - 2, w: lw + 4, h: lh + 4 });
 
     const lcx = pick[0] + lw / 2, lcy = pick[1] + lh / 2;
@@ -831,11 +929,14 @@ function layoutLabels() {
       if (dd < bestD) { bestD = dd; tx = cx; ty = cy; }
     }
     if (bestD > 9 || ambiguous) {
-      const ux = (tx - lcx) / bestD, uy = (ty - lcy) / bestD;
       state.leaders.push({
         id: p.id,
-        x1: lcx + ux * (lw / 2 + 3), y1: lcy + uy * (lh / 2 + 3),
-        x2: tx - ux * CELL * 0.5, y2: ty - uy * CELL * 0.5,
+        labelX: pick[0],
+        labelY: pick[1],
+        labelWidth: lw,
+        labelHeight: lh,
+        targetX: tx,
+        targetY: ty,
         dot: ambiguous || bestD > 30
       });
     }
@@ -1062,36 +1163,57 @@ function updateMapLabelPresentation(transform) {
   const wrap = el('mapwrap');
   if (!host || !wrap) return;
   const k = Math.max(0.01, transform?.k || 1);
-  host.style.setProperty('--map-label-scale', String(1 / k));
+  const snap = value => Math.round(value * dpr) / dpr;
+  const isActiveLabel = label => label.dataset.id === state.sel || label.dataset.id === state.hover;
   const labels = [...host.querySelectorAll('.lab')];
   labels.forEach(label => { label.hidden = false; });
+  labels.sort((a, b) => Number(isActiveLabel(b)) - Number(isActiveLabel(a)));
   const occupied = [];
   const visibleLabelIds = new Set();
-  const gap = 4;
+  const gap = 5;
+  const hitsLand = rect => {
+    if (!state.labelInk) return false;
+    const x0 = Math.floor((rect.x - (transform?.x || 0)) / k / CELL);
+    const y0 = Math.floor((rect.y - (transform?.y || 0)) / k / CELL);
+    const x1 = Math.ceil((rect.x + rect.width - (transform?.x || 0)) / k / CELL);
+    const y1 = Math.ceil((rect.y + rect.height - (transform?.y || 0)) / k / CELL);
+    for (let y = Math.max(0, y0); y < Math.min(state.rows, y1); y++) {
+      for (let x = Math.max(0, x0); x < Math.min(state.cols, x1); x++) {
+        if (state.labelInk[y * state.cols + x]) return true;
+      }
+    }
+    return false;
+  };
   for (const label of labels) {
     const width = label.offsetWidth;
     const height = label.offsetHeight;
-    const centerX = (transform?.x || 0) + (label.offsetLeft + width / 2) * k;
-    const centerY = (transform?.y || 0) + (label.offsetTop + height / 2) * k;
+    const mapX = Number(label.dataset.mapX);
+    const mapY = Number(label.dataset.mapY);
+    if (!Number.isFinite(mapX) || !Number.isFinite(mapY)) continue;
+    const screenX = (transform?.x || 0) + mapX * k;
+    const screenY = (transform?.y || 0) + mapY * k;
+    label.style.transform = 'translate(' + snap(screenX) + 'px,' + snap(screenY) + 'px)';
     const rect = {
-      x: centerX - width / 2 - gap,
-      y: centerY - height / 2 - gap,
+      x: screenX - gap,
+      y: screenY - gap,
       width: width + gap * 2,
       height: height + gap * 2
     };
-    const active = label.dataset.id === state.sel || label.dataset.id === state.hover;
+    const active = isActiveLabel(label);
     const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > wrap.clientWidth - 2 || rect.y + rect.height > wrap.clientHeight - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&
       rect.y < box.y + box.height && rect.y + rect.height > box.y
     );
-    label.hidden = !active && (outside || collision);
+    const landConflict = hitsLand({ x: screenX, y: screenY, width, height });
+    label.hidden = !active && (outside || collision || landConflict);
     if (!label.hidden) {
       occupied.push(rect);
       visibleLabelIds.add(label.dataset.id);
     }
   }
   state.visibleLabelIds = visibleLabelIds;
+  updateSharpOverlay(transform);
 }
 
 function renderCountryAtlas(country) {
@@ -1524,8 +1646,9 @@ function prepareGridMorphCanvas() {
   return { canvas, context, ratio, wrap };
 }
 
-function drawGridMorphFrame(context, wrap, groups, unit, phase) {
+function drawGridMorphFrame(context, wrap, groups, targetUnit, sourceUnit, phase) {
   context.clearRect(0, 0, wrap.clientWidth, wrap.clientHeight);
+  const unit = sourceUnit + (targetUnit - sourceUnit) * phase;
   const halfUnit = unit / 2;
   const snap = value => Math.round(value * dpr) / dpr;
   for (const group of groups) {
@@ -1564,16 +1687,19 @@ function runGastroGlobeGridMorph({
   state.continuityGridX = sourceGridX;
   state.continuityGridY = sourceGridY;
   state.morphColors = new Map(items.filter(item => item.targetId).map(item => [item.targetId, item.color]));
-  const continuityTransform = worldContinuityTransform(items, sourceCellSize, sourceGridX, sourceGridY, cityAnchor);
+  const continuityTransform = reverse
+    ? null
+    : worldContinuityTransform(items, sourceCellSize, sourceGridX, sourceGridY, cityAnchor);
   if (continuityTransform) {
     d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
   }
   const transform = state.currentTransform;
-  const unit = CELL * transform.k;
+  const targetUnit = CELL * transform.k;
+  const sourceUnit = Math.max(0.5, sourceCellSize);
   const groups = gridMorphGroups(items, transform, wrap);
   const { context } = prepareGridMorphCanvas();
   document.body.classList.add('cluster-reveal-active');
-  drawGridMorphFrame(context, wrap, groups, unit, reverse ? 1 : 0);
+  drawGridMorphFrame(context, wrap, groups, targetUnit, sourceUnit, reverse ? 1 : 0);
 
   return new Promise(resolve => {
     let startedAt;
@@ -1588,7 +1714,7 @@ function runGastroGlobeGridMorph({
       const rawProgress = clamp((timestamp - startedAt) / Math.max(1, duration), 0, 1);
       const smoothProgress = rawProgress * rawProgress * rawProgress * (rawProgress * (rawProgress * 6 - 15) + 10);
       const phase = reverse ? 1 - smoothProgress : smoothProgress;
-      drawGridMorphFrame(context, wrap, groups, unit, phase);
+      drawGridMorphFrame(context, wrap, groups, targetUnit, sourceUnit, phase);
       if (rawProgress < 1) requestAnimationFrame(frame);
       else {
         state.lastMorphStats = {
@@ -1602,7 +1728,9 @@ function runGastroGlobeGridMorph({
             y: Math.round(state.currentTransform.y * 10) / 10,
             k: Math.round(state.currentTransform.k * 1000) / 1000
           } : null,
-          unit: Math.round(unit * 100) / 100
+          cameraReset: Boolean(continuityTransform),
+          sourceUnit: Math.round(sourceUnit * 100) / 100,
+          unit: Math.round(targetUnit * 100) / 100
         };
         document.body.dataset.morphStats = JSON.stringify(state.lastMorphStats);
         if (!reverse) {
@@ -1661,6 +1789,7 @@ function startGastroGlobeClusterReturn(options = {}) {
       cells: sil.cells, w: sil.w, h: sil.h,
       idealX: PAD + trueC[0] - sil.w / 2,
       idealY: PAD + trueC[1] - sil.h / 2,
+      vectorD: sil.vectorD || null,
       morphAnchor: sil.anchor,
       morphOffset: sil.offset,
       morphScale: sil.scale
