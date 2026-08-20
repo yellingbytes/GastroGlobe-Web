@@ -46,7 +46,7 @@ let cityTransitionInFlight = false;
 let pendingCuisineClusterReveal = null;
 let activeCuisineClusterReveal = null;
 
-const HOME_CUISINE_CLUSTER_DURATION = 1200;
+const HOME_CUISINE_CLUSTER_DURATION = 1150;
 
 const countryNameAliases = new Map([
   ["bosnia and herz", "bosnia & herzegovina"],
@@ -616,6 +616,8 @@ function buildHomeCuisineSourcePlans(homeMap) {
     return {
       anchor,
       countryId: country.countryId,
+      continent: country.continent,
+      index: country.index,
       path,
       restaurantCount,
       sourceCells: country.cells,
@@ -636,25 +638,36 @@ function captureHomeCuisineClusters(homeMap) {
     x: matrix.a * x + matrix.c * y + matrix.e,
     y: matrix.b * x + matrix.d * y + matrix.f,
   });
-  const visibleAnchor = (anchor) => [-worldWidth, 0, worldWidth]
-    .map((offset) => toScreen((anchor.column + 0.5) * cellSize + offset, (anchor.row + 0.5) * cellSize))
+  const visiblePlacement = (anchor) => [-worldWidth, 0, worldWidth]
+    .map((worldOffset) => ({
+      anchor: toScreen((anchor.column + 0.5) * cellSize + worldOffset, (anchor.row + 0.5) * cellSize),
+      worldOffset,
+    }))
     .sort((a, b) => {
-      const aVisible = a.x >= 0 && a.x <= viewportWidth && a.y >= 0 && a.y <= viewportHeight;
-      const bVisible = b.x >= 0 && b.x <= viewportWidth && b.y >= 0 && b.y <= viewportHeight;
+      const aVisible = a.anchor.x >= 0 && a.anchor.x <= viewportWidth && a.anchor.y >= 0 && a.anchor.y <= viewportHeight;
+      const bVisible = b.anchor.x >= 0 && b.anchor.x <= viewportWidth && b.anchor.y >= 0 && b.anchor.y <= viewportHeight;
       if (aVisible !== bVisible) return aVisible ? -1 : 1;
-      return Math.hypot(a.x - viewportWidth / 2, a.y - viewportHeight / 2)
-        - Math.hypot(b.x - viewportWidth / 2, b.y - viewportHeight / 2);
+      return Math.hypot(a.anchor.x - viewportWidth / 2, a.anchor.y - viewportHeight / 2)
+        - Math.hypot(b.anchor.x - viewportWidth / 2, b.anchor.y - viewportHeight / 2);
     })[0];
-  const items = plans.filter((plan) => plan.countryId && plan.restaurantCount > 0).map((plan) => {
-    const anchor = visibleAnchor(plan.anchor);
+  const items = plans.map((plan) => {
+    const placement = visiblePlacement(plan.anchor);
     return {
-      id: plan.countryId,
-      sourceX: anchor.x,
-      sourceY: anchor.y,
-      visibleCells: plan.sourceCount,
+      cells: plan.sourceCells.map((cell) => toScreen(
+        (cell.column + 0.5) * cellSize + placement.worldOffset,
+        (cell.row + 0.5) * cellSize,
+      )),
+      color: getComputedStyle(plan.path).fill,
+      continent: plan.continent,
+      id: plan.countryId ?? `world-country-${plan.index}`,
+      sourceX: placement.anchor.x,
+      sourceY: placement.anchor.y,
+      targetId: plan.restaurantCount > 0 ? plan.countryId : null,
     };
   });
   return items.length ? {
+    gridX: matrix.e,
+    gridY: matrix.f,
     items,
     sourceCellSize: cellSize * Math.hypot(matrix.a, matrix.b),
   } : null;
@@ -685,7 +698,7 @@ async function fadeCuisineHandoffOverlay(overlay) {
   try {
     await overlay.animate(
       [{ opacity: 1 }, { opacity: 0 }],
-      { duration: 260, easing: "ease-out", fill: "forwards" },
+      { duration: 110, easing: "linear", fill: "forwards" },
     ).finished;
   } catch {
     // The overlay may be removed if navigation changes during the handoff.
@@ -698,12 +711,20 @@ function cuisineClusterAnimationPayload(clusterReveal, iframe) {
   const frameRect = iframe.getBoundingClientRect();
   return {
     duration: HOME_CUISINE_CLUSTER_DURATION,
+    sourceGridX: clusterReveal.gridX - frameRect.left,
+    sourceGridY: clusterReveal.gridY - frameRect.top,
     sourceCellSize: clusterReveal.sourceCellSize,
     items: clusterReveal.items.map((item) => ({
+      cells: item.cells.map((cell) => ({
+        x: (cell.x - frameRect.left) / Math.max(1, frameRect.width),
+        y: (cell.y - frameRect.top) / Math.max(1, frameRect.height),
+      })),
+      color: item.color,
+      continent: item.continent,
       id: item.id,
       sourceX: clamp((item.sourceX - frameRect.left) / Math.max(1, frameRect.width), 0.055, 0.945),
       sourceY: clamp((item.sourceY - frameRect.top) / Math.max(1, frameRect.height), 0.075, 0.925),
-      visibleCells: item.visibleCells,
+      targetId: item.targetId,
     })),
   };
 }
@@ -748,8 +769,6 @@ async function returnToWorld() {
   try {
     await animateCuisineClustersBack(clusterReveal);
     renderGallery();
-    const homeMap = scene.querySelector(".home-world-map");
-    if (homeMap?.__homeGrid) await revealHomeWorldContext(homeMap);
   } catch (error) {
     console.error("Cuisine return failed", error);
     renderGallery();
@@ -770,32 +789,6 @@ async function animateCuisineClustersBack(clusterReveal) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
   }
   await iframe.contentWindow.startGastroGlobeClusterReturn(cuisineClusterAnimationPayload(clusterReveal, iframe));
-}
-
-async function revealHomeWorldContext(homeMap) {
-  const { plans } = buildHomeCuisineSourcePlans(homeMap);
-  const contextPaths = plans.filter((plan) => plan.restaurantCount <= 0).map((plan) => plan.path);
-  const chrome = [
-    scene.querySelector(".home-world-heading"),
-    scene.querySelector(".home-city-leaders"),
-    scene.querySelector(".home-city-nodes"),
-    scene.querySelector(".home-world-status"),
-  ].filter(Boolean);
-  const elements = [...contextPaths, ...chrome];
-  elements.forEach((element) => {
-    element.style.opacity = "0";
-  });
-  document.body.classList.remove("is-home-cuisine-returning");
-  const status = scene.querySelector(".home-world-status");
-  if (status) status.textContent = "Returning to the world city atlas";
-  const animations = elements.map((element) => element.animate(
-    [{ opacity: 0 }, { opacity: 1 }],
-    { duration: 360, easing: "ease-out", fill: "forwards" },
-  ));
-  await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
-  elements.forEach((element) => element.style.removeProperty("opacity"));
-  const verifiedEditions = cityNodes.filter((city) => metropolitanProfile(city).live).length;
-  if (status) status.textContent = `${cityNodes.length} metropolitan editions · ${verifiedEditions} verified dataset · Web Mercator`;
 }
 
 function homeCountryCellAnchor(cells, countryNode, projection, cellSize) {
@@ -1618,7 +1611,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=morphing-6"
+          src="./experiments/claude-cartogram.html?v=morphing-7"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
