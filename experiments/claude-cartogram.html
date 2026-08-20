@@ -60,7 +60,7 @@
   }
   #labels { position: absolute; inset: 0; pointer-events: none; }
   #labels { transition: opacity 220ms ease; }
-  body.cluster-reveal-active #labels { opacity: 0; }
+  body.cluster-reveal-active #labels { opacity: 0; transition: none; }
   body.cluster-reveal-active #mapwrap { cursor: wait; pointer-events: none; }
   .lab {
     position: absolute;
@@ -333,7 +333,8 @@ const state = {
   zoomBehavior: null,
   renderScale: 1,
   currentTransform: null,
-  clusterReveal: null
+  clusterReveal: null,
+  continuitySources: null
 };
 
 function targetCellsForCount(count) {
@@ -612,7 +613,14 @@ function draw() {
     const visibleCells = reveal?.visibleCells || p.cells;
     const visibleSet = reveal?.visibleSet || p.set;
     ctx.save();
-    if (reveal) ctx.translate(reveal.offsetX, reveal.offsetY);
+    if (reveal) {
+      const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
+      const centerY = (p.oy + d3.mean(p.cells, cell => cell[1] + 0.5)) * CELL;
+      ctx.translate(reveal.offsetX, reveal.offsetY);
+      ctx.translate(centerX, centerY);
+      ctx.scale(reveal.scale, reveal.scale);
+      ctx.translate(-centerX, -centerY);
+    }
     ctx.fillStyle = active ? (p.deepColor || c.deep) : (p.fillColor || c.fill);
     for (const [dx, dy] of visibleCells) ctx.fillRect((p.ox + dx) * CELL, (p.oy + dy) * CELL, CELL, CELL);
     // inner square seams
@@ -882,9 +890,73 @@ function commitFixedLayout(placed, cols, rows) {
   }
 }
 
+function worldContinuityTransform(items) {
+  const wrap = el('mapwrap');
+  if (!wrap || !state.placed.length) return null;
+  const sources = new Map(items.map(item => [item.id, item]));
+  const pairs = state.placed.map(country => {
+    const source = sources.get(country.id);
+    if (!source) return null;
+    return {
+      sourceX: source.sourceX * wrap.clientWidth,
+      sourceY: source.sourceY * wrap.clientHeight,
+      targetX: (country.ox + d3.mean(country.cells, cell => cell[0] + 0.5)) * CELL,
+      targetY: (country.oy + d3.mean(country.cells, cell => cell[1] + 0.5)) * CELL
+    };
+  }).filter(Boolean);
+  if (pairs.length < 2) return null;
+
+  const sourceX = d3.extent(pairs, pair => pair.sourceX);
+  const sourceY = d3.extent(pairs, pair => pair.sourceY);
+  const targetX = d3.extent(pairs, pair => pair.targetX);
+  const targetY = d3.extent(pairs, pair => pair.targetY);
+  const matchedScale = Math.min(
+    Math.max(1, sourceX[1] - sourceX[0]) / Math.max(1, targetX[1] - targetX[0]),
+    Math.max(1, sourceY[1] - sourceY[0]) / Math.max(1, targetY[1] - targetY[0])
+  );
+  const content = {
+    left: d3.min(state.placed, country => country.ox) * CELL,
+    right: d3.max(state.placed, country => country.ox + country.w) * CELL,
+    top: d3.min(state.placed, country => country.oy) * CELL,
+    bottom: d3.max(state.placed, country => country.oy + country.h) * CELL
+  };
+  const mobile = wrap.clientWidth <= 720;
+  const paddingX = mobile ? 18 : 42;
+  const paddingY = mobile ? 24 : 36;
+  const safeScale = Math.min(
+    Math.max(1, wrap.clientWidth - paddingX * 2) / Math.max(1, content.right - content.left),
+    Math.max(1, wrap.clientHeight - paddingY * 2) / Math.max(1, content.bottom - content.top)
+  );
+  const scale = clamp(matchedScale, safeScale * 0.94, safeScale);
+  // The default home atlas is centered on the viewport. Keep that camera
+  // center stable even though the cuisine-origin extrema are asymmetrical.
+  const sourceCenterX = wrap.clientWidth / 2;
+  const sourceCenterY = (sourceY[0] + sourceY[1]) / 2;
+  const targetCenterX = (targetX[0] + targetX[1]) / 2;
+  const targetCenterY = (targetY[0] + targetY[1]) / 2;
+  let x = sourceCenterX - targetCenterX * scale;
+  let y = sourceCenterY - targetCenterY * scale;
+  const left = x + content.left * scale;
+  const right = x + content.right * scale;
+  const top = y + content.top * scale;
+  const bottom = y + content.bottom * scale;
+  if (left < paddingX) x += paddingX - left;
+  if (right > wrap.clientWidth - paddingX) x -= right - (wrap.clientWidth - paddingX);
+  if (top < paddingY) y += paddingY - top;
+  if (bottom > wrap.clientHeight - paddingY) y -= bottom - (wrap.clientHeight - paddingY);
+  return d3.zoomIdentity.translate(x, y).scale(scale);
+}
+
 function resetMapTransform() {
   if (!state.zoomBehavior) return;
   const wrap = el('mapwrap');
+  if (state.view === 'world' && state.continuitySources?.length) {
+    const continuityTransform = worldContinuityTransform(state.continuitySources);
+    if (continuityTransform) {
+      d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
+      return;
+    }
+  }
   const width = Math.max(1, state.cols * CELL);
   const height = Math.max(1, state.rows * CELL);
   const mobile = wrap.clientWidth <= 720;
@@ -938,7 +1010,7 @@ function updateMapLabelPresentation(transform) {
       height: height + gap * 2
     };
     const active = label.dataset.id === state.sel || label.dataset.id === state.hover;
-    const outside = rect.x + rect.width < 0 || rect.y + rect.height < 0 || rect.x > wrap.clientWidth || rect.y > wrap.clientHeight;
+    const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > wrap.clientWidth - 2 || rect.y + rect.height > wrap.clientHeight - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&
       rect.y < box.y + box.height && rect.y + rect.height > box.y
@@ -1269,10 +1341,14 @@ function attachPanZoom() {
   resetMapTransform();
 }
 
-function startGastroGlobeClusterReveal({ items = [], duration = 820 } = {}) {
+function startGastroGlobeClusterReveal({ items = [], duration = 820, sourceCellSize = CELL } = {}) {
   if (state.view !== 'world' || !state.currentTransform || !state.placed.length) return Promise.resolve();
   const wrap = el('mapwrap');
+  state.continuitySources = items;
+  const continuityTransform = worldContinuityTransform(items);
+  if (continuityTransform) d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
   const transform = state.currentTransform;
+  const initialScale = clamp(sourceCellSize / Math.max(0.1, CELL * transform.k), 0.7, 5);
   const sources = new Map(items.map(item => [item.id, item]));
   const reveals = new Map();
   for (const country of state.placed) {
@@ -1299,6 +1375,7 @@ function startGastroGlobeClusterReveal({ items = [], duration = 820 } = {}) {
       offsetY: (sourceY - finalScreenY) / Math.max(0.01, transform.k),
       orderedCells,
       progress: 0,
+      scale: initialScale,
       visibleCells,
       visibleSet: new Set(visibleCells.map(cell => cell[0] + ',' + cell[1]))
     });
@@ -1318,6 +1395,7 @@ function startGastroGlobeClusterReveal({ items = [], duration = 820 } = {}) {
         reveal.progress = progress;
         reveal.offsetX = reveal.startOffsetX * (1 - progress);
         reveal.offsetY = reveal.startOffsetY * (1 - progress);
+        reveal.scale = initialScale + (1 - initialScale) * progress;
         const visibleCount = Math.round(reveal.initialCount + (reveal.orderedCells.length - reveal.initialCount) * progress);
         reveal.visibleCells = reveal.orderedCells.slice(0, visibleCount);
         reveal.visibleSet = new Set(reveal.visibleCells.map(cell => cell[0] + ',' + cell[1]));
@@ -1336,10 +1414,11 @@ function startGastroGlobeClusterReveal({ items = [], duration = 820 } = {}) {
   });
 }
 
-function startGastroGlobeClusterReturn({ items = [], duration = 820 } = {}) {
+function startGastroGlobeClusterReturn({ items = [], duration = 820, sourceCellSize = CELL } = {}) {
   if (state.view !== 'world' || !state.currentTransform || !state.placed.length) return Promise.resolve();
   const wrap = el('mapwrap');
   const transform = state.currentTransform;
+  const returnScale = clamp(sourceCellSize / Math.max(0.1, CELL * transform.k), 0.7, 5);
   const sources = new Map(items.map(item => [item.id, item]));
   const reveals = new Map();
   for (const country of state.placed) {
@@ -1365,6 +1444,7 @@ function startGastroGlobeClusterReturn({ items = [], duration = 820 } = {}) {
       offsetY: 0,
       orderedCells,
       progress: 1,
+      scale: 1,
       visibleCells: orderedCells,
       visibleSet: new Set(orderedCells.map(cell => cell[0] + ',' + cell[1]))
     });
@@ -1386,6 +1466,7 @@ function startGastroGlobeClusterReturn({ items = [], duration = 820 } = {}) {
         reveal.progress = 1 - progress;
         reveal.offsetX = reveal.startOffsetX * progress;
         reveal.offsetY = reveal.startOffsetY * progress;
+        reveal.scale = 1 + (returnScale - 1) * progress;
         const visibleCount = Math.round(reveal.orderedCells.length - (reveal.orderedCells.length - reveal.initialCount) * progress);
         reveal.visibleCells = reveal.orderedCells.slice(0, visibleCount);
         reveal.visibleSet = new Set(reveal.visibleCells.map(cell => cell[0] + ',' + cell[1]));
