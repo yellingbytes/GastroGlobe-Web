@@ -1348,7 +1348,7 @@ function startGastroGlobeClusterReveal({ items = [], duration = 820, sourceCellS
   const continuityTransform = worldContinuityTransform(items);
   if (continuityTransform) d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
   const transform = state.currentTransform;
-  const initialScale = clamp(sourceCellSize / Math.max(0.1, CELL * transform.k), 0.7, 5);
+  const targetCellSize = Math.max(0.1, CELL * transform.k);
   const sources = new Map(items.map(item => [item.id, item]));
   const reveals = new Map();
   for (const country of state.placed) {
@@ -1365,7 +1365,11 @@ function startGastroGlobeClusterReveal({ items = [], duration = 820, sourceCellS
       const bDistance = Math.hypot(b[0] + 0.5 - country.w / 2, b[1] + 0.5 - country.h / 2);
       return aDistance - bDistance;
     });
-    const initialCount = clamp(Math.round(source.visibleCells || 1), 1, orderedCells.length);
+    const sourceCount = Math.max(1, Math.round(source.visibleCells || 1));
+    const initialCount = clamp(sourceCount, 1, orderedCells.length);
+    const sourceArea = sourceCount * sourceCellSize * sourceCellSize;
+    const targetArea = orderedCells.length * targetCellSize * targetCellSize;
+    const initialScale = clamp(Math.sqrt(sourceArea / initialCount) / targetCellSize, 0.35, 8);
     const visibleCells = orderedCells.slice(0, initialCount);
     reveals.set(country.id, {
       initialCount,
@@ -1376,6 +1380,9 @@ function startGastroGlobeClusterReveal({ items = [], duration = 820, sourceCellS
       orderedCells,
       progress: 0,
       scale: initialScale,
+      sourceArea,
+      targetArea,
+      targetCellSize,
       visibleCells,
       visibleSet: new Set(visibleCells.map(cell => cell[0] + ',' + cell[1]))
     });
@@ -1395,8 +1402,9 @@ function startGastroGlobeClusterReveal({ items = [], duration = 820, sourceCellS
         reveal.progress = progress;
         reveal.offsetX = reveal.startOffsetX * (1 - progress);
         reveal.offsetY = reveal.startOffsetY * (1 - progress);
-        reveal.scale = initialScale + (1 - initialScale) * progress;
         const visibleCount = Math.round(reveal.initialCount + (reveal.orderedCells.length - reveal.initialCount) * progress);
+        const desiredArea = reveal.sourceArea + (reveal.targetArea - reveal.sourceArea) * progress;
+        reveal.scale = clamp(Math.sqrt(desiredArea / Math.max(1, visibleCount)) / reveal.targetCellSize, 0.35, 8);
         reveal.visibleCells = reveal.orderedCells.slice(0, visibleCount);
         reveal.visibleSet = new Set(reveal.visibleCells.map(cell => cell[0] + ',' + cell[1]));
       }
@@ -1418,7 +1426,7 @@ function startGastroGlobeClusterReturn({ items = [], duration = 820, sourceCellS
   if (state.view !== 'world' || !state.currentTransform || !state.placed.length) return Promise.resolve();
   const wrap = el('mapwrap');
   const transform = state.currentTransform;
-  const returnScale = clamp(sourceCellSize / Math.max(0.1, CELL * transform.k), 0.7, 5);
+  const targetCellSize = Math.max(0.1, CELL * transform.k);
   const sources = new Map(items.map(item => [item.id, item]));
   const reveals = new Map();
   for (const country of state.placed) {
@@ -1435,7 +1443,10 @@ function startGastroGlobeClusterReturn({ items = [], duration = 820, sourceCellS
       const bDistance = Math.hypot(b[0] + 0.5 - country.w / 2, b[1] + 0.5 - country.h / 2);
       return aDistance - bDistance;
     });
-    const initialCount = clamp(Math.round(source.visibleCells || 1), 1, orderedCells.length);
+    const sourceCount = Math.max(1, Math.round(source.visibleCells || 1));
+    const initialCount = clamp(sourceCount, 1, orderedCells.length);
+    const sourceArea = sourceCount * sourceCellSize * sourceCellSize;
+    const targetArea = orderedCells.length * targetCellSize * targetCellSize;
     reveals.set(country.id, {
       initialCount,
       startOffsetX: (sourceX - finalScreenX) / Math.max(0.01, transform.k),
@@ -1445,6 +1456,9 @@ function startGastroGlobeClusterReturn({ items = [], duration = 820, sourceCellS
       orderedCells,
       progress: 1,
       scale: 1,
+      sourceArea,
+      targetArea,
+      targetCellSize,
       visibleCells: orderedCells,
       visibleSet: new Set(orderedCells.map(cell => cell[0] + ',' + cell[1]))
     });
@@ -1466,8 +1480,9 @@ function startGastroGlobeClusterReturn({ items = [], duration = 820, sourceCellS
         reveal.progress = 1 - progress;
         reveal.offsetX = reveal.startOffsetX * progress;
         reveal.offsetY = reveal.startOffsetY * progress;
-        reveal.scale = 1 + (returnScale - 1) * progress;
         const visibleCount = Math.round(reveal.orderedCells.length - (reveal.orderedCells.length - reveal.initialCount) * progress);
+        const desiredArea = reveal.targetArea + (reveal.sourceArea - reveal.targetArea) * progress;
+        reveal.scale = clamp(Math.sqrt(desiredArea / Math.max(1, visibleCount)) / reveal.targetCellSize, 0.35, 8);
         reveal.visibleCells = reveal.orderedCells.slice(0, visibleCount);
         reveal.visibleSet = new Set(reveal.visibleCells.map(cell => cell[0] + ',' + cell[1]));
       }

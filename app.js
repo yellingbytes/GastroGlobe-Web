@@ -46,8 +46,7 @@ let cityTransitionInFlight = false;
 let pendingCuisineClusterReveal = null;
 let activeCuisineClusterReveal = null;
 
-const HOME_CUISINE_MORPH_DURATION = 880;
-const HOME_CUISINE_CLUSTER_DURATION = 1040;
+const HOME_CUISINE_CLUSTER_DURATION = 1200;
 
 const countryNameAliases = new Map([
   ["bosnia and herz", "bosnia & herzegovina"],
@@ -565,7 +564,7 @@ function seededRandom(value) {
   };
 }
 
-function openCity(cityId) {
+async function openCity(cityId) {
   if (cityTransitionInFlight) return;
   const homeMap = scene.querySelector(".home-world-map");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -575,34 +574,32 @@ function openCity(cityId) {
   }
 
   cityTransitionInFlight = true;
-  animateHomeCuisineMorph(homeMap)
-    .catch((error) => {
-      console.error("Cuisine contraction failed", error);
-      return null;
-    })
-    .then(async (clusterReveal) => {
-      pendingCuisineClusterReveal = clusterReveal;
-      activeCuisineClusterReveal = clusterReveal;
-      const handoffOverlay = clusterReveal ? createCuisineHandoffOverlay() : null;
-      commitCityOpen(cityId);
-      if (clusterReveal) await animateCuisineClustersIntoPlace(clusterReveal, handoffOverlay);
-      else handoffOverlay?.remove();
-    })
-    .finally(() => {
-      cityTransitionInFlight = false;
-      pendingCuisineClusterReveal = null;
-      document.body.classList.remove("is-home-cuisine-morphing");
-      scene.removeAttribute("aria-busy");
-    });
+  scene.setAttribute("aria-busy", "true");
+  document.body.classList.add("is-home-cuisine-morphing");
+  const status = scene.querySelector(".home-world-status");
+  if (status) status.textContent = `${datasetMeta.includedRestaurants.toLocaleString("en")} Munich restaurants · reshaping the world`;
+  try {
+    const clusterReveal = captureHomeCuisineClusters(homeMap);
+    pendingCuisineClusterReveal = clusterReveal;
+    activeCuisineClusterReveal = clusterReveal;
+    const handoffOverlay = clusterReveal ? createCuisineHandoffOverlay() : null;
+    commitCityOpen(cityId);
+    if (clusterReveal) await animateCuisineClustersIntoPlace(clusterReveal, handoffOverlay);
+    else handoffOverlay?.remove();
+  } catch (error) {
+    console.error("Cuisine morph failed", error);
+    commitCityOpen(cityId);
+  } finally {
+    cityTransitionInFlight = false;
+    pendingCuisineClusterReveal = null;
+    document.body.classList.remove("is-home-cuisine-morphing");
+    scene.removeAttribute("aria-busy");
+  }
 }
 
-function buildHomeCuisineMorphPlans(homeMap) {
+function buildHomeCuisineSourcePlans(homeMap) {
   const { cellSize, countries: homeCountries, projection, worldWidth } = homeMap.__homeGrid;
   const countryNodeById = new Map(countryNodes.map((node) => [node.data.countryId, node]));
-  const referenceNode = d3.greatest(countryNodes, (node) => node.data.available);
-  const referenceCountry = homeCountries.find((country) => country.countryId === referenceNode?.data.countryId);
-  const referenceCellCount = Math.max(1, referenceCountry?.cells.length ?? 1);
-  const referenceRestaurantCount = Math.max(1, referenceNode?.data.available ?? 1);
   const pathsByIndex = new Map(
     [...homeMap.querySelectorAll(".home-world-pixel-country")]
       .map((path) => [Number(path.dataset.homeCountryIndex), path]),
@@ -610,20 +607,10 @@ function buildHomeCuisineMorphPlans(homeMap) {
   const plans = homeCountries.map((country) => {
     const node = country.countryId ? countryNodeById.get(country.countryId) : null;
     const restaurantCount = node?.data.available ?? 0;
-    const targetCount = targetHomeCuisineCellCount(
-      restaurantCount,
-      country.cells.length,
-      referenceCellCount,
-      referenceRestaurantCount,
-    );
     const anchor = homeCountryCellAnchor(country.cells, node, projection, cellSize);
-    const targetScale = targetCount > 0
-      ? fitHomeCuisineScale(country.cells, anchor, targetCount)
-      : 0;
     const path = pathsByIndex.get(country.index);
     if (path) {
       path.dataset.sourceCells = String(country.cells.length);
-      path.dataset.targetCells = String(targetCount);
       path.dataset.restaurantCount = String(restaurantCount);
     }
     return {
@@ -633,53 +620,13 @@ function buildHomeCuisineMorphPlans(homeMap) {
       restaurantCount,
       sourceCells: country.cells,
       sourceCount: country.cells.length,
-      targetCount,
-      targetScale,
-      visiblePath: country.path,
     };
   }).filter((plan) => plan.path);
   return { cellSize, plans, worldWidth };
 }
 
-function animateHomeCuisineMorph(homeMap) {
-  const { cellSize, plans, worldWidth } = buildHomeCuisineMorphPlans(homeMap);
-
-  const status = scene.querySelector(".home-world-status");
-  if (status) status.textContent = `${datasetMeta.includedRestaurants.toLocaleString("en")} Munich restaurants · reshaping the world`;
-  scene.setAttribute("aria-busy", "true");
-  document.body.classList.add("is-home-cuisine-morphing");
-
-  return new Promise((resolve) => {
-    let startedAt;
-    const renderFrame = (timestamp) => {
-      if (startedAt === undefined) startedAt = timestamp;
-      const rawProgress = clamp((timestamp - startedAt) / HOME_CUISINE_MORPH_DURATION, 0, 1);
-      const progress = rawProgress < 0.5
-        ? 4 * rawProgress * rawProgress * rawProgress
-        : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2;
-      plans.forEach((plan) => {
-        if (plan.restaurantCount <= 0) {
-          plan.path.style.opacity = String(1 - progress);
-          return;
-        }
-        const scale = 1 + (plan.targetScale - 1) * progress;
-        const visibleCells = plan.targetCount === 0 && rawProgress === 1
-          ? []
-          : scaleHomeCountryCells(plan.sourceCells, plan.anchor, scale);
-        const nextPath = homeGridCellPath(visibleCells, cellSize);
-        if (nextPath === plan.visiblePath) return;
-        plan.visiblePath = nextPath;
-        plan.path.dataset.visibleCells = String(visibleCells.length);
-        plan.path.setAttribute("d", nextPath);
-      });
-      if (rawProgress < 1) requestAnimationFrame(renderFrame);
-      else window.setTimeout(() => resolve(captureHomeCuisineClusters(homeMap, plans, cellSize, worldWidth)), 70);
-    };
-    requestAnimationFrame(renderFrame);
-  });
-}
-
-function captureHomeCuisineClusters(homeMap, plans, cellSize, worldWidth) {
+function captureHomeCuisineClusters(homeMap) {
+  const { cellSize, plans, worldWidth } = buildHomeCuisineSourcePlans(homeMap);
   const layer = homeMap.querySelector(".home-world-zoom-layer");
   const matrix = layer?.getScreenCTM();
   if (!matrix) return null;
@@ -698,14 +645,13 @@ function captureHomeCuisineClusters(homeMap, plans, cellSize, worldWidth) {
       return Math.hypot(a.x - viewportWidth / 2, a.y - viewportHeight / 2)
         - Math.hypot(b.x - viewportWidth / 2, b.y - viewportHeight / 2);
     })[0];
-  const items = plans.filter((plan) => plan.countryId && plan.targetCount > 0).map((plan) => {
+  const items = plans.filter((plan) => plan.countryId && plan.restaurantCount > 0).map((plan) => {
     const anchor = visibleAnchor(plan.anchor);
-    const visibleCells = scaleHomeCountryCells(plan.sourceCells, plan.anchor, plan.targetScale).length;
     return {
       id: plan.countryId,
       sourceX: anchor.x,
       sourceY: anchor.y,
-      visibleCells,
+      visibleCells: plan.sourceCount,
     };
   });
   return items.length ? {
@@ -739,7 +685,7 @@ async function fadeCuisineHandoffOverlay(overlay) {
   try {
     await overlay.animate(
       [{ opacity: 1 }, { opacity: 0 }],
-      { duration: 180, easing: "ease-out", fill: "forwards" },
+      { duration: 260, easing: "ease-out", fill: "forwards" },
     ).finished;
   } catch {
     // The overlay may be removed if navigation changes during the handoff.
@@ -803,7 +749,7 @@ async function returnToWorld() {
     await animateCuisineClustersBack(clusterReveal);
     renderGallery();
     const homeMap = scene.querySelector(".home-world-map");
-    if (homeMap?.__homeGrid) await animateHomeCuisineExpansion(homeMap);
+    if (homeMap?.__homeGrid) await revealHomeWorldContext(homeMap);
   } catch (error) {
     console.error("Cuisine return failed", error);
     renderGallery();
@@ -826,57 +772,30 @@ async function animateCuisineClustersBack(clusterReveal) {
   await iframe.contentWindow.startGastroGlobeClusterReturn(cuisineClusterAnimationPayload(clusterReveal, iframe));
 }
 
-function animateHomeCuisineExpansion(homeMap) {
-  const { cellSize, plans } = buildHomeCuisineMorphPlans(homeMap);
-  plans.forEach((plan) => {
-    const visibleCells = plan.restaurantCount > 0
-      ? scaleHomeCountryCells(plan.sourceCells, plan.anchor, plan.targetScale)
-      : plan.sourceCells;
-    plan.visiblePath = homeGridCellPath(visibleCells, cellSize);
-    plan.path.setAttribute("d", plan.visiblePath);
-    plan.path.style.opacity = plan.restaurantCount > 0 ? "1" : "0";
+async function revealHomeWorldContext(homeMap) {
+  const { plans } = buildHomeCuisineSourcePlans(homeMap);
+  const contextPaths = plans.filter((plan) => plan.restaurantCount <= 0).map((plan) => plan.path);
+  const chrome = [
+    scene.querySelector(".home-world-heading"),
+    scene.querySelector(".home-city-leaders"),
+    scene.querySelector(".home-city-nodes"),
+    scene.querySelector(".home-world-status"),
+  ].filter(Boolean);
+  const elements = [...contextPaths, ...chrome];
+  elements.forEach((element) => {
+    element.style.opacity = "0";
   });
+  document.body.classList.remove("is-home-cuisine-returning");
   const status = scene.querySelector(".home-world-status");
   if (status) status.textContent = "Returning to the world city atlas";
-
-  return new Promise((resolve) => {
-    let startedAt;
-    const renderFrame = (timestamp) => {
-      if (startedAt === undefined) startedAt = timestamp;
-      const rawProgress = clamp((timestamp - startedAt) / HOME_CUISINE_MORPH_DURATION, 0, 1);
-      const progress = rawProgress < 0.5
-        ? 4 * rawProgress * rawProgress * rawProgress
-        : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2;
-      plans.forEach((plan) => {
-        if (plan.restaurantCount <= 0) {
-          plan.path.style.opacity = String(progress);
-          return;
-        }
-        const scale = plan.targetScale + (1 - plan.targetScale) * progress;
-        const visibleCells = scaleHomeCountryCells(plan.sourceCells, plan.anchor, scale);
-        const nextPath = homeGridCellPath(visibleCells, cellSize);
-        if (nextPath === plan.visiblePath) return;
-        plan.visiblePath = nextPath;
-        plan.path.setAttribute("d", nextPath);
-      });
-      if (rawProgress < 1) requestAnimationFrame(renderFrame);
-      else {
-        plans.forEach((plan) => plan.path.style.removeProperty("opacity"));
-        const verifiedEditions = cityNodes.filter((city) => metropolitanProfile(city).live).length;
-        if (status) status.textContent = `${cityNodes.length} metropolitan editions · ${verifiedEditions} verified dataset · Web Mercator`;
-        resolve();
-      }
-    };
-    requestAnimationFrame(renderFrame);
-  });
-}
-
-function targetHomeCuisineCellCount(restaurantCount, availableCells, referenceCellCount, referenceRestaurantCount) {
-  if (restaurantCount <= 0) return 0;
-  const requestedCells = restaurantCount <= 2
-    ? restaurantCount
-    : Math.max(3, Math.round(referenceCellCount * restaurantCount / referenceRestaurantCount));
-  return Math.min(availableCells, requestedCells);
+  const animations = elements.map((element) => element.animate(
+    [{ opacity: 0 }, { opacity: 1 }],
+    { duration: 360, easing: "ease-out", fill: "forwards" },
+  ));
+  await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
+  elements.forEach((element) => element.style.removeProperty("opacity"));
+  const verifiedEditions = cityNodes.filter((city) => metropolitanProfile(city).live).length;
+  if (status) status.textContent = `${cityNodes.length} metropolitan editions · ${verifiedEditions} verified dataset · Web Mercator`;
 }
 
 function homeCountryCellAnchor(cells, countryNode, projection, cellSize) {
@@ -890,36 +809,6 @@ function homeCountryCellAnchor(cells, countryNode, projection, cellSize) {
     ? projectedAnchor[1] / cellSize - 0.5
     : d3.mean(cells, (cell) => cell.row);
   return d3.least(cells, (cell) => Math.hypot(cell.column - preferredColumn, cell.row - preferredRow)) ?? cells[0];
-}
-
-function fitHomeCuisineScale(cells, anchor, targetCount) {
-  if (targetCount >= cells.length) return 1;
-  let lower = 0;
-  let upper = 1;
-  let bestScale = Math.sqrt(targetCount / cells.length);
-  let bestDifference = Infinity;
-  for (let iteration = 0; iteration < 14; iteration += 1) {
-    const scale = iteration === 0 ? bestScale : (lower + upper) / 2;
-    const scaledCount = scaleHomeCountryCells(cells, anchor, scale).length;
-    const difference = Math.abs(scaledCount - targetCount);
-    if (difference < bestDifference) {
-      bestDifference = difference;
-      bestScale = scale;
-    }
-    if (scaledCount < targetCount) lower = scale;
-    else upper = scale;
-  }
-  return bestScale;
-}
-
-function scaleHomeCountryCells(cells, anchor, scale) {
-  const uniqueCells = new Map();
-  cells.forEach((cell) => {
-    const column = Math.round(anchor.column + (cell.column - anchor.column) * scale);
-    const row = Math.round(anchor.row + (cell.row - anchor.row) * scale);
-    uniqueCells.set(`${column},${row}`, { column, row });
-  });
-  return [...uniqueCells.values()];
 }
 
 function commitCityOpen(cityId) {
@@ -1729,7 +1618,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=morphing-5"
+          src="./experiments/claude-cartogram.html?v=morphing-6"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
