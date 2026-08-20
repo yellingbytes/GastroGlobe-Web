@@ -369,7 +369,11 @@ const state = {
   ghost: false,
   leaders: [],
   labelInk: null,
+  labelOwner: null,
+  labelPriorityIds: new Set(),
   visibleLabelIds: new Set(),
+  levelMorphing: false,
+  levelMorphContext: null,
   placed: [],
   lookup: null,
   itemById: new Map(),
@@ -823,8 +827,14 @@ function layoutLabels() {
 
   // exact ink mask: which grid cells are covered by a country silhouette
   const ink = new Uint8Array(state.cols * state.rows);
-  for (const p of state.placed) for (const [dx, dy] of p.cells) ink[(p.oy + dy) * state.cols + (p.ox + dx)] = 1;
+  const owner = new Array(state.cols * state.rows).fill(null);
+  for (const p of state.placed) for (const [dx, dy] of p.cells) {
+    const offset = (p.oy + dy) * state.cols + (p.ox + dx);
+    ink[offset] = 1;
+    owner[offset] = p.id;
+  }
   state.labelInk = ink;
+  state.labelOwner = owner;
   const landGap = 2;
   const inkHit = r => {
     const x0 = Math.floor((r.x - landGap) / CELL), x1 = Math.ceil((r.x + r.w + landGap) / CELL);
@@ -1167,13 +1177,17 @@ function updateMapLabelPresentation(transform) {
   const k = Math.max(0.01, transform?.k || 1);
   const snap = value => Math.round(value * dpr) / dpr;
   const isActiveLabel = label => label.dataset.id === state.sel || label.dataset.id === state.hover;
+  const isPriorityLabel = label => state.labelPriorityIds?.has(label.dataset.id);
   const labels = [...host.querySelectorAll('.lab')];
   labels.forEach(label => { label.hidden = false; });
-  labels.sort((a, b) => Number(isActiveLabel(b)) - Number(isActiveLabel(a)));
+  labels.sort((a, b) =>
+    Number(isActiveLabel(b)) - Number(isActiveLabel(a)) ||
+    Number(isPriorityLabel(b)) - Number(isPriorityLabel(a))
+  );
   const occupied = [];
   const visibleLabelIds = new Set();
   const gap = 5;
-  const hitsLand = rect => {
+  const hitsLand = (rect, labelId) => {
     if (!state.labelInk) return false;
     const x0 = Math.floor((rect.x - (transform?.x || 0)) / k / CELL);
     const y0 = Math.floor((rect.y - (transform?.y || 0)) / k / CELL);
@@ -1181,7 +1195,8 @@ function updateMapLabelPresentation(transform) {
     const y1 = Math.ceil((rect.y + rect.height - (transform?.y || 0)) / k / CELL);
     for (let y = Math.max(0, y0); y < Math.min(state.rows, y1); y++) {
       for (let x = Math.max(0, x0); x < Math.min(state.cols, x1); x++) {
-        if (state.labelInk[y * state.cols + x]) return true;
+        const offset = y * state.cols + x;
+        if (state.labelInk[offset] && state.labelOwner?.[offset] !== labelId) return true;
       }
     }
     return false;
@@ -1202,13 +1217,14 @@ function updateMapLabelPresentation(transform) {
       height: height + gap * 2
     };
     const active = isActiveLabel(label);
+    const priority = isPriorityLabel(label);
     const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > wrap.clientWidth - 2 || rect.y + rect.height > wrap.clientHeight - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&
       rect.y < box.y + box.height && rect.y + rect.height > box.y
     );
-    const landConflict = hitsLand({ x: screenX, y: screenY, width, height });
-    label.hidden = !active && (outside || collision || landConflict);
+    const landConflict = hitsLand({ x: screenX, y: screenY, width, height }, label.dataset.id);
+    label.hidden = !active && (outside || collision || (landConflict && !priority));
     if (!label.hidden) {
       occupied.push(rect);
       visibleLabelIds.add(label.dataset.id);
@@ -1218,12 +1234,298 @@ function updateMapLabelPresentation(transform) {
   updateSharpOverlay(transform);
 }
 
-function renderCountryAtlas(country) {
+/* ---------- atlas-level morphing ---------- */
+function morphItemColor(item) {
+  const continent = CONT[item?.continent] || CONT.Europe;
+  return state.morphColors.get(item?.id) || item?.fillColor || continent.fill;
+}
+
+function itemScreenPoints(item, transform) {
+  if (!item || !transform) return [];
+  return item.cells.map(([dx, dy]) => ({
+    x: transform.x + (item.ox + dx + 0.5) * CELL * transform.k,
+    y: transform.y + (item.oy + dy + 0.5) * CELL * transform.k
+  }));
+}
+
+function itemMapCenter(item) {
+  if (!item) return { x: 0, y: 0 };
+  return {
+    x: (item.ox + d3.mean(item.cells, cell => cell[0] + 0.5)) * CELL,
+    y: (item.oy + d3.mean(item.cells, cell => cell[1] + 0.5)) * CELL
+  };
+}
+
+function alignLevelTranslation(value, reference, unit) {
+  return reference + Math.round((value - reference) / Math.max(0.1, unit)) * unit;
+}
+
+function centeredLevelTransform(referenceTransform, mapCenter) {
+  const wrap = el('mapwrap');
+  const mobile = wrap.clientWidth <= 720;
+  const panelRect = document.querySelector('aside')?.getBoundingClientRect();
+  const rail = !mobile ? panelRect?.width || 0 : 0;
+  const sheet = mobile ? panelRect?.height || 0 : 0;
+  const usableWidth = Math.max(280, wrap.clientWidth - rail);
+  const usableHeight = Math.max(240, wrap.clientHeight - sheet);
+  const k = referenceTransform.k;
+  const unit = CELL * k;
+  const rawX = usableWidth / 2 - mapCenter.x * k;
+  const rawY = usableHeight / 2 - mapCenter.y * k;
+  return d3.zoomIdentity
+    .translate(
+      alignLevelTranslation(rawX, referenceTransform.x, unit),
+      alignLevelTranslation(rawY, referenceTransform.y, unit)
+    )
+    .scale(k);
+}
+
+function anchoredLevelTransform(referenceTransform, mapCenter, screenAnchor) {
+  const k = referenceTransform.k;
+  const unit = CELL * k;
+  const rawX = screenAnchor.x - mapCenter.x * k;
+  const rawY = screenAnchor.y - mapCenter.y * k;
+  return d3.zoomIdentity
+    .translate(
+      alignLevelTranslation(rawX, referenceTransform.x, unit),
+      alignLevelTranslation(rawY, referenceTransform.y, unit)
+    )
+    .scale(k);
+}
+
+function pointBounds(points) {
+  if (!points.length) return { minX: 0, minY: 0, width: 1, height: 1 };
+  const xExtent = d3.extent(points, point => point.x);
+  const yExtent = d3.extent(points, point => point.y);
+  return {
+    minX: xExtent[0],
+    minY: yExtent[0],
+    width: Math.max(1, xExtent[1] - xExtent[0]),
+    height: Math.max(1, yExtent[1] - yExtent[0])
+  };
+}
+
+function splitSourcePoints(sourcePoints, targetEntries) {
+  if (!targetEntries.length) return [];
+  if (!sourcePoints.length) return targetEntries.map(() => []);
+  const totalWeight = d3.sum(targetEntries, entry => Math.max(1, entry.points.length)) || 1;
+  const exact = targetEntries.map(entry => sourcePoints.length * Math.max(1, entry.points.length) / totalWeight);
+  const quotas = exact.map(value => Math.floor(value));
+  let remaining = sourcePoints.length - d3.sum(quotas);
+  exact
+    .map((value, index) => ({ index, remainder: value - quotas[index] }))
+    .sort((a, b) => b.remainder - a.remainder)
+    .forEach(entry => {
+      if (remaining <= 0) return;
+      quotas[entry.index] += 1;
+      remaining -= 1;
+    });
+
+  const sourceBounds = pointBounds(sourcePoints);
+  const allTargetPoints = targetEntries.flatMap(entry => entry.points);
+  const targetBounds = pointBounds(allTargetPoints);
+  const desiredSourceCenters = targetEntries.map(entry => {
+    const centerX = d3.mean(entry.points, point => point.x) ?? targetBounds.minX + targetBounds.width / 2;
+    const centerY = d3.mean(entry.points, point => point.y) ?? targetBounds.minY + targetBounds.height / 2;
+    return {
+      x: sourceBounds.minX + (centerX - targetBounds.minX) / targetBounds.width * sourceBounds.width,
+      y: sourceBounds.minY + (centerY - targetBounds.minY) / targetBounds.height * sourceBounds.height
+    };
+  });
+  const available = new Set(sourcePoints.map((_, index) => index));
+  const assignments = targetEntries.map(() => []);
+  const allocationOrder = quotas
+    .map((quota, index) => ({ quota, index }))
+    .sort((a, b) => b.quota - a.quota);
+  for (const allocation of allocationOrder) {
+    const desired = desiredSourceCenters[allocation.index];
+    const nearest = [...available]
+      .sort((a, b) =>
+        Math.hypot(sourcePoints[a].x - desired.x, sourcePoints[a].y - desired.y) -
+        Math.hypot(sourcePoints[b].x - desired.x, sourcePoints[b].y - desired.y)
+      )
+      .slice(0, allocation.quota);
+    nearest.forEach(index => {
+      available.delete(index);
+      assignments[allocation.index].push(sourcePoints[index]);
+    });
+  }
+  return assignments;
+}
+
+function morphGroup(sourcePoints, targetPoints, sourceColor, targetColor, options = {}) {
+  const sourceCenter = sourcePoints.length ? {
+    x: d3.mean(sourcePoints, point => point.x),
+    y: d3.mean(sourcePoints, point => point.y)
+  } : {
+    x: d3.mean(targetPoints, point => point.x),
+    y: d3.mean(targetPoints, point => point.y)
+  };
+  const targetCenter = targetPoints.length ? {
+    x: d3.mean(targetPoints, point => point.x),
+    y: d3.mean(targetPoints, point => point.y)
+  } : sourceCenter;
+  return {
+    alphaStart: options.alphaStart ?? 1,
+    alphaEnd: options.alphaEnd ?? 1,
+    sizeStart: options.sizeStart ?? 1,
+    sizeEnd: options.sizeEnd ?? 1,
+    color: d3.interpolateRgb(sourceColor, targetColor),
+    particles: pairedMorphParticles(sourcePoints, targetPoints, sourceCenter, targetCenter)
+  };
+}
+
+function buildWorldToCountryMorphGroups(sourcePlaced, sourceTransform, targetPlaced, targetTransform, countryId) {
+  const selected = sourcePlaced.find(item => item.id === countryId);
+  if (!selected) return [];
+  const selectedSource = itemScreenPoints(selected, sourceTransform);
+  const targetEntries = targetPlaced.map(item => ({ item, points: itemScreenPoints(item, targetTransform) }));
+  const assignments = splitSourcePoints(selectedSource, targetEntries);
+  const selectedColor = morphItemColor(selected);
+  const groups = targetEntries.map((entry, index) => {
+    const assigned = assignments[index].length
+      ? assignments[index]
+      : selectedSource.slice(0, Math.min(1, selectedSource.length));
+    return morphGroup(assigned, entry.points, selectedColor, morphItemColor(entry.item));
+  });
+  if (!targetEntries.length) {
+    const center = selectedSource.length ? [{
+      x: d3.mean(selectedSource, point => point.x),
+      y: d3.mean(selectedSource, point => point.y)
+    }] : [];
+    groups.push(morphGroup(selectedSource, center, selectedColor, selectedColor, {
+      alphaEnd: 0,
+      sizeEnd: 0.12
+    }));
+  }
+  for (const item of sourcePlaced) {
+    if (item.id === countryId) continue;
+    const points = itemScreenPoints(item, sourceTransform);
+    const center = points.length ? [{
+      x: d3.mean(points, point => point.x),
+      y: d3.mean(points, point => point.y)
+    }] : [];
+    groups.push(morphGroup(points, center, morphItemColor(item), morphItemColor(item), {
+      alphaEnd: 0,
+      sizeEnd: 0.12
+    }));
+  }
+  return groups;
+}
+
+function buildCountryToWorldMorphGroups(sourcePlaced, sourceTransform, targetPlaced, targetTransform, countryId) {
+  const selectedTarget = targetPlaced.find(item => item.id === countryId);
+  if (!selectedTarget) return [];
+  const targetCountryPoints = itemScreenPoints(selectedTarget, targetTransform);
+  const sourceEntries = sourcePlaced.map(item => ({ item, points: itemScreenPoints(item, sourceTransform) }));
+  const targetAssignments = splitSourcePoints(targetCountryPoints, sourceEntries);
+  const selectedColor = morphItemColor(selectedTarget);
+  const groups = sourceEntries.map((entry, index) => {
+    const assigned = targetAssignments[index].length
+      ? targetAssignments[index]
+      : targetCountryPoints.slice(0, Math.min(1, targetCountryPoints.length));
+    return morphGroup(entry.points, assigned, morphItemColor(entry.item), selectedColor);
+  });
+  if (!sourceEntries.length) {
+    const center = targetCountryPoints.length ? {
+      x: d3.mean(targetCountryPoints, point => point.x),
+      y: d3.mean(targetCountryPoints, point => point.y)
+    } : { x: 0, y: 0 };
+    groups.push(morphGroup(
+      targetCountryPoints.map(() => ({ ...center })),
+      targetCountryPoints,
+      selectedColor,
+      selectedColor,
+      { alphaStart: 0, sizeStart: 0.12 }
+    ));
+  }
+  for (const item of targetPlaced) {
+    if (item.id === countryId) continue;
+    const targetPoints = itemScreenPoints(item, targetTransform);
+    const center = targetPoints.length ? {
+      x: d3.mean(targetPoints, point => point.x),
+      y: d3.mean(targetPoints, point => point.y)
+    } : { x: 0, y: 0 };
+    const sourcePoints = targetPoints.map(() => ({ ...center }));
+    groups.push(morphGroup(sourcePoints, targetPoints, morphItemColor(item), morphItemColor(item), {
+      alphaStart: 0,
+      sizeStart: 0.12
+    }));
+  }
+  return groups;
+}
+
+function drawAtlasLevelMorphFrame(context, wrap, groups, unit, phase) {
+  context.clearRect(0, 0, wrap.clientWidth, wrap.clientHeight);
+  const snap = value => Math.round(value * dpr) / dpr;
+  for (const group of groups) {
+    const alpha = group.alphaStart + (group.alphaEnd - group.alphaStart) * phase;
+    const size = unit * (group.sizeStart + (group.sizeEnd - group.sizeStart) * phase);
+    if (alpha <= 0.002 || size <= 0.05) continue;
+    const half = size / 2;
+    context.save();
+    context.globalAlpha = alpha;
+    context.fillStyle = group.color(phase);
+    context.strokeStyle = 'rgba(140,127,104,0.2)';
+    context.lineWidth = 0.68;
+    context.beginPath();
+    for (const particle of group.particles) {
+      const x = snap(particle.source.x + (particle.target.x - particle.source.x) * phase) - half;
+      const y = snap(particle.source.y + (particle.target.y - particle.source.y) * phase) - half;
+      context.rect(x, y, size + 0.08, size + 0.08);
+    }
+    context.fill();
+    context.stroke();
+    context.restore();
+  }
+}
+
+function runAtlasLevelMorph(groups, unit, direction, duration = 980) {
+  const { context, wrap } = prepareGridMorphCanvas();
+  drawAtlasLevelMorphFrame(context, wrap, groups, unit, 0);
+  return new Promise(resolve => {
+    let startedAt;
+    let previousTimestamp;
+    let frames = 0;
+    let maxGap = 0;
+    const frame = timestamp => {
+      if (startedAt === undefined) startedAt = timestamp;
+      if (previousTimestamp !== undefined) maxGap = Math.max(maxGap, timestamp - previousTimestamp);
+      previousTimestamp = timestamp;
+      frames += 1;
+      const rawProgress = clamp((timestamp - startedAt) / Math.max(1, duration), 0, 1);
+      const phase = rawProgress * rawProgress * rawProgress * (rawProgress * (rawProgress * 6 - 15) + 10);
+      drawAtlasLevelMorphFrame(context, wrap, groups, unit, phase);
+      if (rawProgress < 1) requestAnimationFrame(frame);
+      else {
+        const stats = {
+          direction,
+          averageFps: Math.round(frames / Math.max(0.001, (timestamp - startedAt) / 1000)),
+          duration: Math.round(timestamp - startedAt),
+          frames,
+          maxGap: Math.round(maxGap * 10) / 10,
+          unit: Math.round(unit * 100) / 100,
+          camera: state.currentTransform ? {
+            x: Math.round(state.currentTransform.x * 10) / 10,
+            y: Math.round(state.currentTransform.y * 10) / 10,
+            k: Math.round(state.currentTransform.k * 1000) / 1000
+          } : null
+        };
+        document.body.dataset.levelMorphStats = JSON.stringify(stats);
+        resolve(stats);
+      }
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+function renderCountryAtlas(country, options = {}) {
   document.body.classList.add('country-detail-open');
   const regions = country.regions;
   const national = regions.find(region => /national cuisine|uncategorized|^national$/i.test(region.name)) || null;
   const specific = regions.filter(region => region !== national);
-  const source = specific.length ? specific : regions;
+  const visibleSpecific = specific.filter(region => region.count > 0);
+  const source = visibleSpecific.length ? visibleSpecific : (specific.length ? specific : regions);
   const minLng = d3.min(source, region => region.lng) ?? country.lng;
   const maxLng = d3.max(source, region => region.lng) ?? country.lng;
   const minLat = d3.min(source, region => region.lat) ?? country.lat;
@@ -1263,8 +1565,8 @@ function renderCountryAtlas(country) {
     if (!point || !point.every(Number.isFinite)) return null;
     return point;
   };
-  const items = specific.map((region, index) => {
-    const target = targetCellsForCount(region.count);
+  const items = visibleSpecific.map((region, index) => {
+    const target = targetRegionCellsForCount(region.count);
     const shape = pixelTerritory(target, index);
     const projected = projectedAnchor(region);
     const idealCenterX = projected?.[0] ?? cols * 0.22 + ((region.lng - minLng) / lngSpan) * cols * 0.56;
@@ -1292,6 +1594,7 @@ function renderCountryAtlas(country) {
   state.activeCountry = country;
   state.nationalRegion = national;
   state.countryBackdrop = countryBackdrop;
+  state.labelPriorityIds = new Set(placed.slice(0, 3).map(region => region.id));
   state.hover = null;
   state.sel = null;
   el('tip').style.opacity = 0;
@@ -1312,14 +1615,32 @@ function renderCountryAtlas(country) {
   el('map-eyebrow').textContent = 'A regional cuisine cartogram of Munich';
   el('map-title').textContent = country.flag + ' ' + country.name;
   el('ghost-control').hidden = true;
-  el('status').textContent = specific.length + (specific.length === 1 ? ' region · ' : ' regions · ') + country.count + ' restaurants';
-  resetMapTransform();
+  el('status').textContent = visibleSpecific.length + (visibleSpecific.length === 1 ? ' region · ' : ' regions · ') + country.count + ' restaurants';
+  let appliedTransform = null;
+  if (options.referenceTransform && state.zoomBehavior) {
+    const mapCenter = countryBackdrop?.centroid?.every(Number.isFinite)
+      ? { x: countryBackdrop.centroid[0] * CELL, y: countryBackdrop.centroid[1] * CELL }
+      : { x: cols * CELL * 0.5, y: rows * CELL * 0.47 };
+    appliedTransform = centeredLevelTransform(options.referenceTransform, mapCenter);
+    d3.select(el('mapwrap')).call(state.zoomBehavior.transform, appliedTransform);
+  } else {
+    resetMapTransform();
+    appliedTransform = state.currentTransform;
+  }
   draw();
   layoutLabels();
   draw();
+  return {
+    transform: appliedTransform,
+    placed: state.placed,
+    countryBackdrop,
+    countryProjection,
+    cols,
+    rows
+  };
 }
 
-function restoreWorldAtlas() {
+function commitWorldAtlas(transform = null) {
   if (!state.worldSnapshot) return;
   document.body.classList.remove('country-detail-open');
   Object.assign(state, {
@@ -1329,6 +1650,7 @@ function restoreWorldAtlas() {
     activeCountry: null,
     nationalRegion: null,
     countryBackdrop: null,
+    labelPriorityIds: new Set(),
     placed: state.worldSnapshot.placed,
     lookup: state.worldSnapshot.lookup,
     itemById: state.worldSnapshot.itemById,
@@ -1345,10 +1667,63 @@ function restoreWorldAtlas() {
   el('d-close').textContent = 'Close';
   buildWorldStats();
   el('status').textContent = DATA.length + ' cuisines · ' + META.total + ' restaurants';
-  resetMapTransform();
+  if (transform && state.zoomBehavior) d3.select(el('mapwrap')).call(state.zoomBehavior.transform, transform);
+  else resetMapTransform();
   draw();
   layoutLabels();
   draw();
+}
+
+async function restoreWorldAtlas() {
+  if (!state.worldSnapshot || state.levelMorphing) return;
+  if (state.view !== 'country' || !state.activeCountry) {
+    commitWorldAtlas();
+    return;
+  }
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sourcePlaced = state.placed;
+  const sourceTransform = state.currentTransform || d3.zoomIdentity;
+  const country = state.activeCountry;
+  const worldCountry = state.worldSnapshot.placed.find(item => item.id === country.id);
+  const placedCenter = sourcePlaced.length ? {
+    x: d3.mean(sourcePlaced, item => itemMapCenter(item).x),
+    y: d3.mean(sourcePlaced, item => itemMapCenter(item).y)
+  } : {
+    x: state.cols * CELL * 0.5,
+    y: state.rows * CELL * 0.47
+  };
+  const currentMapCenter = state.countryBackdrop?.centroid?.every(Number.isFinite)
+    ? {
+      x: state.countryBackdrop.centroid[0] * CELL,
+      y: state.countryBackdrop.centroid[1] * CELL
+    }
+    : placedCenter;
+  const sourceAnchor = {
+    x: sourceTransform.x + currentMapCenter.x * sourceTransform.k,
+    y: sourceTransform.y + currentMapCenter.y * sourceTransform.k
+  };
+  const targetTransform = worldCountry
+    ? anchoredLevelTransform(sourceTransform, itemMapCenter(worldCountry), sourceAnchor)
+    : sourceTransform;
+  const groups = buildCountryToWorldMorphGroups(
+    sourcePlaced,
+    sourceTransform,
+    state.worldSnapshot.placed,
+    targetTransform,
+    country.id
+  );
+
+  state.levelMorphing = true;
+  document.body.classList.add('cluster-reveal-active');
+  commitWorldAtlas(targetTransform);
+  try {
+    if (!reduceMotion) await runAtlasLevelMorph(groups, CELL * targetTransform.k, 'country-to-world');
+  } finally {
+    document.body.classList.remove('cluster-reveal-active');
+    state.levelMorphing = false;
+    updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
+    draw();
+  }
 }
 
 /* ---------- sidebar ---------- */
@@ -1379,10 +1754,16 @@ function buildSidebar() {
     rank.appendChild(row);
   }
 }
-function select(id) {
+async function select(id) {
+  if (state.levelMorphing || state.view !== 'world') return;
   const d = DATA.find(x => x.id === id);
   if (!d) return;
-  const regionalCount = d.regions.filter(region => !/national cuisine|uncategorized|^national$/i.test(region.name)).length;
+  const sourcePlaced = state.placed;
+  const sourceTransform = state.currentTransform || d3.zoomIdentity;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const regionalCount = d.regions.filter(region =>
+    region.count > 0 && !/national cuisine|uncategorized|^national$/i.test(region.name)
+  ).length;
   el('ranksec').style.display = 'none';
   el('detail').classList.add('on');
   el('d-close').textContent = 'World map';
@@ -1390,7 +1771,9 @@ function select(id) {
   el('d-sum').textContent = d.count + (d.count === 1 ? ' restaurant · ' : ' restaurants · ') +
     (Math.round(d.count / META.total * 1000) / 10) + '% of Munich\u2019s mapped kitchens · ' + d.continent +
     (d.classificationLabel ? ' · ' + d.classificationLabel : '');
-  el('d-chips').innerHTML = d.regions.slice(0, 10).map(r => '<div class="chip">' + r.emoji + ' ' + r.name + ' · ' + r.count + '</div>').join('');
+  el('d-chips').innerHTML = d.regions.filter(region => region.count > 0).slice(0, 10).map(r =>
+    '<div class="chip">' + r.emoji + ' ' + r.name + ' · ' + r.count + '</div>'
+  ).join('');
   el('d-list').innerHTML = d.restaurants.map(r => '<div class="li"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('');
   el('s-total').textContent = d.count;
   el('s-count').textContent = regionalCount;
@@ -1398,7 +1781,25 @@ function select(id) {
   el('s-total-label').textContent = 'Restaurants';
   el('s-count-label').textContent = 'Regions';
   el('s-share-label').textContent = 'Of Munich';
-  renderCountryAtlas(d);
+  state.levelMorphing = true;
+  state.levelMorphContext = { countryId: d.id, worldTransform: sourceTransform };
+  document.body.classList.add('cluster-reveal-active');
+  try {
+    const target = renderCountryAtlas(d, { referenceTransform: sourceTransform });
+    const groups = buildWorldToCountryMorphGroups(
+      sourcePlaced,
+      sourceTransform,
+      target.placed,
+      target.transform,
+      d.id
+    );
+    if (!reduceMotion) await runAtlasLevelMorph(groups, CELL * target.transform.k, 'world-to-country');
+  } finally {
+    document.body.classList.remove('cluster-reveal-active');
+    state.levelMorphing = false;
+    updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
+    draw();
+  }
 }
 
 function selectRegion(id) {
