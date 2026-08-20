@@ -45,6 +45,7 @@ let cursorClientY = 0;
 let cityTransitionInFlight = false;
 let pendingCuisineClusterReveal = null;
 let activeCuisineClusterReveal = null;
+let retainedHomeTransform = null;
 
 const HOME_CUISINE_CLUSTER_DURATION = 1150;
 
@@ -89,6 +90,8 @@ function buildDataIndex() {
 }
 
 function renderGallery({ initialHomeTransform = null } = {}) {
+  const requestedHomeTransform = initialHomeTransform || retainedHomeTransform;
+  if (requestedHomeTransform) retainedHomeTransform = { ...requestedHomeTransform };
   document.body.classList.add("home-world-view");
   scene.classList.remove("has-city-back");
   state.cityId = null;
@@ -224,7 +227,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     cellSize,
     scale: 1,
     focus: projection([0, 10]),
-    transform: initialHomeTransform,
+    transform: requestedHomeTransform,
   });
 }
 
@@ -248,7 +251,9 @@ function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
       const { k, x, y } = event.transform;
       const period = worldWidth * k;
       const wrappedX = ((x + period / 2) % period + period) % period - period / 2;
-      svg.node().__homeTransform = { x: wrappedX, y, k };
+      const homeTransform = { x: wrappedX, y, k };
+      svg.node().__homeTransform = homeTransform;
+      retainedHomeTransform = { ...homeTransform };
       layer.attr("transform", `translate(${wrappedX},${y}) scale(${k})`);
       layer.selectAll(".home-city-node")
         .attr("transform", (item) => `translate(${item.renderX},${item.y}) scale(${1 / k})`);
@@ -1696,7 +1701,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=morphing-18"
+          src="./experiments/claude-cartogram.html?v=morphing-19"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
