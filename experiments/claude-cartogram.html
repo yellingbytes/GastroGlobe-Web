@@ -539,6 +539,9 @@ function rasteriseBackdrop(feature, path, cols, rows) {
 /* ---------- packing ---------- */
 function pack(items, cols, rows, options = {}) {
   const occ = new Uint8Array(cols * rows);
+  const directionWeight = options.directionWeight ?? 5;
+  const longitudeThreshold = options.longitudeThreshold ?? 6;
+  const latitudeThreshold = options.latitudeThreshold ?? 5;
   const fits = (it, ox, oy) => {
     if (ox < 0 || oy < 0 || ox + it.w > cols || oy + it.h > rows) return false;
     for (const [dx, dy] of it.cells) {
@@ -575,8 +578,8 @@ function pack(items, cols, rows, options = {}) {
       const pcx = p.ox + p.w / 2, pcy = p.oy + p.h / 2;
       const dLng = it.lng - p.lng, dLat = it.lat - p.lat;
       const wgt = Math.sqrt(p.count) * 1.3;
-      if (Math.abs(dLng) > 6 && Math.sign(cx - pcx) !== Math.sign(dLng)) pen += wgt * Math.min(6, Math.abs(dLng) / 5);
-      if (Math.abs(dLat) > 5 && Math.sign(pcy - cy) !== Math.sign(dLat)) pen += wgt * Math.min(6, Math.abs(dLat) / 4);
+      if (Math.abs(dLng) > longitudeThreshold && Math.sign(cx - pcx) !== Math.sign(dLng)) pen += wgt * Math.min(6, Math.abs(dLng) / 5);
+      if (Math.abs(dLat) > latitudeThreshold && Math.sign(pcy - cy) !== Math.sign(dLat)) pen += wgt * Math.min(6, Math.abs(dLat) / 4);
     }
     return pen;
   };
@@ -590,7 +593,7 @@ function pack(items, cols, rows, options = {}) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const ox = ix + dx, oy = iy + dy;
           if (!fits(it, ox, oy)) continue;
-          const cost = Math.hypot(dx, dy * 1.15) + dirCost(it, ox, oy) * 5 + continentZoneCost(it, ox) * 1.8;
+          const cost = Math.hypot(dx, dy * 1.15) + dirCost(it, ox, oy) * directionWeight + continentZoneCost(it, ox) * 1.8;
           if (!best || cost < best.cost) best = { ox, oy, cost };
           if (foundR === null) foundR = r;
         }
@@ -606,7 +609,7 @@ function pack(items, cols, rows, options = {}) {
   const set = it => { for (const [dx, dy] of it.cells) occ[(it.oy + dy) * cols + (it.ox + dx)] = 1; };
   const score = (it, ox, oy) =>
     Math.hypot(ox - it.idealX, (oy - it.idealY) * 1.15) +
-    dirCostAll(it, ox, oy) * 5 +
+    dirCostAll(it, ox, oy) * directionWeight +
     continentZoneCost(it, ox) * 1.8;
   const dirCostAll = (it, ox, oy) => {
     const cx = ox + it.w / 2, cy = oy + it.h / 2;
@@ -616,8 +619,8 @@ function pack(items, cols, rows, options = {}) {
       const pcx = p.ox + p.w / 2, pcy = p.oy + p.h / 2;
       const dLng = it.lng - p.lng, dLat = it.lat - p.lat;
       const wgt = Math.sqrt(p.count) * 1.3;
-      if (Math.abs(dLng) > 6 && Math.sign(cx - pcx) !== Math.sign(dLng)) pen += wgt * Math.min(6, Math.abs(dLng) / 5);
-      if (Math.abs(dLat) > 5 && Math.sign(pcy - cy) !== Math.sign(dLat)) pen += wgt * Math.min(6, Math.abs(dLat) / 4);
+      if (Math.abs(dLng) > longitudeThreshold && Math.sign(cx - pcx) !== Math.sign(dLng)) pen += wgt * Math.min(6, Math.abs(dLng) / 5);
+      if (Math.abs(dLat) > latitudeThreshold && Math.sign(pcy - cy) !== Math.sign(dLat)) pen += wgt * Math.min(6, Math.abs(dLat) / 4);
     }
     return pen;
   };
@@ -1296,6 +1299,10 @@ function updateMapLabelPresentation(transform) {
   const host = el('labels');
   const wrap = el('mapwrap');
   if (!host || !wrap) return;
+  const detailPanel = state.view === 'country' ? document.querySelector('aside')?.getBoundingClientRect() : null;
+  const mobileDetail = state.view === 'country' && wrap.clientWidth <= 720;
+  const visibleRight = mobileDetail ? wrap.clientWidth : wrap.clientWidth - (detailPanel?.width || 0);
+  const visibleBottom = mobileDetail ? wrap.clientHeight - (detailPanel?.height || 0) : wrap.clientHeight;
   const k = Math.max(0.01, transform?.k || 1);
   const snap = value => Math.round(value * dpr) / dpr;
   const isActiveLabel = label => label.dataset.id === state.sel || label.dataset.id === state.hover;
@@ -1341,13 +1348,13 @@ function updateMapLabelPresentation(transform) {
     const active = isActiveLabel(label);
     const priority = isPriorityLabel(label);
     const isInterior = label.classList.contains('lab-in');
-    const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > wrap.clientWidth - 2 || rect.y + rect.height > wrap.clientHeight - 2;
+    const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > visibleRight - 2 || rect.y + rect.height > visibleBottom - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&
       rect.y < box.y + box.height && rect.y + rect.height > box.y
     );
     const landConflict = !isInterior && hitsLand({ x: screenX, y: screenY, width, height }, label.dataset.id);
-    label.hidden = !active && (outside || collision || (landConflict && !priority));
+    label.hidden = outside || (!active && (collision || (landConflict && !priority)));
     if (!label.hidden) {
       occupied.push(rect);
       visibleLabelIds.add(label.dataset.id);
@@ -1392,10 +1399,23 @@ function fittedCountryLevelTransform(referenceTransform, countryBackdrop) {
   const sheet = mobile ? panelRect?.height || 0 : 0;
   const usableWidth = Math.max(280, wrap.clientWidth - rail);
   const usableHeight = Math.max(240, wrap.clientHeight - sheet);
-  const minX = d3.min(countryBackdrop.cells, cell => cell[0]);
-  const minY = d3.min(countryBackdrop.cells, cell => cell[1]);
-  const maxX = d3.max(countryBackdrop.cells, cell => cell[0] + 1);
-  const maxY = d3.max(countryBackdrop.cells, cell => cell[1] + 1);
+  const regionalItems = state.view === 'country' ? state.placed : [];
+  const minX = Math.min(
+    d3.min(countryBackdrop.cells, cell => cell[0]),
+    ...regionalItems.map(region => region.ox)
+  );
+  const minY = Math.min(
+    d3.min(countryBackdrop.cells, cell => cell[1]),
+    ...regionalItems.map(region => region.oy)
+  );
+  const maxX = Math.max(
+    d3.max(countryBackdrop.cells, cell => cell[0] + 1),
+    ...regionalItems.map(region => region.ox + region.w)
+  );
+  const maxY = Math.max(
+    d3.max(countryBackdrop.cells, cell => cell[1] + 1),
+    ...regionalItems.map(region => region.oy + region.h)
+  );
   const mapWidth = Math.max(CELL, (maxX - minX) * CELL);
   const mapHeight = Math.max(CELL, (maxY - minY) * CELL);
   const horizontalPadding = mobile ? 24 : 46;
@@ -1686,82 +1706,53 @@ function normalizedTerritory(cells) {
   };
 }
 
-function scaledGeographicZone(zoneCells, anchor, target, countryBackdrop, occupied, zoneOwner, regionId) {
-  if (!countryBackdrop?.cells?.length) return [];
-  const source = zoneCells.length ? zoneCells : [closestCountryCell(anchor, countryBackdrop.cells)];
-  const sourceSet = new Set(source.map(cell => cell[0] + ',' + cell[1]));
-  const rasterizedScale = scale => countryBackdrop.cells.filter(([x, y]) => {
-    const key = x + ',' + y;
-    if (occupied.has(key)) return false;
-    const sourceX = Math.floor(anchor[0] + (x + 0.5 - anchor[0]) / scale);
-    const sourceY = Math.floor(anchor[1] + (y + 0.5 - anchor[1]) / scale);
-    return sourceSet.has(sourceX + ',' + sourceY);
-  });
-  let scale = Math.sqrt(Math.max(1, target) / Math.max(1, source.length));
-  let cells = [];
-  let bestCells = [];
+function scaledZoneShape(zoneCells, target) {
+  const territory = normalizedTerritory(zoneCells);
+  if (!territory) return null;
+  const sourceSet = new Set(territory.cells.map(cell => cell[0] + ',' + cell[1]));
+  const rasterize = scale => {
+    const w = Math.max(1, Math.ceil(territory.w * scale));
+    const h = Math.max(1, Math.ceil(territory.h * scale));
+    const cells = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const sourceX = Math.min(territory.w - 1, Math.floor((x + 0.5) / scale));
+        const sourceY = Math.min(territory.h - 1, Math.floor((y + 0.5) / scale));
+        if (sourceSet.has(sourceX + ',' + sourceY)) cells.push([x, y]);
+      }
+    }
+    return normalizedTerritory(cells);
+  };
+
+  let scale = Math.sqrt(Math.max(1, target) / Math.max(1, territory.cells.length));
+  let best = null;
   let bestError = Infinity;
-  for (let iteration = 0; iteration < 7; iteration++) {
-    cells = rasterizedScale(scale);
-    const error = Math.abs(cells.length - target);
-    if (cells.length && error < bestError) {
-      bestCells = cells;
+  for (let iteration = 0; iteration < 8; iteration++) {
+    const candidate = rasterize(clamp(scale, 0.08, 12));
+    const cellCount = candidate?.cells.length || 0;
+    const error = Math.abs(cellCount - target);
+    if (cellCount && error < bestError) {
+      best = candidate;
       bestError = error;
     }
-    if (!cells.length) {
-      scale *= 1.35;
+    if (!cellCount) {
+      scale *= 1.4;
       continue;
     }
-    const ratio = target / cells.length;
-    if (Math.abs(ratio - 1) < 0.06) break;
-    scale = clamp(scale * Math.sqrt(ratio), 0.06, 12);
+    const ratio = target / cellCount;
+    if (Math.abs(ratio - 1) < 0.035) break;
+    scale *= Math.sqrt(ratio);
   }
-  cells = bestCells;
-
-  // Clipping at a coastline or a larger neighbouring cuisine can leave a small
-  // shortfall. Complete only that remainder locally, with a strong preference
-  // for the region's original geographic zone.
-  const chosen = new Map(cells.map(cell => [cell[0] + ',' + cell[1], cell]));
-  if (chosen.size < target * 0.94) {
-    const candidates = countryBackdrop.cells
-      .filter(([x, y]) => {
-        const key = x + ',' + y;
-        return !occupied.has(key) && !chosen.has(key);
-      })
-      .map(cell => {
-        const key = cell[0] + ',' + cell[1];
-        const outsidePenalty = zoneOwner.get(key) === regionId ? 0 : Math.max(10, Math.sqrt(source.length) * 0.85);
-        return {
-          cell,
-          score: Math.hypot(cell[0] + 0.5 - anchor[0], cell[1] + 0.5 - anchor[1]) + outsidePenalty
-        };
-      })
-      .sort((a, b) => a.score - b.score);
-    for (const candidate of candidates) {
-      if (chosen.size >= target) break;
-      chosen.set(candidate.cell[0] + ',' + candidate.cell[1], candidate.cell);
-    }
-  }
-
-  cells = [...chosen.values()];
-  if (cells.length > target * 1.08) {
-    cells = cells
-      .sort((a, b) =>
-        Math.hypot(a[0] + 0.5 - anchor[0], a[1] + 0.5 - anchor[1]) -
-        Math.hypot(b[0] + 0.5 - anchor[0], b[1] + 0.5 - anchor[1])
-      )
-      .slice(0, target);
-  }
-  cells.forEach(cell => occupied.add(cell[0] + ',' + cell[1]));
-  return cells;
+  return best;
 }
 
 function proportionalRegionTargets(country, visibleRegions, countryCellCount) {
   const representedCount = d3.sum(visibleRegions, region => region.count);
   if (!representedCount || !countryCellCount) return new Map();
-  const countryCount = Math.max(representedCount, country.count || representedCount);
-  const representedShare = representedCount / countryCount;
-  const coverage = Math.min(0.62, representedShare);
+  // Independent regional silhouettes need breathing room. China receives the
+  // largest canvas so dominant provincial cuisines expand as decisively as
+  // countries do in the world-level cartogram.
+  const coverage = country.id === 'china' ? 0.38 : 0.34;
   const budget = Math.max(
     visibleRegions.length * 6,
     Math.min(countryCellCount, Math.round(countryCellCount * coverage))
@@ -1783,7 +1774,7 @@ function proportionalRegionTargets(country, visibleRegions, countryCellCount) {
 }
 
 function geographicRegionItems(country, specificRegions, visibleRegions, countryProjection, countryBackdrop) {
-  if (!countryProjection || !countryBackdrop?.cells?.length) return null;
+  if (!countryProjection || !countryBackdrop?.cells?.length || !visibleRegions.length) return null;
   const anchors = specificRegions.map((region, index) => {
     const projected = countryProjection([region.lng, region.lat]);
     const safePoint = projected?.every(Number.isFinite)
@@ -1802,7 +1793,6 @@ function geographicRegionItems(country, specificRegions, visibleRegions, country
   // define the geography. Their nearest-centre zones approximate recognizable
   // provincial or culinary-region contours; only represented cuisines render.
   const zones = new Map(anchors.map(anchor => [anchor.region.id, []]));
-  const zoneOwner = new Map();
   for (const cell of countryBackdrop.cells) {
     let owner = anchors[0];
     let bestDistance = Infinity;
@@ -1816,46 +1806,78 @@ function geographicRegionItems(country, specificRegions, visibleRegions, country
       }
     }
     zones.get(owner.region.id).push(cell);
-    zoneOwner.set(cell[0] + ',' + cell[1], owner.region.id);
   }
 
   const anchorById = new Map(anchors.map(anchor => [anchor.region.id, anchor]));
-  const occupied = new Set();
   const targetById = proportionalRegionTargets(country, visibleRegions, countryBackdrop.cells.length);
-  return [...visibleRegions]
+  const items = [...visibleRegions]
     .sort((a, b) => b.count - a.count)
     .map(region => {
       const anchor = anchorById.get(region.id);
       const zoneCells = zones.get(region.id) || [];
       const target = targetById.get(region.id) || targetRegionCellsForCount(region.count);
-      const absoluteCells = scaledGeographicZone(
-        zoneCells,
-        anchor?.point || countryBackdrop.centroid,
-        target,
-        countryBackdrop,
-        occupied,
-        zoneOwner,
-        region.id
+      const shape = scaledZoneShape(
+        zoneCells.length
+          ? zoneCells
+          : [closestCountryCell(anchor?.point || countryBackdrop.centroid, countryBackdrop.cells)],
+        target
       );
-      const territory = normalizedTerritory(absoluteCells);
-      if (!territory) return null;
+      if (!shape) return null;
       const fillColor = regionColor(country.continent, anchor?.index ?? 0);
+      const anchorPoint = anchor?.point || countryBackdrop.centroid;
+      const topologySpread = country.id === 'china' ? 1.38 : 1.18;
+      const idealCenterX = countryBackdrop.centroid[0] + (anchorPoint[0] - countryBackdrop.centroid[0]) * topologySpread;
+      const idealCenterY = countryBackdrop.centroid[1] + (anchorPoint[1] - countryBackdrop.centroid[1]) * topologySpread;
       return {
         ...region,
         name: region.emoji + ' ' + region.name,
         regionName: region.name,
         continent: country.continent,
-        ...territory,
+        cells: shape.cells,
+        w: shape.w,
+        h: shape.h,
         fillColor,
         deepColor: d3.color(fillColor).darker(0.72).formatHex(),
         targetCells: target,
-        idealX: territory.ox,
-        idealY: territory.oy,
+        idealX: idealCenterX - shape.w / 2,
+        idealY: idealCenterY - shape.h / 2,
         lat: region.lat,
         lng: region.lng
       };
     })
     .filter(Boolean);
+
+  const minX = d3.min(countryBackdrop.cells, cell => cell[0]);
+  const minY = d3.min(countryBackdrop.cells, cell => cell[1]);
+  const maxX = d3.max(countryBackdrop.cells, cell => cell[0]);
+  const maxY = d3.max(countryBackdrop.cells, cell => cell[1]);
+  const countryW = maxX - minX + 1;
+  const countryH = maxY - minY + 1;
+  const marginX = Math.max(8, Math.round(countryW * 0.13));
+  const marginY = Math.max(8, Math.round(countryH * 0.2));
+  const originX = Math.max(0, minX - marginX);
+  const originY = Math.max(0, minY - marginY);
+  const localCols = Math.min(WORLD_COLS + PAD * 2 - originX, countryW + marginX * 2);
+  const localRows = Math.min(WORLD_ROWS + PAD * 2 - originY, countryH + marginY * 2);
+  const localItems = items.map(item => ({
+    ...item,
+    idealX: item.idealX - originX,
+    idealY: item.idealY - originY
+  }));
+  const packed = pack(localItems, localCols, localRows, {
+    continentZones: false,
+    directionWeight: country.id === 'china' ? 30 : 10,
+    longitudeThreshold: country.id === 'china' ? 1.2 : 1.8,
+    latitudeThreshold: country.id === 'china' ? 1.2 : 1.8
+  });
+  if (packed.length !== items.length) return null;
+  return packed.map(item => ({
+    ...item,
+    ox: item.ox + originX,
+    oy: item.oy + originY,
+    idealX: item.idealX + originX,
+    idealY: item.idealY + originY
+  }));
 }
 
 function renderCountryAtlas(country, options = {}) {
@@ -1944,8 +1966,49 @@ function renderCountryAtlas(country, options = {}) {
     id: region.id,
     count: region.count,
     cells: region.cells.length,
-    target: region.targetCells || region.cells.length
+    target: region.targetCells || region.cells.length,
+    center: [
+      Math.round((region.ox + region.w / 2) * 10) / 10,
+      Math.round((region.oy + region.h / 2) * 10) / 10
+    ]
   })));
+  const regionCellOwners = new Map();
+  let overlapCells = 0;
+  for (const region of placed) {
+    for (const [dx, dy] of region.cells) {
+      const key = (region.ox + dx) + ',' + (region.oy + dy);
+      if (regionCellOwners.has(key)) overlapCells += 1;
+      else regionCellOwners.set(key, region.id);
+    }
+  }
+  let topologyConflicts = 0;
+  const topologyConflictPairs = [];
+  for (let index = 0; index < placed.length; index++) {
+    const region = placed[index];
+    const centerX = region.ox + region.w / 2;
+    const centerY = region.oy + region.h / 2;
+    for (let compareIndex = index + 1; compareIndex < placed.length; compareIndex++) {
+      const other = placed[compareIndex];
+      const otherCenterX = other.ox + other.w / 2;
+      const otherCenterY = other.oy + other.h / 2;
+      if (Math.abs(region.lng - other.lng) > 2 && Math.sign(centerX - otherCenterX) !== Math.sign(region.lng - other.lng)) {
+        topologyConflicts += 1;
+        topologyConflictPairs.push(region.id + ':' + other.id + ':longitude');
+      }
+      if (Math.abs(region.lat - other.lat) > 2 && Math.sign(otherCenterY - centerY) !== Math.sign(region.lat - other.lat)) {
+        topologyConflicts += 1;
+        topologyConflictPairs.push(region.id + ':' + other.id + ':latitude');
+      }
+    }
+  }
+  document.body.dataset.regionLayoutAudit = JSON.stringify({
+    country: country.id,
+    renderedRegions: placed.length,
+    expectedRegions: visibleSpecific.length,
+    overlapCells,
+    topologyConflicts,
+    topologyConflictPairs
+  });
   state.labelPriorityIds = new Set(placed.slice(0, 3).map(region => region.id));
   state.hover = null;
   state.sel = null;
