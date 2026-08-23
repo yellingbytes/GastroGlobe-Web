@@ -129,6 +129,8 @@
   .lab-out { color: inherit; }
   .lab-out.halo { background: rgba(244,240,230,0.92); box-shadow: 0 0 0 2px rgba(244,240,230,0.92); }
   .lab-out span { font-family: var(--mono); font-size: 12px; font-weight: 600; color: #51493d; margin-left: 4px; }
+  .lab-in { text-align: center; }
+  .lab-in span { font-family: var(--mono); font-size: 11px; margin-left: 4px; }
   #tip { position: absolute; z-index: 6; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
   #tip b { font-weight: 600; }
   #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
@@ -844,6 +846,54 @@ function layoutLabels() {
   };
   const boxes = [];
   const overlap = r => boxes.some(t => r.x < t.x + t.w && r.x + r.w > t.x && r.y < t.y + t.h && r.y + r.h > t.y);
+  const isSecondLevel = state.view === 'world';
+  const insideOwner = (r, itemId) => {
+    const inset = 1.5;
+    const x0 = Math.floor((r.x + inset) / CELL);
+    const y0 = Math.floor((r.y + inset) / CELL);
+    const x1 = Math.floor((r.x + r.w - inset) / CELL);
+    const y1 = Math.floor((r.y + r.h - inset) / CELL);
+    if (x0 < 0 || y0 < 0 || x1 >= state.cols || y1 >= state.rows) return false;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (state.lookup[y * state.cols + x] !== itemId) return false;
+      }
+    }
+    return true;
+  };
+  const segmentsCross = (a, b, c, d) => {
+    const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+    const abC = cross(a, b, c), abD = cross(a, b, d);
+    const cdA = cross(c, d, a), cdB = cross(c, d, b);
+    return abC * abD < 0 && cdA * cdB < 0;
+  };
+  const lineStartAtLabelEdge = (rect, target) => {
+    const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+    const dx = target.x - center.x, dy = target.y - center.y;
+    const edgeRatio = Math.min(1,
+      1 / Math.max(
+        Math.abs(dx) / Math.max(1, rect.w / 2 + 2),
+        Math.abs(dy) / Math.max(1, rect.h / 2 + 2)
+      )
+    );
+    return { x: center.x + dx * edgeRatio, y: center.y + dy * edgeRatio };
+  };
+  const leaderConflicts = (itemId, start, target) => {
+    for (let step = 1; step < 10; step++) {
+      const phase = step / 10;
+      const x = start.x + (target.x - start.x) * phase;
+      const y = start.y + (target.y - start.y) * phase;
+      if (boxes.some(box => x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h)) return true;
+      const gx = Math.floor(x / CELL), gy = Math.floor(y / CELL);
+      if (gx >= 0 && gy >= 0 && gx < state.cols && gy < state.rows) {
+        const crossedOwner = state.lookup[gy * state.cols + gx];
+        if (crossedOwner && crossedOwner !== itemId) return true;
+      }
+    }
+    return state.leaders.some(leader =>
+      leader.lineStart && segmentsCross(start, target, leader.lineStart, { x: leader.targetX, y: leader.targetY })
+    );
+  };
 
   const closeLabelPriority = new Set(['united-kingdom', 'israel', 'greece', 'bulgaria']);
   const outside = [...state.placed]
@@ -870,15 +920,56 @@ function layoutLabels() {
       event.preventDefault();
       activateLabel(event);
     };
-    d.innerHTML = p.name + '<span>' + p.count + '</span>';
+    const fullLabel = p.name + '<span>' + p.count + '</span>';
+    d.innerHTML = fullLabel;
     d.style.left = '0px';
     d.style.top = '-999px';
     host.appendChild(d);
-    const lw = d.offsetWidth + 2, lh = d.offsetHeight + 1;
     const bx = p.ox * CELL, by = p.oy * CELL, bw = p.w * CELL, bh = p.h * CELL;
 
+    if (isSecondLevel) {
+      const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
+      const centerY = (p.oy + d3.mean(p.cells, cell => cell[1] + 0.5)) * CELL;
+      const possibleCenters = [
+        [centerX, centerY],
+        ...p.cells
+          .map(([dx, dy]) => [(p.ox + dx + 0.5) * CELL, (p.oy + dy + 0.5) * CELL])
+          .sort((a, b) => Math.hypot(a[0] - centerX, a[1] - centerY) - Math.hypot(b[0] - centerX, b[1] - centerY))
+      ];
+      let interior = null;
+      for (const html of [fullLabel, p.name]) {
+        d.innerHTML = html;
+        const insideWidth = d.offsetWidth + 2;
+        const insideHeight = d.offsetHeight + 1;
+        for (const center of possibleCenters) {
+          const candidate = {
+            x: center[0] - insideWidth / 2,
+            y: center[1] - insideHeight / 2,
+            w: insideWidth,
+            h: insideHeight
+          };
+          if (overlap(candidate) || !insideOwner(candidate, p.id)) continue;
+          interior = candidate;
+          break;
+        }
+        if (interior) break;
+      }
+      if (interior) {
+        d.className = 'lab lab-in';
+        d.dataset.mapX = interior.x;
+        d.dataset.mapY = interior.y;
+        d.style.left = '0px';
+        d.style.top = '0px';
+        boxes.push({ x: interior.x - 3, y: interior.y - 3, w: interior.w + 6, h: interior.h + 6 });
+        continue;
+      }
+      d.innerHTML = fullLabel;
+    }
+
+    const lw = d.offsetWidth + 2, lh = d.offsetHeight + 1;
+
     const cands = [];
-    for (let ring = 0; ring < 26; ring++) {
+    for (let ring = 0; ring < (isSecondLevel ? 14 : 26); ring++) {
       // A finer search interval keeps callouts beside their country instead of
       // jumping across the dense European and eastern Mediterranean clusters.
       const g = ring * 4;
@@ -892,15 +983,16 @@ function layoutLabels() {
       cands.push([bx - lw - 3 - g * 0.6, by + bh + 2 + g * 0.4]);
     }
     // distance from a point to this country's own silhouette
-    const ownDist = (px, py) => {
-      let best = Infinity;
+    const nearestOwnPoint = (px, py) => {
+      let best = { distance: Infinity, x: bx + bw / 2, y: by + bh / 2 };
       for (const [dx, dy] of p.cells) {
         const cx = (p.ox + dx + 0.5) * CELL, cy = (p.oy + dy + 0.5) * CELL;
         const dd = Math.hypot(cx - px, cy - py);
-        if (dd < best) best = dd;
+        if (dd < best.distance) best = { distance: dd, x: cx, y: cy };
       }
       return best;
     };
+    const ownDist = (px, py) => nearestOwnPoint(px, py).distance;
     // owner of the nearest inked cell to a point (ring search on the grid)
     const nearestOwner = (px, py) => {
       const gx = Math.floor(px / CELL), gy = Math.floor(py / CELL);
@@ -932,34 +1024,45 @@ function layoutLabels() {
       const dOwn = Math.min(ownDist(cx, cy), ownDist(c[0], cy), ownDist(c[0] + lw, cy), ownDist(cx, c[1]), ownDist(cx, c[1] + lh));
       const owner = nearestOwner(cx, cy);
       const unambiguous = owner === p.id;
-      const score = dOwn + (unambiguous ? 0 : 260);
-      if (unambiguous && score < pickScore) { pickScore = score; pick = c; }
-      if (score < fallbackScore) { fallbackScore = score; fallback = c; }
+      const target = nearestOwnPoint(cx, cy);
+      const start = lineStartAtLabelEdge(r, target);
+      const lineDistance = Math.hypot(target.x - start.x, target.y - start.y);
+      if (isSecondLevel && (lineDistance > 44 || leaderConflicts(p.id, start, target))) continue;
+      const score = dOwn + lineDistance * 0.35 + (unambiguous ? 0 : 260);
+      const choice = { position: c, target, start, lineDistance };
+      if (unambiguous && score < pickScore) { pickScore = score; pick = choice; }
+      if (score < fallbackScore) { fallbackScore = score; fallback = choice; }
     }
     const ambiguous = !pick;
-    if (!pick) pick = fallback || [Math.min(W - lw - 4, Math.max(4, bx)), Math.min(H - lh - 4, by + bh + 4)];
-    d.dataset.mapX = pick[0];
-    d.dataset.mapY = pick[1];
+    if (!pick) {
+      if (isSecondLevel && !fallback) {
+        d.remove();
+        continue;
+      }
+      pick = fallback || {
+        position: [Math.min(W - lw - 4, Math.max(4, bx)), Math.min(H - lh - 4, by + bh + 4)]
+      };
+    }
+    const pickPosition = pick.position;
+    d.dataset.mapX = pickPosition[0];
+    d.dataset.mapY = pickPosition[1];
     d.style.left = '0px';
     d.style.top = '0px';
-    boxes.push({ x: pick[0] - 3, y: pick[1] - 3, w: lw + 6, h: lh + 6 });
+    boxes.push({ x: pickPosition[0] - 3, y: pickPosition[1] - 3, w: lw + 6, h: lh + 6 });
 
-    const lcx = pick[0] + lw / 2, lcy = pick[1] + lh / 2;
-    let tx = bx + bw / 2, ty = by + bh / 2, bestD = Infinity;
-    for (const [dx, dy] of p.cells) {
-      const cx = (p.ox + dx + 0.5) * CELL, cy = (p.oy + dy + 0.5) * CELL;
-      const dd = Math.hypot(cx - lcx, cy - lcy);
-      if (dd < bestD) { bestD = dd; tx = cx; ty = cy; }
-    }
+    const lcx = pickPosition[0] + lw / 2, lcy = pickPosition[1] + lh / 2;
+    const target = pick.target || nearestOwnPoint(lcx, lcy);
+    const tx = target.x, ty = target.y, bestD = target.distance;
     if (bestD > 9 || ambiguous) {
       state.leaders.push({
         id: p.id,
-        labelX: pick[0],
-        labelY: pick[1],
+        labelX: pickPosition[0],
+        labelY: pickPosition[1],
         labelWidth: lw,
         labelHeight: lh,
         targetX: tx,
         targetY: ty,
+        lineStart: pick.start || lineStartAtLabelEdge({ x: pickPosition[0], y: pickPosition[1], w: lw, h: lh }, target),
         dot: ambiguous || bestD > 30
       });
     }
@@ -1229,12 +1332,13 @@ function updateMapLabelPresentation(transform) {
     };
     const active = isActiveLabel(label);
     const priority = isPriorityLabel(label);
+    const isInterior = label.classList.contains('lab-in');
     const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > wrap.clientWidth - 2 || rect.y + rect.height > wrap.clientHeight - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&
       rect.y < box.y + box.height && rect.y + rect.height > box.y
     );
-    const landConflict = hitsLand({ x: screenX, y: screenY, width, height }, label.dataset.id);
+    const landConflict = !isInterior && hitsLand({ x: screenX, y: screenY, width, height }, label.dataset.id);
     label.hidden = !active && (outside || collision || (landConflict && !priority));
     if (!label.hidden) {
       occupied.push(rect);
