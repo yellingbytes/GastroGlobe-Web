@@ -2409,8 +2409,6 @@ function attachHover() {
     const gy = Math.floor((ev.clientY - r.top) / r.height * state.rows);
     const { id } = mapHitAt(gx, gy);
     if (id) state.view === 'world' ? select(id) : selectRegion(id);
-    else if (state.view === 'country') restoreWorldAtlas();
-    else window.parent.postMessage({ type: 'gastroglobe:return-world' }, window.location.origin);
   };
 }
 

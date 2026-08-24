@@ -48,6 +48,7 @@ let activeCuisineClusterReveal = null;
 let retainedHomeTransform = null;
 
 const HOME_CUISINE_CLUSTER_DURATION = 1150;
+const METROPOLITAN_MARKER_RADIUS = 14;
 
 const countryNameAliases = new Map([
   ["bosnia and herz", "bosnia & herzegovina"],
@@ -111,19 +112,15 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   const worldWidth = width - mapInset * 2;
   const worldOffsets = [-worldWidth, 0, worldWidth];
   const profiles = cityNodes.map((city) => metropolitanProfile(city));
-  const wheelScale = d3.scaleSqrt()
-    .domain([0, d3.max(profiles, (profile) => profile.cuisineDiversity) || 1])
-    .range(compact ? [12, 32] : [16, 44]);
   const cityItems = profiles.map((profile) => {
     const anchor = projection([profile.city.data.lng, profile.city.data.lat]);
-    const wheelRadius = profile.live ? wheelScale(profile.cuisineDiversity) * 0.5 : compact ? 6.5 : 8.5;
     return {
       ...profile,
       anchorX: anchor[0],
       anchorY: anchor[1],
       x: anchor[0],
       y: anchor[1],
-      wheelRadius,
+      wheelRadius: METROPOLITAN_MARKER_RADIUS,
     };
   });
   const simulation = d3.forceSimulation(cityItems)
@@ -205,7 +202,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
 
   nodes.append("circle")
     .attr("class", "home-city-hit")
-    .attr("r", (item) => Math.max(15, item.wheelRadius + 4));
+    .attr("r", 22);
   nodes.append("g")
     .attr("class", "home-city-continent-ring")
     .selectAll("path")
@@ -1701,7 +1698,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=morphing-25"
+          src="./experiments/claude-cartogram.html?v=morphing-26"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
@@ -3630,13 +3627,6 @@ window.addEventListener("resize", () => {
     if (!state.cityId) renderGallery();
     else renderCurrentVisualization();
   }, 180);
-});
-
-window.addEventListener("message", (event) => {
-  if (event.origin !== window.location.origin || event.data?.type !== "gastroglobe:return-world") return;
-  const iframe = scene.querySelector(".claude-cartogram-frame");
-  if (!iframe || event.source !== iframe.contentWindow || !state.cityId || cityTransitionInFlight) return;
-  returnToWorld();
 });
 
 initialize();
