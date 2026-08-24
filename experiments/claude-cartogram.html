@@ -2743,6 +2743,11 @@ function startGastroGlobeClusterReturn(options = {}) {
   attachPanZoom();
   window.startGastroGlobeClusterReveal = startGastroGlobeClusterReveal;
   window.startGastroGlobeClusterReturn = startGastroGlobeClusterReturn;
+  window.returnGastroGlobeMapLevel = async () => {
+    if (state.view !== 'country') return false;
+    if (!state.levelMorphing) await restoreWorldAtlas();
+    return true;
+  };
   window.getGastroGlobeMorphStats = () => state.lastMorphStats;
   window.getGastroGlobeCameraTransform = () => state.currentTransform ? {
     x: state.currentTransform.x,

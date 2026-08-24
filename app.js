@@ -918,6 +918,19 @@ function renderCurrentVisualization() {
   ensureCityBackButton();
 }
 
+async function returnOneMapLevel() {
+  const iframe = scene.querySelector(".claude-cartogram-frame");
+  const returnFromCountry = iframe?.contentWindow?.returnGastroGlobeMapLevel;
+  if (typeof returnFromCountry === "function") {
+    try {
+      if (await returnFromCountry()) return;
+    } catch (error) {
+      console.error("Cuisine level return failed", error);
+    }
+  }
+  await returnToWorld();
+}
+
 function ensureCityBackButton() {
   if (!state.cityId) return;
   scene.classList.add("has-city-back");
@@ -926,9 +939,9 @@ function ensureCityBackButton() {
   button.className = "city-world-back";
   button.type = "button";
   button.innerHTML = `<span aria-hidden="true">←</span>`;
-  button.title = "World cities";
-  button.setAttribute("aria-label", "Back to the world city atlas");
-  button.addEventListener("click", returnToWorld);
+  button.title = "Back one map level";
+  button.setAttribute("aria-label", "Back one map level");
+  button.addEventListener("click", returnOneMapLevel);
   scene.appendChild(button);
 }
 
@@ -1698,7 +1711,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=morphing-27"
+          src="./experiments/claude-cartogram.html?v=morphing-28"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
