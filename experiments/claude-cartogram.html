@@ -196,6 +196,8 @@
   .row .ct { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; color: var(--ink-soft); }
   #detail { display: none; flex-direction: column; gap: 11px; min-height: 0; flex: 1; }
   #detail.on { display: flex; }
+  #detail .detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  #detail .stats { border-top: 1px solid var(--rule); padding-top: 12px; }
   #detail .dh { font-family: var(--display); font-size: 26px; line-height: 1.05; }
   #detail .ds { display: none; }
   #detail > div:first-child > div { min-width: 0; }
@@ -338,22 +340,22 @@
     <button type="button" class="sheet-toggle" id="sheet-toggle" aria-controls="d-list" aria-expanded="false" aria-label="Expand the restaurant list" title="Expand the restaurant list">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6"></path></svg>
     </button>
-    <div class="stats">
-      <div class="stat"><b id="s-total">—</b><span id="s-total-label">Restaurants</span></div>
-      <div class="stat"><b id="s-count">—</b><span id="s-count-label">Countries</span></div>
-      <div class="stat"><b id="s-share">—</b><span id="s-share-label">Not German</span></div>
-    </div>
     <div class="sec" id="ranksec">
       <h2>Ranked by restaurants — click a country</h2>
       <div id="rank"></div>
     </div>
     <div class="sec" id="detail">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div class="detail-heading">
         <div>
           <div class="dh" id="d-name"></div>
           <div class="ds" id="d-sum" aria-hidden="true"></div>
         </div>
         <button class="close" id="d-close">Show on Google map</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="s-total">—</b><span id="s-total-label">Restaurants</span></div>
+        <div class="stat"><b id="s-count">—</b><span id="s-count-label">Countries</span></div>
+        <div class="stat"><b id="s-share">—</b><span id="s-share-label">Not German</span></div>
       </div>
       <div class="chips" id="d-chips"></div>
       <div class="list" id="d-list" role="list" aria-label="Restaurants" tabindex="0"></div>
