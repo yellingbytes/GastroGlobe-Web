@@ -46,7 +46,6 @@
     letter-spacing: 0.045em;
     text-transform: uppercase;
   }
-  body.country-detail-open #head { width: min(720px, calc(66vw - 104px)); }
   #mapwrap {
     position: absolute;
     inset: 0;
@@ -186,7 +185,6 @@
       left: max(66px, calc(env(safe-area-inset-left) + 66px));
       width: calc(100% - max(82px, calc(env(safe-area-inset-left) + 82px)));
     }
-    body.country-detail-open #head { width: calc(100% - max(82px, calc(env(safe-area-inset-left) + 82px))); }
     #map-subtitle { max-width: 320px; margin-top: 10px; font-size: 10px; line-height: 1.4; }
     aside {
       top: auto;
@@ -274,7 +272,7 @@
 <div id="app">
   <div id="left">
     <div id="head">
-      <h1 id="map-title">Munich eats the world.</h1>
+      <h1 id="map-title">Munich cuisines.</h1>
       <p id="map-subtitle">Countries grow with their restaurant presence.</p>
     </div>
     <div id="mapwrap">
@@ -2194,7 +2192,7 @@ function commitWorldAtlas(transform = null) {
     rows: state.worldSnapshot.rows,
     off: state.worldSnapshot.off
   });
-  el('map-title').textContent = 'Munich eats the world.';
+  el('map-title').textContent = 'Munich cuisines.';
   el('map-subtitle').textContent = 'Countries grow with their restaurant presence.';
   el('mapwrap').classList.remove('country-view');
   el('ghost-control').hidden = false;
