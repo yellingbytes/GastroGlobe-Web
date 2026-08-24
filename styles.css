@@ -1224,8 +1224,13 @@ body.is-home-cuisine-returning .home-city-nodes {
 }
 
 .scene.google-map-open .city-world-back {
-  right: calc(min(420px, 34vw) + 12px);
-  left: auto;
+  top: 56px;
+  right: auto;
+  left: 12px;
+}
+
+.scene.google-map-open.google-map-place-card .city-world-back {
+  top: 116px;
 }
 
 .city-world-back:hover,
@@ -1238,7 +1243,13 @@ body.is-home-cuisine-returning .home-city-nodes {
 
 @media (max-width: 900px) {
   .scene.google-map-open .city-world-back {
-    right: max(10px, env(safe-area-inset-right));
+    top: max(56px, calc(env(safe-area-inset-top) + 46px));
+    right: auto;
+    left: max(10px, env(safe-area-inset-left));
+  }
+
+  .scene.google-map-open.google-map-place-card .city-world-back {
+    top: max(116px, calc(env(safe-area-inset-top) + 106px));
   }
 }
 

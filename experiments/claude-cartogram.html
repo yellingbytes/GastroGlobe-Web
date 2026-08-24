@@ -2421,11 +2421,16 @@ function renderGoogleMapView() {
     frame.src = embedUrl;
   }
   frame.title = 'Google map for ' + query;
+  if (state.googleMapOpen) notifyParentGoogleMapVisibility(true);
 }
 
 function notifyParentGoogleMapVisibility(open) {
   if (window.parent === window) return;
-  window.parent.postMessage({ type: 'gastroglobe-google-map-visibility', open: Boolean(open) }, window.location.origin);
+  window.parent.postMessage({
+    type: 'gastroglobe-google-map-visibility',
+    open: Boolean(open),
+    placeCard: Boolean(open && state.activeRestaurants.length === 1)
+  }, window.location.origin);
 }
 
 function showGoogleMapView() {
@@ -2437,7 +2442,6 @@ function showGoogleMapView() {
   el('d-close').setAttribute('aria-pressed', 'true');
   setMobileSheetExpanded(false);
   renderGoogleMapView();
-  notifyParentGoogleMapVisibility(true);
 }
 
 function hideGoogleMapView({ clear = false } = {}) {
