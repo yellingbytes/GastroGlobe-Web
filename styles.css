@@ -1155,11 +1155,7 @@ body.is-home-cuisine-returning .home-city-nodes {
   transition: filter 160ms ease, opacity 160ms ease;
 }
 
-.home-city-node.is-preview .home-city-continent-ring path { opacity: 0.52; }
-
-.home-city-node:hover .home-city-continent-ring,
-.home-city-node:focus-visible .home-city-continent-ring,
-.home-city-node.is-selected .home-city-continent-ring { transform: scale(1.12); }
+.home-city-node.is-preview .home-city-continent-ring path { opacity: 0.94; }
 
 .home-city-node:hover .home-city-continent-ring path,
 .home-city-node:focus-visible .home-city-continent-ring path,
