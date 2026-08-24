@@ -142,6 +142,17 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .stop();
   for (let index = 0; index < (compact ? 300 : 220); index += 1) simulation.tick();
   cityItems.forEach((item) => {
+    if (compact) {
+      const dx = item.x - item.anchorX;
+      const dy = item.y - item.anchorY;
+      const distance = Math.hypot(dx, dy);
+      const maxDisplacement = Math.max(42, Math.min(56, width * 0.14));
+      if (distance > maxDisplacement) {
+        const ratio = maxDisplacement / distance;
+        item.x = item.anchorX + dx * ratio;
+        item.y = item.anchorY + dy * ratio;
+      }
+    }
     item.x = clamp(item.x, item.wheelRadius + 34, width - item.wheelRadius - 34);
     item.y = clamp(item.y, compact ? 152 : item.wheelRadius + 32, height - (compact ? 160 : item.wheelRadius + 38));
     if (!compact && item.x > width - 390) item.y = Math.min(item.y, height - 210);
@@ -1744,7 +1755,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=mobile-polish-1"
+          src="./experiments/claude-cartogram.html?v=mobile-map-fidelity-1"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>

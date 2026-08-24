@@ -1279,7 +1279,7 @@ body.is-home-cuisine-returning .home-city-nodes {
   .home-world-atlas .home-world-heading h1 { font-size: 44px; }
   .home-world-heading > p:last-child { display: none; }
   .home-world-status { display: none; }
-  .home-world-atlas .home-city-name { font-size: 13px; }
+  .home-world-atlas .home-city-name { font-size: 12px; }
   .home-city-node.is-preview .home-city-meta { display: none; }
   .city-world-back { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: 44px; height: 44px; }
   .has-city-back .map-breadcrumbs { top: 58px; left: 10px; max-width: calc(100% - 20px); }

@@ -158,6 +158,23 @@
   .lab-out span { font-family: var(--mono); font-size: 12px; font-weight: 600; color: #51493d; margin-left: 4px; }
   .lab-in { text-align: center; }
   .lab-in span { font-family: var(--mono); font-size: 11px; margin-left: 4px; }
+  .lab-mobile-region {
+    display: inline-flex;
+    min-width: 28px;
+    min-height: 24px;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 2px 5px;
+    border: 1px solid rgba(35,32,27,0.52);
+    border-radius: 999px;
+    background: rgba(247,244,236,0.9);
+    box-shadow: 0 1px 4px rgba(35,32,27,0.12);
+    font-size: 12px;
+    line-height: 1;
+    text-shadow: none;
+  }
+  .lab-mobile-region span { margin-left: 0; font-size: 9px; color: var(--ink-soft); }
   #tip { position: absolute; z-index: 6; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
   #tip b { font-weight: 600; }
   #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
@@ -991,6 +1008,7 @@ function layoutLabels() {
   const boxes = [];
   const overlap = r => boxes.some(t => r.x < t.x + t.w && r.x + r.w > t.x && r.y < t.y + t.h && r.y + r.h > t.y);
   const isSecondLevel = state.view === 'world';
+  const isMobileCountry = state.view === 'country' && el('mapwrap').clientWidth <= MOBILE_BREAKPOINT;
   const insideOwner = (r, itemId) => {
     const inset = 1.5;
     const x0 = Math.floor((r.x + inset) / CELL);
@@ -1070,6 +1088,20 @@ function layoutLabels() {
     d.style.top = '-999px';
     host.appendChild(d);
     const bx = p.ox * CELL, by = p.oy * CELL, bw = p.w * CELL, bh = p.h * CELL;
+
+    if (isMobileCountry) {
+      const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
+      const centerY = (p.oy + d3.mean(p.cells, cell => cell[1] + 0.5)) * CELL;
+      d.className = 'lab lab-in lab-mobile-region';
+      d.dataset.mapX = centerX;
+      d.dataset.mapY = centerY;
+      d.dataset.centered = 'true';
+      d.title = (p.regionName || p.name) + ' · ' + p.count;
+      d.innerHTML = (p.emoji || '◌') + '<span>' + p.count + '</span>';
+      d.style.left = '0px';
+      d.style.top = '0px';
+      continue;
+    }
 
     if (isSecondLevel) {
       const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
@@ -1480,8 +1512,11 @@ function updateMapLabelPresentation(transform) {
     const mapX = Number(label.dataset.mapX);
     const mapY = Number(label.dataset.mapY);
     if (!Number.isFinite(mapX) || !Number.isFinite(mapY)) continue;
-    const screenX = (transform?.x || 0) + mapX * k;
-    const screenY = (transform?.y || 0) + mapY * k;
+    const centered = label.dataset.centered === 'true';
+    const anchorX = (transform?.x || 0) + mapX * k;
+    const anchorY = (transform?.y || 0) + mapY * k;
+    const screenX = centered ? anchorX - width / 2 : anchorX;
+    const screenY = centered ? anchorY - height / 2 : anchorY;
     label.style.transform = 'translate(' + snap(screenX) + 'px,' + snap(screenY) + 'px)';
     const rect = {
       x: screenX - gap,
@@ -1492,13 +1527,14 @@ function updateMapLabelPresentation(transform) {
     const active = isActiveLabel(label);
     const priority = isPriorityLabel(label);
     const isInterior = label.classList.contains('lab-in');
+    const isMobileRegion = label.classList.contains('lab-mobile-region');
     const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > visibleRight - 2 || rect.y + rect.height > visibleBottom - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&
       rect.y < box.y + box.height && rect.y + rect.height > box.y
     );
     const landConflict = !isInterior && hitsLand({ x: screenX, y: screenY, width, height }, label.dataset.id);
-    label.hidden = outside || (!active && (collision || (landConflict && !priority)));
+    label.hidden = outside || (!isMobileRegion && !active && (collision || (landConflict && !priority)));
     if (!label.hidden) {
       occupied.push(rect);
       visibleLabelIds.add(label.dataset.id);
@@ -1576,7 +1612,7 @@ function fittedCountryLevelTransform(referenceTransform, countryBackdrop) {
   const k = clamp(Math.min(
     Math.max(1, usableWidth - horizontalPadding * 2) / mapWidth,
     Math.max(1, mapUsableHeight - verticalPadding * 2) / mapHeight
-  ), 0.2, 6);
+  ), mobile ? 0.08 : 0.2, 6);
   const centerX = (minX + maxX) * CELL / 2;
   const centerY = (minY + maxY) * CELL / 2;
   const unit = CELL * k;
