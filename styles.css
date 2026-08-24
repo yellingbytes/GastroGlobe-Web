@@ -1280,6 +1280,11 @@ body.is-home-cuisine-returning .home-city-nodes {
   .home-world-heading > p:last-child { display: none; }
   .home-world-status { display: none; }
   .home-world-atlas .home-city-name { font-size: 12px; }
+  .home-city-node.is-label-hidden .home-city-name { opacity: 0; }
+  .home-city-node.is-label-hidden:hover .home-city-name,
+  .home-city-node.is-label-hidden:focus-visible .home-city-name { opacity: 1; }
+  .home-city-node[aria-hidden="true"] .home-city-name,
+  .home-city-node[aria-hidden="true"] .home-city-meta { display: none; }
   .home-city-node.is-preview .home-city-meta { display: none; }
   .city-world-back { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: 44px; height: 44px; }
   .has-city-back .map-breadcrumbs { top: 58px; left: 10px; max-width: calc(100% - 20px); }

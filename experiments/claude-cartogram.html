@@ -159,22 +159,11 @@
   .lab-in { text-align: center; }
   .lab-in span { font-family: var(--mono); font-size: 11px; margin-left: 4px; }
   .lab-mobile-region {
-    display: inline-flex;
-    min-width: 28px;
-    min-height: 24px;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 2px 5px;
-    border: 1px solid rgba(35,32,27,0.52);
-    border-radius: 999px;
-    background: rgba(247,244,236,0.9);
-    box-shadow: 0 1px 4px rgba(35,32,27,0.12);
+    padding: 0;
     font-size: 12px;
-    line-height: 1;
-    text-shadow: none;
+    line-height: 1.15;
   }
-  .lab-mobile-region span { margin-left: 0; font-size: 9px; color: var(--ink-soft); }
+  .lab-mobile-region span { margin-left: 3px; font-size: 9px; color: var(--ink-soft); }
   #tip { position: absolute; z-index: 6; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
   #tip b { font-weight: 600; }
   #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
@@ -1094,12 +1083,18 @@ function layoutLabels() {
     if (isMobileCountry) {
       const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
       const centerY = (p.oy + d3.mean(p.cells, cell => cell[1] + 0.5)) * CELL;
+      const fullRegionName = p.regionName || p.name;
+      const shortRegionName = fullRegionName
+        .replace(/\s+culinary family$/i, '')
+        .replace(/\s+noodles$/i, '')
+        .split('/')[0]
+        .trim();
       d.className = 'lab lab-in lab-mobile-region';
       d.dataset.mapX = centerX;
       d.dataset.mapY = centerY;
       d.dataset.centered = 'true';
-      d.title = (p.regionName || p.name) + ' · ' + p.count;
-      d.innerHTML = (p.emoji || '◌') + '<span>' + p.count + '</span>';
+      d.title = fullRegionName + ' · ' + p.count;
+      d.innerHTML = shortRegionName + '<span>' + p.count + '</span>';
       d.style.left = '0px';
       d.style.top = '0px';
       continue;
@@ -1515,10 +1510,46 @@ function updateMapLabelPresentation(transform) {
     const mapY = Number(label.dataset.mapY);
     if (!Number.isFinite(mapX) || !Number.isFinite(mapY)) continue;
     const centered = label.dataset.centered === 'true';
+    const isMobileRegion = label.classList.contains('lab-mobile-region');
     const anchorX = (transform?.x || 0) + mapX * k;
     const anchorY = (transform?.y || 0) + mapY * k;
-    const screenX = centered ? anchorX - width / 2 : anchorX;
-    const screenY = centered ? anchorY - height / 2 : anchorY;
+    let screenX = centered ? anchorX - width / 2 : anchorX;
+    let screenY = centered ? anchorY - height / 2 : anchorY;
+    if (isMobileRegion) {
+      const offsets = [[0, 0]];
+      for (const radius of [18, 32, 48, 64, 80]) {
+        offsets.push(
+          [0, -radius], [radius, 0], [0, radius], [-radius, 0],
+          [radius * 0.72, -radius * 0.72], [radius * 0.72, radius * 0.72],
+          [-radius * 0.72, radius * 0.72], [-radius * 0.72, -radius * 0.72]
+        );
+      }
+      const choice = offsets
+        .map(([dx, dy]) => ({
+          x: anchorX + dx - width / 2,
+          y: anchorY + dy - height / 2
+        }))
+        .find(candidate => {
+          const candidateRect = {
+            x: candidate.x - gap,
+            y: candidate.y - gap,
+            width: width + gap * 2,
+            height: height + gap * 2
+          };
+          const outside = candidateRect.x < 2 || candidateRect.y < 2 ||
+            candidateRect.x + candidateRect.width > visibleRight - 2 ||
+            candidateRect.y + candidateRect.height > visibleBottom - 2;
+          const collision = occupied.some(box =>
+            candidateRect.x < box.x + box.width && candidateRect.x + candidateRect.width > box.x &&
+            candidateRect.y < box.y + box.height && candidateRect.y + candidateRect.height > box.y
+          );
+          return !outside && !collision;
+        });
+      if (choice) {
+        screenX = choice.x;
+        screenY = choice.y;
+      }
+    }
     label.style.transform = 'translate(' + snap(screenX) + 'px,' + snap(screenY) + 'px)';
     const rect = {
       x: screenX - gap,
@@ -1529,7 +1560,6 @@ function updateMapLabelPresentation(transform) {
     const active = isActiveLabel(label);
     const priority = isPriorityLabel(label);
     const isInterior = label.classList.contains('lab-in');
-    const isMobileRegion = label.classList.contains('lab-mobile-region');
     const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > visibleRight - 2 || rect.y + rect.height > visibleBottom - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&

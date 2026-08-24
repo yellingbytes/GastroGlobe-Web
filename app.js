@@ -135,6 +135,13 @@ function renderGallery({ initialHomeTransform = null } = {}) {
       ),
     };
   });
+  if (compact) {
+    cityItems.forEach((item) => {
+      if (!item.live) return;
+      item.fx = item.anchorX;
+      item.fy = item.anchorY;
+    });
+  }
   const simulation = d3.forceSimulation(cityItems)
     .force("x", d3.forceX((item) => item.anchorX).strength(0.46))
     .force("y", d3.forceY((item) => item.anchorY).strength(0.46))
@@ -143,10 +150,15 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   for (let index = 0; index < (compact ? 300 : 220); index += 1) simulation.tick();
   cityItems.forEach((item) => {
     if (compact) {
+      if (item.live) {
+        item.x = item.anchorX;
+        item.y = item.anchorY;
+        return;
+      }
       const dx = item.x - item.anchorX;
       const dy = item.y - item.anchorY;
       const distance = Math.hypot(dx, dy);
-      const maxDisplacement = Math.max(42, Math.min(56, width * 0.14));
+      const maxDisplacement = Math.max(34, Math.min(44, width * 0.11));
       if (distance > maxDisplacement) {
         const ratio = maxDisplacement / distance;
         item.x = item.anchorX + dx * ratio;
@@ -261,12 +273,49 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .attr("text-anchor", "middle")
     .attr("y", (item) => item.wheelRadius + 33)
     .text((item) => item.live ? `${item.verifiedRestaurants.toLocaleString("en")} verified` : "Coming...");
+  if (compact) {
+    const declutter = () => declutterMobileCityLabels(svg.node());
+    declutter();
+    document.fonts?.ready.then(declutter);
+  }
   bindHomeWorldZoom(svg, width, height, worldWidth, {
     cellSize,
     scale: 1,
     focus: projection([0, 10]),
     transform: requestedHomeTransform,
   });
+}
+
+function declutterMobileCityLabels(svgElement) {
+  const groups = [...svgElement.querySelectorAll('.home-city-node[role="button"]')];
+  const markers = groups.map((group) => ({ group, item: group.__data__ }));
+  const occupied = [];
+  markers
+    .sort((a, b) => Number(b.item.live) - Number(a.item.live))
+    .forEach(({ group, item }) => {
+      const label = group.querySelector('.home-city-name');
+      if (!label) return;
+      const box = label.getBBox();
+      const rect = {
+        x: item.x + box.x - 3,
+        y: item.y + box.y - 2,
+        width: box.width + 6,
+        height: box.height + 4,
+      };
+      const overlapsLabel = occupied.some((other) => (
+        rect.x < other.x + other.width && rect.x + rect.width > other.x &&
+        rect.y < other.y + other.height && rect.y + rect.height > other.y
+      ));
+      const overlapsMarker = markers.some(({ item: other }) => {
+        if (other === item) return false;
+        const closestX = clamp(other.x, rect.x, rect.x + rect.width);
+        const closestY = clamp(other.y, rect.y, rect.y + rect.height);
+        return Math.hypot(other.x - closestX, other.y - closestY) < other.wheelRadius + 3;
+      });
+      const hidden = !item.live && (overlapsLabel || overlapsMarker);
+      group.classList.toggle('is-label-hidden', hidden);
+      if (!hidden) occupied.push(rect);
+    });
 }
 
 function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
@@ -1755,7 +1804,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=country-panel-order-1"
+          src="./experiments/claude-cartogram.html?v=mobile-anchor-labels-1"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
