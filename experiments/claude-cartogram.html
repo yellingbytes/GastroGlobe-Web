@@ -29,7 +29,7 @@
   ::-webkit-scrollbar-thumb { background: #c9bda6; border-radius: 8px; }
   #app { position: fixed; inset: 0; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
   #left { position: absolute; inset: 0; min-width: 0; }
-  h1 { font-family: var(--display); font-weight: 400; font-size: clamp(46px, 5vw, 64px); line-height: 0.9; margin: 0; letter-spacing: 0; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: 56px; line-height: 0.9; margin: 0; letter-spacing: 0; }
   #head {
     position: absolute;
     z-index: 8;
@@ -40,9 +40,9 @@
   }
   #map-subtitle {
     max-width: 430px;
-    margin: 14px 0 0;
+    margin: 17px 0 0;
     color: var(--ink-soft);
-    font: 500 11px/1.5 var(--mono);
+    font: 500 11px/1.55 var(--mono);
     letter-spacing: 0.045em;
     text-transform: uppercase;
   }
@@ -199,13 +199,13 @@
   .sheet-toggle { display: none; }
   footer { font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
   @media (max-width: 900px) {
-    h1 { font-size: clamp(42px, 13vw, 54px); }
+    h1 { font-size: 56px; }
     #head {
       top: max(16px, env(safe-area-inset-top));
       left: max(66px, calc(env(safe-area-inset-left) + 66px));
       width: calc(100% - max(82px, calc(env(safe-area-inset-left) + 82px)));
     }
-    #map-subtitle { max-width: 320px; margin-top: 10px; font-size: 10px; line-height: 1.4; }
+    #map-subtitle { max-width: 320px; margin-top: 17px; font-size: 11px; line-height: 1.55; }
     #google-map-view { inset: 0 0 min(56dvh, 520px); }
     body:has(aside.sheet-expanded) #google-map-view { bottom: min(86dvh, 720px); }
     aside {
@@ -280,9 +280,8 @@
     footer { display: none; }
   }
   @media (max-width: 900px) and (max-height: 500px) {
-    h1 { font-size: 38px; }
+    h1 { font-size: 56px; }
     #head { top: 12px; }
-    #map-subtitle { display: none; }
     aside { height: min(72dvh, 320px); }
     aside.sheet-expanded { height: calc(100dvh - 8px); }
     .stats { display: none; }
@@ -295,8 +294,8 @@
 <div id="app">
   <div id="left">
     <div id="head">
-      <h1 id="map-title">Munich cuisines.</h1>
-      <p id="map-subtitle">Countries grow with their restaurant presence.</p>
+      <h1 id="map-title">The world inside Munich.</h1>
+      <p id="map-subtitle">FOOD CULTURES FROM AROUND THE WORLD, AS FOUND ACROSS MUNICH.</p>
     </div>
     <div id="mapwrap">
       <div id="mapscene">
@@ -2190,8 +2189,8 @@ function renderCountryAtlas(country, options = {}) {
       if (!state.lookup[offset]) state.lookup[offset] = national.id;
     }
   }
-  el('map-title').textContent = country.name + ' by region.';
-  el('map-subtitle').textContent = 'Regions grow with their presence in Munich.';
+  el('map-title').textContent = country.name + ' inside Munich.';
+  el('map-subtitle').textContent = 'ZOOM IN FROM COUNTRY TO REGIONAL FOOD CULTURE.';
   el('ghost-control').hidden = true;
   el('status').textContent = visibleSpecific.length + (visibleSpecific.length === 1 ? ' region · ' : ' regions · ') + country.count + ' restaurants';
   let appliedTransform = null;
@@ -2240,8 +2239,8 @@ function commitWorldAtlas(transform = null) {
     rows: state.worldSnapshot.rows,
     off: state.worldSnapshot.off
   });
-  el('map-title').textContent = 'Munich cuisines.';
-  el('map-subtitle').textContent = 'Countries grow with their restaurant presence.';
+  el('map-title').textContent = 'The world inside Munich.';
+  el('map-subtitle').textContent = 'FOOD CULTURES FROM AROUND THE WORLD, AS FOUND ACROSS MUNICH.';
   el('mapwrap').classList.remove('country-view');
   el('ghost-control').hidden = false;
   el('ranksec').style.display = '';
