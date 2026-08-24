@@ -14,6 +14,13 @@ const state = {
   treeFocusId: null,
 };
 
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin || event.data?.type !== "gastroglobe-google-map-visibility") return;
+  const iframe = scene.querySelector(".claude-cartogram-frame");
+  if (!iframe || event.source !== iframe.contentWindow) return;
+  scene.classList.toggle("google-map-open", Boolean(event.data.open));
+});
+
 const CONTINENT_COLORS = {
   Americas: "#df0024",
   Europe: "#0085c7",
@@ -94,7 +101,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   const requestedHomeTransform = initialHomeTransform || retainedHomeTransform;
   if (requestedHomeTransform) retainedHomeTransform = { ...requestedHomeTransform };
   document.body.classList.add("home-world-view");
-  scene.classList.remove("has-city-back");
+  scene.classList.remove("has-city-back", "google-map-open");
   state.cityId = null;
   state.countryId = null;
   state.cuisineId = null;
@@ -901,6 +908,7 @@ function commitCityOpen(cityId) {
 }
 
 function renderCurrentVisualization() {
+  scene.classList.remove("google-map-open");
   let render;
   if (state.visualization === "treemap") render = renderInteractiveTreemap;
   if (state.visualization === "cartogram") {
@@ -1711,7 +1719,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=level-headings-1"
+          src="./experiments/claude-cartogram.html?v=map-back-spacing-1"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>

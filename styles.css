@@ -1223,6 +1223,11 @@ body.is-home-cuisine-returning .home-city-nodes {
   box-shadow: 0 4px 14px rgba(29, 33, 31, 0.1);
 }
 
+.scene.google-map-open .city-world-back {
+  right: calc(min(420px, 34vw) + 12px);
+  left: auto;
+}
+
 .city-world-back:hover,
 .city-world-back:focus-visible {
   background: var(--ink);
@@ -1230,6 +1235,12 @@ body.is-home-cuisine-returning .home-city-nodes {
 }
 
 .has-city-back .map-breadcrumbs { left: 66px; }
+
+@media (max-width: 900px) {
+  .scene.google-map-open .city-world-back {
+    right: max(10px, env(safe-area-inset-right));
+  }
+}
 
 @media (max-width: 720px) {
   .home-world-heading { top: 20px; left: 18px; width: calc(100% - 36px); }

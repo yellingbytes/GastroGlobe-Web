@@ -2423,6 +2423,11 @@ function renderGoogleMapView() {
   frame.title = 'Google map for ' + query;
 }
 
+function notifyParentGoogleMapVisibility(open) {
+  if (window.parent === window) return;
+  window.parent.postMessage({ type: 'gastroglobe-google-map-visibility', open: Boolean(open) }, window.location.origin);
+}
+
 function showGoogleMapView() {
   if (state.view !== 'country' || !state.activeCountry) return;
   state.googleMapOpen = true;
@@ -2432,6 +2437,7 @@ function showGoogleMapView() {
   el('d-close').setAttribute('aria-pressed', 'true');
   setMobileSheetExpanded(false);
   renderGoogleMapView();
+  notifyParentGoogleMapVisibility(true);
 }
 
 function hideGoogleMapView({ clear = false } = {}) {
@@ -2440,6 +2446,7 @@ function hideGoogleMapView({ clear = false } = {}) {
   el('google-map-view').setAttribute('aria-hidden', 'true');
   el('d-close').textContent = 'Show on Google map';
   el('d-close').setAttribute('aria-pressed', 'false');
+  notifyParentGoogleMapVisibility(false);
   if (clear) {
     const frame = el('google-map-frame');
     frame.removeAttribute('src');
