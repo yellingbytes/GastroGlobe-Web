@@ -63,6 +63,19 @@
     cursor: grab;
   }
   #mapwrap.is-panning { cursor: grabbing; }
+  #google-map-view {
+    position: absolute;
+    z-index: 7;
+    inset: 0 min(420px, 34vw) 0 0;
+    display: none;
+    overflow: hidden;
+    background: #e5e0d6;
+    touch-action: auto;
+  }
+  body.google-map-open #google-map-view { display: block; }
+  body.google-map-open #head,
+  body.google-map-open #ctrls { visibility: hidden; }
+  #google-map-frame { display: block; width: 100%; height: 100%; border: 0; }
   #mapscene { position: absolute; left: 0; top: 0; flex: none; transform-origin: 0 0; will-change: transform; }
   #morphcv {
     position: absolute;
@@ -172,7 +185,14 @@
   #detail .chip { font: inherit; font-size: 14px; color: inherit; background: var(--paper); border: 1px solid var(--rule); padding: 3px 8px; cursor: pointer; }
   #detail .chip:hover, #detail .chip[aria-pressed="true"] { border-color: var(--ink); background: #f7f3ea; }
   #detail .list { overflow-y: auto; min-height: 0; flex: 1; border-top: 1px solid var(--rule); padding-top: 8px; }
-  #detail .li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--rule); font-size: 15px; }
+  #detail .li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--rule); color: inherit; font-size: 15px; text-decoration: none; }
+  #detail a.li { cursor: pointer; }
+  #detail a.li:hover, #detail a.li:focus-visible { color: var(--ink); background: rgba(247,243,234,0.72); }
+  #detail .li-main { min-width: 0; }
+  #detail .li-main span { display: block; }
+  #detail .li-main small { display: block; overflow: hidden; margin-top: 2px; color: var(--ink-faint); font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+  #detail .li-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+  #detail .li-arrow { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
   #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
   button.close { background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 9px; cursor: pointer; }
   button.close:hover { border-color: var(--ink); color: var(--ink); }
@@ -186,6 +206,8 @@
       width: calc(100% - max(82px, calc(env(safe-area-inset-left) + 82px)));
     }
     #map-subtitle { max-width: 320px; margin-top: 10px; font-size: 10px; line-height: 1.4; }
+    #google-map-view { inset: 0 0 min(56dvh, 520px); }
+    body:has(aside.sheet-expanded) #google-map-view { bottom: min(86dvh, 720px); }
     aside {
       top: auto;
       width: 100%;
@@ -252,6 +274,7 @@
     .row { min-height: 44px; padding: 6px 4px; }
     #detail .list { min-height: 132px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
     #detail .li { min-height: 40px; align-items: center; }
+    #detail .li-main small { max-width: 52vw; }
     button.close { min-width: 44px; min-height: 44px; }
     .sheet-toggle:focus-visible, #detail .chip:focus-visible, button.close:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
     footer { display: none; }
@@ -286,6 +309,9 @@
       <canvas id="morphcv" aria-hidden="true"></canvas>
       <div id="labels"></div>
       <div id="tip"></div>
+      <div id="google-map-view" aria-hidden="true">
+        <iframe id="google-map-frame" title="Google map of the selected restaurants" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
     </div>
     <div id="ctrls">
       <label id="ghost-control" hidden aria-hidden="true"><input type="checkbox" id="ghost" /> show true world outline underneath</label>
@@ -311,7 +337,7 @@
           <div class="dh" id="d-name"></div>
           <div class="ds" id="d-sum" aria-live="polite"></div>
         </div>
-        <button class="close" id="d-close">Close</button>
+        <button class="close" id="d-close">Show on Google map</button>
       </div>
       <div class="chips" id="d-chips"></div>
       <div class="list" id="d-list" role="list" aria-label="Restaurants" tabindex="0"></div>
@@ -321,7 +347,7 @@
 </div>
 
 <script type="module">
-import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META } from '../restaurants.js?v=regional-report-1';
+import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META, googleMapsUrl } from '../restaurants.js?v=google-map-1';
 
 const REGION_EMOJI_RULES = [
   [/sichuan|chongqing/i, '🌶️'],
@@ -348,6 +374,17 @@ const REGION_EMOJI_RULES = [
   [/^(central|northern|southern|isan)$/i, '🌶️']
 ];
 
+function restaurantSummary(restaurant) {
+  return {
+    id: restaurant.id,
+    name: restaurant.name,
+    cuisine: restaurant.cuisine,
+    address: restaurant.address,
+    lat: restaurant.lat,
+    lng: restaurant.lng
+  };
+}
+
 const isNationalCuisine = name => /^(?:national(?: cuisine)?|uncategorized)$/i.test(String(name).trim());
 
 function cuisineEmoji(name, fallback, countryFlag) {
@@ -367,7 +404,7 @@ const DATA = SOURCE_COUNTRIES
         const regionId = 'region-' + country.id + '-' + regionName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const regionRestaurants = regionalCuisine.restaurants.map((restaurant) => {
           classifiedIds.add(restaurant.id);
-          return { name: restaurant.name, cuisine: restaurant.cuisine };
+          return restaurantSummary(restaurant);
         });
         regionData.set(regionId, {
           id: regionId,
@@ -397,7 +434,7 @@ const DATA = SOURCE_COUNTRIES
         }
         const region = regionData.get(regionId);
         region.count += 1;
-        region.restaurants.push({ name: restaurant.name, cuisine: restaurant.cuisine });
+        region.restaurants.push(restaurantSummary(restaurant));
         classifiedIds.add(restaurant.id);
       });
     }
@@ -410,7 +447,7 @@ const DATA = SOURCE_COUNTRIES
         lat: country.lat,
         lng: country.lng,
         count: nationalRestaurants.length,
-        restaurants: nationalRestaurants.map((restaurant) => ({ name: restaurant.name, cuisine: restaurant.cuisine }))
+        restaurants: nationalRestaurants.map(restaurantSummary)
       });
     }
     return {
@@ -425,11 +462,7 @@ const DATA = SOURCE_COUNTRIES
       classificationLabel: country.classificationLabel,
       canonicalStatus: country.canonicalStatus,
       regions: [...regionData.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
-      restaurants: country.restaurants.map((restaurant) => ({
-        name: restaurant.name,
-        cuisine: restaurant.cuisine,
-        address: restaurant.address,
-      })),
+      restaurants: country.restaurants.map(restaurantSummary),
     };
   })
   .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
@@ -500,7 +533,10 @@ const state = {
   continuityGridY: 0,
   anchorLock: null,
   morphColors: new Map(),
-  lastMorphStats: null
+  lastMorphStats: null,
+  googleMapOpen: false,
+  activeRestaurants: [],
+  activeRegion: null
 };
 
 function targetCellsForCount(count) {
@@ -2184,6 +2220,7 @@ function renderCountryAtlas(country, options = {}) {
 
 function commitWorldAtlas(transform = null) {
   if (!state.worldSnapshot) return;
+  hideGoogleMapView({ clear: true });
   setMobileSheetExpanded(false);
   document.body.classList.remove('country-detail-open');
   Object.assign(state, {
@@ -2191,6 +2228,8 @@ function commitWorldAtlas(transform = null) {
     sel: null,
     hover: null,
     activeCountry: null,
+    activeRestaurants: [],
+    activeRegion: null,
     nationalRegion: null,
     countryBackdrop: null,
     labelPriorityIds: new Set(),
@@ -2207,7 +2246,7 @@ function commitWorldAtlas(transform = null) {
   el('ghost-control').hidden = false;
   el('ranksec').style.display = '';
   el('detail').classList.remove('on');
-  el('d-close').textContent = 'Close';
+  el('d-close').textContent = 'Show on Google map';
   buildWorldStats();
   el('status').textContent = DATA.length + ' cuisines · ' + META.total + ' restaurants';
   if (transform && state.zoomBehavior) d3.select(el('mapwrap')).call(state.zoomBehavior.transform, transform);
@@ -2304,6 +2343,118 @@ el('sheet-toggle').onclick = () => {
   window.setTimeout(() => updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity), 280);
 };
 
+function mapsSearchUrl(query) {
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query) +
+    '&utm_source=gastroglobe&utm_campaign=restaurant_map';
+}
+
+function restaurantMapUrl(restaurant) {
+  if (restaurant.address) return googleMapsUrl(restaurant);
+  return mapsSearchUrl([restaurant.name, restaurant.cuisine, 'Munich'].filter(Boolean).join(', '));
+}
+
+function activeGoogleMapQuery() {
+  const country = state.activeCountry;
+  const region = state.activeRegion;
+  if (!country) return 'restaurants in Munich';
+  if (state.activeRestaurants.length === 1) {
+    const restaurant = state.activeRestaurants[0];
+    return [restaurant.name, restaurant.address].filter(Boolean).join(', ');
+  }
+  const regionalName = region && !isNationalCuisine(region.regionName || region.name)
+    ? (region.regionName || region.name) + ' '
+    : '';
+  return regionalName + country.name + ' restaurants in Munich';
+}
+
+function renderRestaurantList(restaurants) {
+  const host = el('d-list');
+  host.replaceChildren();
+  if (!restaurants.length) {
+    const empty = document.createElement('div');
+    empty.className = 'li';
+    empty.setAttribute('role', 'listitem');
+    empty.textContent = 'No restaurants in this filter';
+    host.appendChild(empty);
+    return;
+  }
+  for (const restaurant of restaurants) {
+    const link = document.createElement('a');
+    link.className = 'li';
+    link.setAttribute('role', 'listitem');
+    link.href = restaurantMapUrl(restaurant);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.setAttribute('aria-label', restaurant.name + ' — open in Google Maps');
+
+    const main = document.createElement('span');
+    main.className = 'li-main';
+    const name = document.createElement('span');
+    name.textContent = restaurant.name;
+    main.appendChild(name);
+    if (restaurant.address) {
+      const address = document.createElement('small');
+      address.textContent = restaurant.address;
+      main.appendChild(address);
+    }
+
+    const meta = document.createElement('span');
+    meta.className = 'li-meta';
+    const cuisine = document.createElement('em');
+    cuisine.textContent = restaurant.cuisine || 'Restaurant';
+    const arrow = document.createElement('span');
+    arrow.className = 'li-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.textContent = '↗';
+    meta.append(cuisine, arrow);
+    link.append(main, meta);
+    host.appendChild(link);
+  }
+}
+
+function renderGoogleMapView() {
+  if (!state.activeCountry) return;
+  const query = activeGoogleMapQuery();
+  const embedUrl = 'https://maps.google.com/maps?q=' + encodeURIComponent(query) + '&hl=en&z=12&output=embed';
+  const frame = el('google-map-frame');
+  if (frame.dataset.query !== query) {
+    frame.dataset.query = query;
+    frame.src = embedUrl;
+  }
+  frame.title = 'Google map for ' + query;
+}
+
+function showGoogleMapView() {
+  if (state.view !== 'country' || !state.activeCountry) return;
+  state.googleMapOpen = true;
+  document.body.classList.add('google-map-open');
+  el('google-map-view').setAttribute('aria-hidden', 'false');
+  el('d-close').textContent = 'Show cuisine map';
+  el('d-close').setAttribute('aria-pressed', 'true');
+  setMobileSheetExpanded(false);
+  renderGoogleMapView();
+}
+
+function hideGoogleMapView({ clear = false } = {}) {
+  state.googleMapOpen = false;
+  document.body.classList.remove('google-map-open');
+  el('google-map-view').setAttribute('aria-hidden', 'true');
+  el('d-close').textContent = 'Show on Google map';
+  el('d-close').setAttribute('aria-pressed', 'false');
+  if (clear) {
+    const frame = el('google-map-frame');
+    frame.removeAttribute('src');
+    delete frame.dataset.query;
+  }
+}
+
+function setActiveRestaurantSelection(restaurants, region = null) {
+  state.activeRestaurants = restaurants;
+  state.activeRegion = region;
+  renderRestaurantList(restaurants);
+  if (state.googleMapOpen) renderGoogleMapView();
+}
+
 function buildSidebar() {
   buildWorldStats();
   const max = DATA[0].count, rank = el('rank');
@@ -2349,16 +2500,17 @@ async function select(id) {
   const regionalCount = d.regions.filter(region =>
     region.count > 0 && !/national cuisine|uncategorized|^national$/i.test(region.name)
   ).length;
+  hideGoogleMapView({ clear: true });
   setMobileSheetExpanded(false);
   el('ranksec').style.display = 'none';
   el('detail').classList.add('on');
-  el('d-close').textContent = 'World map';
+  el('d-close').textContent = 'Show on Google map';
   el('d-name').textContent = d.flag + '  ' + d.name;
   el('d-sum').textContent = d.count + (d.count === 1 ? ' restaurant · ' : ' restaurants · ') +
     (Math.round(d.count / META.total * 1000) / 10) + '% of Munich\u2019s mapped kitchens · ' + d.continent +
     (d.classificationLabel ? ' · ' + d.classificationLabel : '');
   renderRegionFilterChips(d);
-  el('d-list').innerHTML = d.restaurants.map(r => '<div class="li" role="listitem"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('');
+  setActiveRestaurantSelection(d.restaurants);
   el('d-list').scrollTop = 0;
   el('s-total').textContent = d.count;
   el('s-count').textContent = regionalCount;
@@ -2401,20 +2553,16 @@ function selectRegion(id) {
   el('d-sum').textContent = region.emoji + ' ' + region.regionName + ' · ' + region.count +
     (region.count === 1 ? ' restaurant' : ' restaurants');
   renderRegionFilterChips(country, id);
-  el('d-list').innerHTML = region.restaurants.length
-    ? region.restaurants.map(r => '<div class="li" role="listitem"><span>' + r.name + '</span><em>' + r.cuisine + '</em></div>').join('')
-    : '<div class="li" role="listitem"><span>No restaurants in this filter</span></div>';
+  setActiveRestaurantSelection(region.restaurants, region);
   el('d-list').scrollTop = 0;
-  setMobileSheetExpanded(true);
+  setMobileSheetExpanded(!state.googleMapOpen);
   draw();
 }
 
 el('d-close').onclick = () => {
-  if (state.view === 'country') return restoreWorldAtlas();
-  state.sel = null;
-  el('detail').classList.remove('on');
-  el('ranksec').style.display = '';
-  draw();
+  if (state.view !== 'country') return;
+  if (state.googleMapOpen) hideGoogleMapView();
+  else showGoogleMapView();
 };
 el('ghost').onchange = e => { state.ghost = e.target.checked; draw(); };
 
