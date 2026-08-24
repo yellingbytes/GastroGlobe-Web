@@ -636,6 +636,7 @@ function rasteriseBackdrop(feature, path, cols, rows) {
 /* ---------- packing ---------- */
 function pack(items, cols, rows, options = {}) {
   const occ = new Uint8Array(cols * rows);
+  const separation = options.separation ?? 1;
   const directionWeight = options.directionWeight ?? 5;
   const longitudeThreshold = options.longitudeThreshold ?? 6;
   const latitudeThreshold = options.latitudeThreshold ?? 5;
@@ -643,9 +644,9 @@ function pack(items, cols, rows, options = {}) {
     if (ox < 0 || oy < 0 || ox + it.w > cols || oy + it.h > rows) return false;
     for (const [dx, dy] of it.cells) {
       const x = ox + dx, y = oy + dy;
-      for (let ny = y - 1; ny <= y + 1; ny++) {
+      for (let ny = y - separation; ny <= y + separation; ny++) {
         if (ny < 0 || ny >= rows) continue;
-        for (let nx = x - 1; nx <= x + 1; nx++) {
+        for (let nx = x - separation; nx <= x + separation; nx++) {
           if (nx < 0 || nx >= cols) continue;
           if (occ[ny * cols + nx]) return false;
         }
@@ -1869,7 +1870,7 @@ function proportionalRegionTargets(country, visibleRegions, countryCellCount) {
   // Independent regional silhouettes need breathing room. China receives the
   // largest canvas so dominant provincial cuisines expand as decisively as
   // countries do in the world-level cartogram.
-  const coverage = country.id === 'china' ? 0.38 : 0.34;
+  const coverage = country.id === 'china' ? 0.28 : 0.26;
   const budget = Math.max(
     visibleRegions.length * 6,
     Math.min(countryCellCount, Math.round(countryCellCount * coverage))
@@ -1942,9 +1943,8 @@ function geographicRegionItems(country, specificRegions, visibleRegions, country
       if (!shape) return null;
       const fillColor = regionColor(country.continent, anchor?.index ?? 0);
       const anchorPoint = anchor?.point || countryBackdrop.centroid;
-      const topologySpread = country.id === 'china' ? 1.38 : 1.18;
-      const idealCenterX = countryBackdrop.centroid[0] + (anchorPoint[0] - countryBackdrop.centroid[0]) * topologySpread;
-      const idealCenterY = countryBackdrop.centroid[1] + (anchorPoint[1] - countryBackdrop.centroid[1]) * topologySpread;
+      const idealCenterX = anchorPoint[0];
+      const idealCenterY = anchorPoint[1];
       return {
         ...region,
         name: region.emoji + ' ' + region.name,
@@ -1958,6 +1958,8 @@ function geographicRegionItems(country, specificRegions, visibleRegions, country
         targetCells: target,
         idealX: idealCenterX - shape.w / 2,
         idealY: idealCenterY - shape.h / 2,
+        geographicAnchorX: idealCenterX,
+        geographicAnchorY: idealCenterY,
         lat: region.lat,
         lng: region.lng
       };
@@ -1983,9 +1985,8 @@ function geographicRegionItems(country, specificRegions, visibleRegions, country
   }));
   const packed = pack(localItems, localCols, localRows, {
     continentZones: false,
-    directionWeight: country.id === 'china' ? 30 : 10,
-    longitudeThreshold: country.id === 'china' ? 1.2 : 1.8,
-    latitudeThreshold: country.id === 'china' ? 1.2 : 1.8
+    directionWeight: 0,
+    separation: 0
   });
   if (packed.length !== items.length) return null;
   return packed.map(item => ({
@@ -2086,9 +2087,17 @@ function renderCountryAtlas(country, options = {}) {
     cells: region.cells.length,
     target: region.targetCells || region.cells.length,
     center: [
-      Math.round((region.ox + region.w / 2) * 10) / 10,
-      Math.round((region.oy + region.h / 2) * 10) / 10
-    ]
+      Math.round((region.ox + d3.mean(region.cells, cell => cell[0] + 0.5)) * 10) / 10,
+      Math.round((region.oy + d3.mean(region.cells, cell => cell[1] + 0.5)) * 10) / 10
+    ],
+    anchor: [
+      Math.round((region.geographicAnchorX ?? region.ox + region.w / 2) * 10) / 10,
+      Math.round((region.geographicAnchorY ?? region.oy + region.h / 2) * 10) / 10
+    ],
+    offset: Math.round(Math.hypot(
+      region.ox + d3.mean(region.cells, cell => cell[0] + 0.5) - (region.geographicAnchorX ?? region.ox + region.w / 2),
+      region.oy + d3.mean(region.cells, cell => cell[1] + 0.5) - (region.geographicAnchorY ?? region.oy + region.h / 2)
+    ) * 10) / 10
   })));
   const regionCellOwners = new Map();
   let overlapCells = 0;
