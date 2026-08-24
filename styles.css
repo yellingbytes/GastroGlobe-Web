@@ -1276,7 +1276,7 @@ body.is-home-cuisine-returning .home-city-nodes {
 
 @media (max-width: 720px) {
   .home-world-heading { top: 20px; left: 18px; width: calc(100% - 36px); }
-  .home-world-heading h1 { font-size: 56px; }
+  .home-world-atlas .home-world-heading h1 { font-size: 44px; }
   .home-world-heading > p:last-child { display: none; }
   .home-world-status { display: none; }
   .home-world-atlas .home-city-name { font-size: 13px; }
