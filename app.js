@@ -1,4 +1,4 @@
-import { buildAtlasHierarchy, countries, datasetMeta, googleMapsUrl, metropolitanEditions } from "./restaurants.js?v=navigation-experiment-1";
+import { buildAtlasHierarchy, countries, datasetMeta, googleMapsUrl, metropolitanEditions } from "./restaurants.js?v=metropolitan-editions-18";
 
 const D3_URL = "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm";
@@ -129,12 +129,16 @@ function renderGallery({ initialHomeTransform = null } = {}) {
       x: anchor[0],
       y: anchor[1],
       wheelRadius: METROPOLITAN_MARKER_RADIUS,
+      collisionRadius: Math.max(
+        METROPOLITAN_MARKER_RADIUS + (compact ? 34 : 30),
+        profile.city.data.name.length * 4.2 + 12,
+      ),
     };
   });
   const simulation = d3.forceSimulation(cityItems)
     .force("x", d3.forceX((item) => item.anchorX).strength(0.46))
     .force("y", d3.forceY((item) => item.anchorY).strength(0.46))
-    .force("collide", d3.forceCollide((item) => item.wheelRadius + (compact ? 34 : 30)).iterations(7))
+    .force("collide", d3.forceCollide((item) => item.collisionRadius).iterations(8))
     .stop();
   for (let index = 0; index < (compact ? 300 : 220); index += 1) simulation.tick();
   cityItems.forEach((item) => {
@@ -181,7 +185,8 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     projection,
     worldWidth,
   };
-  svg.select(".home-city-leaders")
+  const leaderLayer = svg.select(".home-city-leaders");
+  leaderLayer
     .selectAll("line")
     .data(repeatedCityItems.filter((item) => Math.hypot(item.x - item.anchorX, item.y - item.anchorY) > 7))
     .join("line")
@@ -189,6 +194,20 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .attr("y1", (item) => item.anchorY)
     .attr("x2", (item) => item.renderX)
     .attr("y2", (item) => item.y);
+  leaderLayer.selectAll("circle.home-city-anchor-halo")
+    .data(repeatedCityItems, (item) => `${item.city.data.id}-${item.repeatIndex}`)
+    .join("circle")
+    .attr("class", "home-city-anchor-halo")
+    .attr("cx", (item) => item.anchorX + item.worldOffset)
+    .attr("cy", (item) => item.anchorY)
+    .attr("r", 4.5);
+  leaderLayer.selectAll("circle.home-city-anchor-dot")
+    .data(repeatedCityItems, (item) => `${item.city.data.id}-${item.repeatIndex}`)
+    .join("circle")
+    .attr("class", "home-city-anchor-dot")
+    .attr("cx", (item) => item.anchorX + item.worldOffset)
+    .attr("cy", (item) => item.anchorY)
+    .attr("r", 2);
 
   const nodes = svg.select(".home-city-nodes")
     .selectAll("g")
@@ -218,6 +237,9 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .join("path")
     .attr("d", (arc) => d3.arc().innerRadius(arc.innerRadius).outerRadius(arc.outerRadius).startAngle(arc.startAngle).endAngle(arc.endAngle)())
     .attr("fill", (arc) => CARTOGRAM_CONTINENT_COLORS[arc.continent]);
+  nodes.append("circle")
+    .attr("class", "home-city-center")
+    .attr("r", 2.8);
   nodes.append("text")
     .attr("class", "home-city-name")
     .attr("text-anchor", "middle")
@@ -227,7 +249,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .attr("class", "home-city-meta")
     .attr("text-anchor", "middle")
     .attr("y", (item) => item.wheelRadius + 33)
-    .text((item) => item.live ? `${item.verifiedRestaurants.toLocaleString("en")} verified` : "Preview");
+    .text((item) => item.live ? `${item.verifiedRestaurants.toLocaleString("en")} verified` : "Coming...");
   bindHomeWorldZoom(svg, width, height, worldWidth, {
     cellSize,
     scale: 1,
@@ -262,6 +284,8 @@ function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
       layer.attr("transform", `translate(${wrappedX},${y}) scale(${k})`);
       layer.selectAll(".home-city-node")
         .attr("transform", (item) => `translate(${item.renderX},${item.y}) scale(${1 / k})`);
+      layer.selectAll(".home-city-anchor-halo").attr("r", 4.5 / k);
+      layer.selectAll(".home-city-anchor-dot").attr("r", 2 / k);
       const gridSize = initialView.cellSize * k;
       atlas.style.setProperty("--home-grid-size", `${gridSize}px`);
       atlas.style.setProperty("--home-grid-x", `${wrappedX % gridSize}px`);
@@ -502,7 +526,7 @@ function continentRingArcs(profile) {
 }
 
 function cityNodeAriaLabel(profile) {
-  if (!profile.live) return `${profile.city.data.name}, preview edition, verification pending`;
+  if (!profile.live) return `${profile.city.data.name}, coming soon, verification pending`;
   return `${profile.city.data.name}, ${profile.verifiedRestaurants} verified restaurants across ${profile.cuisineDiversity} cuisine origins`;
 }
 
@@ -520,7 +544,7 @@ function cityCardMarkup(city) {
   const live = city.data.id === "munich";
   const caption = live
     ? `${city.data.country} · ${datasetMeta.includedRestaurants.toLocaleString("en")} restaurants`
-    : `${city.data.country} · Preview distribution`;
+    : `${city.data.country} · Coming...`;
   return `
     <button class="metropolitan-card world-card${live ? " is-live" : " is-planned"}" type="button" data-city-id="${escapeHtml(city.data.id)}" aria-label="Open ${escapeHtml(city.data.name)} culinary world map">
       ${thumbnailMarkup(city.data.id, live)}
@@ -551,7 +575,7 @@ function thumbnailMarkup(cityId, live) {
     return `<text x="${point[0].toFixed(1)}" y="${point[1].toFixed(1)}" font-size="${size.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${node.data.flag}</text>`;
   }).join("");
   return `
-    <svg class="metropolitan-thumbnail world-thumbnail" viewBox="0 0 ${width} ${height}" role="img" aria-label="World preview with cuisine flags">
+    <svg class="metropolitan-thumbnail world-thumbnail" viewBox="0 0 ${width} ${height}" role="img" aria-label="World map with cuisine flags">
       <g class="thumbnail-land">${countriesPath}</g>
       <path class="thumbnail-borders" d="${d3.geoPath(projection)(worldMesh)}"></path>
       <g class="thumbnail-flags">${flags}</g>
@@ -975,7 +999,7 @@ function renderWorldMap() {
       ${breadcrumbMarkup(city, null)}
       <div class="map-heading">
         <p><strong>${escapeHtml(city.data.name)}</strong> through the world’s kitchens</p>
-        <span>${live ? `${datasetMeta.includedRestaurants.toLocaleString("en")} restaurants · flag size shows density` : "Preview distribution · dataset pending"}</span>
+        <span>${live ? `${datasetMeta.includedRestaurants.toLocaleString("en")} restaurants · flag size shows density` : "Coming... · dataset pending"}</span>
       </div>
       <svg class="world-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="world-map-title world-map-desc">
         <title id="world-map-title">Country cuisines represented in ${escapeHtml(city.data.name)}</title>

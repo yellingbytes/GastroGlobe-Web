@@ -1126,10 +1126,23 @@ body.is-home-cuisine-returning .home-city-nodes {
 .home-world-repeats { pointer-events: none; }
 
 .home-city-leaders line {
-  stroke: rgba(29, 33, 31, 0.36);
-  stroke-width: 0.75;
-  stroke-dasharray: 2 2;
+  stroke: rgba(29, 33, 31, 0.7);
+  stroke-width: 1.35;
+  stroke-dasharray: 4 2.5;
+  stroke-linecap: round;
   vector-effect: non-scaling-stroke;
+}
+
+.home-city-anchor-halo {
+  fill: rgba(242, 239, 232, 0.98);
+  stroke: rgba(29, 33, 31, 0.86);
+  stroke-width: 1.35;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-city-anchor-dot {
+  fill: var(--ink);
+  pointer-events: none;
 }
 
 .home-city-node {
@@ -1153,6 +1166,14 @@ body.is-home-cuisine-returning .home-city-nodes {
   stroke-width: 0.7;
   vector-effect: non-scaling-stroke;
   transition: filter 160ms ease, opacity 160ms ease;
+}
+
+.home-city-center {
+  fill: var(--ink);
+  stroke: rgba(242, 239, 232, 0.98);
+  stroke-width: 1.15;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
 .home-city-node.is-preview .home-city-continent-ring path { opacity: 0.94; }
@@ -1258,7 +1279,7 @@ body.is-home-cuisine-returning .home-city-nodes {
   .home-world-heading h1 { font-size: 56px; }
   .home-world-heading > p:last-child { display: none; }
   .home-world-status { display: none; }
-  .home-city-name { font-size: 15px; }
+  .home-world-atlas .home-city-name { font-size: 13px; }
   .home-city-node.is-preview .home-city-meta { display: none; }
   .city-world-back { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: 44px; height: 44px; }
   .has-city-back .map-breadcrumbs { top: 58px; left: 10px; max-width: calc(100% - 20px); }
