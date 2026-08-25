@@ -98,77 +98,71 @@ function buildDataIndex() {
   countryNodes = (munich?.children ?? []).flatMap((continent) => continent.children ?? []);
 }
 
-function resolveMetropolitanMarkerCollisions(items, width, height) {
-  const minimumGap = METROPOLITAN_MARKER_RADIUS * 2 + 4;
-  items.forEach((item) => {
-    item.x = item.anchorX;
-    item.y = item.anchorY;
+function resolveMetropolitanMarkerCollisions(items, width, height, compact, obstacles = []) {
+  const outerPadding = 6;
+  const topEdge = compact ? 142 : 76;
+  const bottomEdge = height - (compact ? 72 : 42);
+  const intersects = (a, b, padding = 0) => (
+    a.x < b.x + b.width + padding && a.x + a.width + padding > b.x &&
+    a.y < b.y + b.height + padding && a.y + a.height + padding > b.y
+  );
+  const rectAt = (item, x, y) => ({
+    x: x + item.markerBounds.left,
+    y: y + item.markerBounds.top,
+    width: item.markerBounds.width,
+    height: item.markerBounds.height,
   });
-  for (let pass = 0; pass < 28; pass += 1) {
-    let moved = false;
-    for (let leftIndex = 0; leftIndex < items.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < items.length; rightIndex += 1) {
-        const left = items[leftIndex];
-        const right = items[rightIndex];
-        let dx = right.x - left.x;
-        let dy = right.y - left.y;
-        let distance = Math.hypot(dx, dy);
-        if (distance >= minimumGap) continue;
-        if (distance < 0.01) {
-          dx = rightIndex % 2 ? 1 : -1;
-          dy = 0.5;
-          distance = Math.hypot(dx, dy);
-        }
-        const overlap = minimumGap - distance;
-        const unitX = dx / distance;
-        const unitY = dy / distance;
-        const leftShare = left.live ? 0.08 : right.live ? 0.92 : 0.5;
-        const rightShare = 1 - leftShare;
-        left.x -= unitX * overlap * leftShare;
-        left.y -= unitY * overlap * leftShare;
-        right.x += unitX * overlap * rightShare;
-        right.y += unitY * overlap * rightShare;
-        moved = true;
+  const anchoredRects = new Map(items.map((item) => [item, rectAt(item, item.anchorX, item.anchorY)]));
+  const anchorConflicts = new Map(items.map((item) => [
+    item,
+    items.filter((other) => other !== item && intersects(anchoredRects.get(item), anchoredRects.get(other), 6)).length,
+  ]));
+  const occupied = [...obstacles];
+  const ordered = [...items].sort((a, b) => (
+    Number(b.live) - Number(a.live) ||
+    anchorConflicts.get(a) - anchorConflicts.get(b) ||
+    a.city.data.name.localeCompare(b.city.data.name)
+  ));
+
+  ordered.forEach((item) => {
+    const candidates = [];
+    const markerRight = item.markerBounds.left + item.markerBounds.width;
+    const markerBottom = item.markerBounds.top + item.markerBounds.height;
+    const minX = outerPadding - item.markerBounds.left;
+    const maxX = width - outerPadding - markerRight;
+    const minY = topEdge - item.markerBounds.top;
+    const maxY = bottomEdge - markerBottom;
+    const anchoredRect = anchoredRects.get(item);
+    if (
+      anchoredRect.x >= outerPadding && anchoredRect.x + anchoredRect.width <= width - outerPadding &&
+      anchoredRect.y >= topEdge && anchoredRect.y + anchoredRect.height <= bottomEdge
+    ) {
+      candidates.push({ x: item.anchorX, y: item.anchorY, distance: 0 });
+    }
+    for (let y = minY; y <= maxY; y += 10) {
+      for (let x = minX; x <= maxX; x += 10) {
+        candidates.push({
+          x,
+          y,
+          distance: Math.hypot(x - item.anchorX, y - item.anchorY),
+        });
       }
     }
-    items.forEach((item) => {
-      const spring = item.live ? 0.42 : 0.12;
-      item.x += (item.anchorX - item.x) * spring;
-      item.y += (item.anchorY - item.y) * spring;
-      item.x = clamp(item.x, item.wheelRadius + 3, width - item.wheelRadius - 3);
-      item.y = clamp(item.y, item.wheelRadius + 3, height - item.wheelRadius - 3);
+    candidates.sort((a, b) => a.distance - b.distance);
+    let best = null;
+    let bestPenalty = Infinity;
+    candidates.forEach((candidate) => {
+      const rect = rectAt(item, candidate.x, candidate.y);
+      const overlapCount = occupied.filter((other) => intersects(rect, other, 6)).length;
+      const penalty = overlapCount * 100000 + candidate.distance;
+      if (penalty < bestPenalty) {
+        bestPenalty = penalty;
+        best = { x: candidate.x, y: candidate.y, rect };
+      }
     });
-    if (!moved) break;
-  }
-  for (let pass = 0; pass < 10; pass += 1) {
-    let separated = true;
-    for (let leftIndex = 0; leftIndex < items.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < items.length; rightIndex += 1) {
-        const left = items[leftIndex];
-        const right = items[rightIndex];
-        const dx = right.x - left.x || 0.001;
-        const dy = right.y - left.y || 0.001;
-        const distance = Math.hypot(dx, dy);
-        if (distance >= minimumGap) continue;
-        const overlap = minimumGap - distance + 0.1;
-        const unitX = dx / distance;
-        const unitY = dy / distance;
-        const leftShare = left.live ? 0.05 : right.live ? 0.95 : 0.5;
-        left.x -= unitX * overlap * leftShare;
-        left.y -= unitY * overlap * leftShare;
-        right.x += unitX * overlap * (1 - leftShare);
-        right.y += unitY * overlap * (1 - leftShare);
-        separated = false;
-      }
-    }
-    if (separated) break;
-  }
-  items.forEach((item) => {
-    const displacement = Math.hypot(item.x - item.anchorX, item.y - item.anchorY);
-    if (displacement < 1.5) {
-      item.x = item.anchorX;
-      item.y = item.anchorY;
-    }
+    item.x = best?.x ?? item.anchorX;
+    item.y = best?.y ?? item.anchorY;
+    occupied.push(best?.rect ?? anchoredRects.get(item));
   });
 }
 
@@ -206,7 +200,6 @@ function renderGallery({ initialHomeTransform = null } = {}) {
       wheelRadius: METROPOLITAN_MARKER_RADIUS,
     };
   });
-  resolveMetropolitanMarkerCollisions(cityItems, width, height);
   const repeatedCityItems = worldOffsets.flatMap((worldOffset, repeatIndex) => cityItems.map((item) => ({
     ...item,
     worldOffset,
@@ -279,9 +272,6 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   nodes.append("circle")
     .attr("class", "home-city-center")
     .attr("r", 2.8);
-  nodes.append("line")
-    .attr("class", "home-city-label-line")
-    .attr("visibility", "hidden");
   const labels = nodes.append("g")
     .attr("class", "home-city-label");
   labels.append("text")
@@ -314,123 +304,51 @@ function layoutMetropolitanLabels(svgElement, cityItems, repeatedItems, width, h
     [...svgElement.querySelectorAll('.home-city-node[role="button"]')]
       .map((group) => [group.__data__.city.data.id, group]),
   );
-  const occupied = [];
-  const markerPadding = 5;
-  const candidatesFor = (item, box) => {
-    const halfWidth = box.width / 2;
-    const halfHeight = box.height / 2;
-    const ring = (gap, primary = false) => {
-      const below = item.wheelRadius + gap - box.y;
-      const above = -item.wheelRadius - gap - box.height - box.y;
-      const right = item.wheelRadius + gap + halfWidth;
-      const left = -item.wheelRadius - gap - halfWidth;
-      const centerY = -box.y - halfHeight;
-      return [
-        { x: 0, y: below, primary },
-        { x: 0, y: above },
-        { x: right, y: centerY },
-        { x: left, y: centerY },
-        { x: right, y: below },
-        { x: left, y: below },
-        { x: right, y: above },
-        { x: left, y: above },
-      ];
+  cityItems.forEach((item) => {
+    const group = groupByCity.get(item.city.data.id);
+    const label = group?.querySelector('.home-city-label');
+    if (!label) return;
+    label.removeAttribute('transform');
+    const box = label.getBBox();
+    item.labelX = 0;
+    item.labelY = item.wheelRadius + 8 - box.y;
+    label.setAttribute('transform', `translate(0,${item.labelY})`);
+    const labelLeft = box.x;
+    const labelTop = item.labelY + box.y;
+    const labelRight = box.x + box.width;
+    const labelBottom = item.labelY + box.y + box.height;
+    item.markerBounds = {
+      left: Math.min(-item.wheelRadius, labelLeft) - 3,
+      top: Math.min(-item.wheelRadius, labelTop) - 3,
+      width: Math.max(item.wheelRadius, labelRight) - Math.min(-item.wheelRadius, labelLeft) + 6,
+      height: Math.max(item.wheelRadius, labelBottom) - Math.min(-item.wheelRadius, labelTop) + 6,
     };
-    return [...ring(8, true), ...ring(28), ...ring(50)];
-  };
-  const intersects = (a, b, padding = 0) => (
-    a.x < b.x + b.width + padding && a.x + a.width + padding > b.x &&
-    a.y < b.y + b.height + padding && a.y + a.height + padding > b.y
-  );
-  const markerOverlap = (rect, item) => cityItems.some((other) => {
-    if (other === item) return false;
-    const closestX = clamp(other.x, rect.x, rect.x + rect.width);
-    const closestY = clamp(other.y, rect.y, rect.y + rect.height);
-    return Math.hypot(other.x - closestX, other.y - closestY) < other.wheelRadius + markerPadding;
   });
-
-  [...cityItems]
-    .sort((a, b) => Number(b.live) - Number(a.live) || a.city.data.name.localeCompare(b.city.data.name))
-    .forEach((item) => {
-      const group = groupByCity.get(item.city.data.id);
-      const label = group?.querySelector('.home-city-label');
-      if (!label) return;
-      label.removeAttribute('transform');
-      const box = label.getBBox();
-      let chosen = null;
-      let fallback = null;
-      let fallbackPenalty = Infinity;
-      candidatesFor(item, box).forEach((candidate, index) => {
-        const rect = {
-          x: item.x + candidate.x + box.x - 3,
-          y: item.y + candidate.y + box.y - 2,
-          width: box.width + 6,
-          height: box.height + 4,
-        };
-        const labelConflicts = occupied.filter((other) => intersects(rect, other, 3)).length;
-        const markerConflicts = markerOverlap(rect, item) ? 1 : 0;
-        const outside = rect.x < 4 || rect.y < 4 || rect.x + rect.width > width - 4 || rect.y + rect.height > height - 4;
-        const penalty = labelConflicts * 1000 + markerConflicts * 700 + Number(outside) * 1400 + index * 10;
-        if (penalty < fallbackPenalty) {
-          fallbackPenalty = penalty;
-          fallback = { candidate, rect };
-        }
-        if (!chosen && penalty === index * 10) chosen = { candidate, rect };
-      });
-      const placement = chosen ?? fallback;
-      const hidden = compact && !item.live && (!chosen || !placement?.candidate.primary);
-      item.labelHidden = hidden;
-      item.labelX = placement?.candidate.x ?? 0;
-      item.labelY = placement?.candidate.y ?? item.wheelRadius + 18;
-      item.labelDisplaced = !hidden && !placement?.candidate.primary;
-      item.labelBounds = placement?.rect ?? null;
-      if (item.labelBounds) {
-        const localBounds = {
-          x: item.labelBounds.x - item.x,
-          y: item.labelBounds.y - item.y,
-          width: item.labelBounds.width,
-          height: item.labelBounds.height,
-        };
-        item.labelLineX = clamp(0, localBounds.x, localBounds.x + localBounds.width);
-        item.labelLineY = clamp(0, localBounds.y, localBounds.y + localBounds.height);
-      } else {
-        item.labelLineX = item.labelX;
-        item.labelLineY = item.labelY;
-      }
-      group.classList.toggle('is-label-hidden', hidden);
-      label.setAttribute('transform', `translate(${item.labelX},${item.labelY})`);
-      if (!hidden && item.labelBounds) occupied.push(item.labelBounds);
-    });
+  const svgRect = svgElement.getBoundingClientRect();
+  const headingRect = svgElement.parentElement?.querySelector('.home-world-heading')?.getBoundingClientRect();
+  const obstacles = headingRect ? [{
+    x: headingRect.left - svgRect.left,
+    y: headingRect.top - svgRect.top,
+    width: headingRect.width,
+    height: headingRect.height,
+  }] : [];
+  resolveMetropolitanMarkerCollisions(cityItems, width, height, compact, obstacles);
 
   const placementByCity = new Map(cityItems.map((item) => [item.city.data.id, item]));
   repeatedItems.forEach((item) => {
     const placement = placementByCity.get(item.city.data.id);
     Object.assign(item, {
-      labelHidden: placement.labelHidden,
+      x: placement.x,
+      y: placement.y,
+      renderX: placement.x + item.worldOffset,
       labelX: placement.labelX,
       labelY: placement.labelY,
-      labelDisplaced: placement.labelDisplaced,
-      labelBounds: placement.labelBounds,
-      labelLineX: placement.labelLineX,
-      labelLineY: placement.labelLineY,
     });
   });
   d3.select(svgElement).selectAll('.home-city-node')
-    .classed('is-label-hidden', (item) => item.labelHidden)
+    .attr('transform', (item) => `translate(${item.renderX},${item.y})`)
     .select('.home-city-label')
     .attr('transform', (item) => `translate(${item.labelX},${item.labelY})`);
-  d3.select(svgElement).selectAll('.home-city-node .home-city-label-line')
-    .attr('visibility', (item) => item.labelDisplaced && !item.labelHidden ? null : 'hidden')
-    .attr('x1', (item) => {
-      const distance = Math.max(0.001, Math.hypot(item.labelLineX, item.labelLineY));
-      return item.labelLineX / distance * (item.wheelRadius + 2);
-    })
-    .attr('y1', (item) => {
-      const distance = Math.max(0.001, Math.hypot(item.labelLineX, item.labelLineY));
-      return item.labelLineY / distance * (item.wheelRadius + 2);
-    })
-    .attr('x2', (item) => item.labelLineX)
-    .attr('y2', (item) => item.labelLineY);
 }
 
 function renderMetropolitanLeaderLines(layer, items) {
