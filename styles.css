@@ -1193,11 +1193,6 @@ body.is-home-cuisine-returning .home-city-nodes {
   stroke-width: 3px;
 }
 
-.home-city-node.is-available .home-city-name {
-  fill: var(--paper);
-  stroke: none;
-}
-
 .home-city-meta {
   fill: var(--ink-soft);
   font-size: 11px;
@@ -1206,22 +1201,15 @@ body.is-home-cuisine-returning .home-city-nodes {
   text-transform: uppercase;
 }
 
-.home-city-count-badge rect {
-  fill: rgba(29, 33, 31, 0.92);
-  stroke: rgba(242, 239, 232, 0.96);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-
 .home-city-count {
-  fill: var(--paper);
-  stroke: none;
+  fill: var(--ink-soft);
+  stroke: rgba(242, 239, 232, 0.96);
+  stroke-width: 2.1px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 .home-world-status {
@@ -1297,7 +1285,8 @@ body.is-home-cuisine-returning .home-city-nodes {
   .home-world-atlas .home-city-name { font-size: 12px; }
   .home-city-node.is-label-hidden .home-city-label { opacity: 0; }
   .home-city-node.is-label-hidden:hover .home-city-label,
-  .home-city-node.is-label-hidden:focus-visible .home-city-label { opacity: 1; }
+  .home-city-node.is-label-hidden:focus-visible .home-city-label,
+  .home-city-node.is-label-hidden.is-selected .home-city-label { opacity: 1; }
   .home-city-node[aria-hidden="true"] .home-city-label { display: none; }
   .home-city-node.is-preview .home-city-meta { display: none; }
   .city-world-back { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: 44px; height: 44px; }

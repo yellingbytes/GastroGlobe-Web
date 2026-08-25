@@ -189,7 +189,8 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .scale((width - mapInset * 2) / (Math.PI * 2))
     .translate([width / 2, height * (compact ? 0.5 : 0.54)])
     .clipExtent([[mapInset, compact ? 132 : 62], [width - mapInset, height - (compact ? 138 : 24)]]);
-  const cellSize = 4;
+  const targetWorldColumns = 306;
+  const cellSize = Math.min(4, Math.max(1.2, (width - mapInset * 2) / targetWorldColumns));
   const pixelWorld = rasterizePixelWorld(projection, width, height, cellSize);
   const worldWidth = width - mapInset * 2;
   const worldOffsets = [-worldWidth, 0, worldWidth];
@@ -288,27 +289,11 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .attr("text-anchor", "middle")
     .attr("y", 0)
     .text((item) => item.city.data.name);
-  const countBadges = labels.filter((item) => item.live)
-    .append("g")
-    .attr("class", "home-city-count-badge")
-    .attr("transform", "translate(0,17)");
-  countBadges.append("rect")
-    .attr("x", -65)
-    .attr("y", -27)
-    .attr("width", 130)
-    .attr("height", 35)
-    .attr("rx", 2);
-  countBadges.append("text")
+  labels.append("text")
     .attr("class", "home-city-count")
     .attr("text-anchor", "middle")
-    .attr("y", 3.5)
-    .text((item) => `${item.verifiedRestaurants.toLocaleString("en")} restaurants`);
-  countBadges.lower();
-  labels.filter((item) => !item.live).append("text")
-    .attr("class", "home-city-meta")
-    .attr("text-anchor", "middle")
     .attr("y", 17)
-    .text("Coming soon");
+    .text((item) => `${item.restaurantCount.toLocaleString("en")} restaurants`);
   nodes.filter((item) => item.live).raise();
   const layoutLabels = () => {
     layoutMetropolitanLabels(svg.node(), cityItems, repeatedCityItems, width, height, compact);
@@ -332,18 +317,26 @@ function layoutMetropolitanLabels(svgElement, cityItems, repeatedItems, width, h
   const occupied = [];
   const markerPadding = 5;
   const candidatesFor = (item, box) => {
-    const vertical = item.wheelRadius + 8 - box.y;
-    const horizontal = item.wheelRadius + 8;
     const halfWidth = box.width / 2;
     const halfHeight = box.height / 2;
-    return [
-      { x: 0, y: vertical, primary: true },
-      { x: 0, y: -item.wheelRadius - 10 - box.height - box.y },
-      { x: horizontal + halfWidth, y: -box.y - halfHeight },
-      { x: -horizontal - halfWidth, y: -box.y - halfHeight },
-      { x: horizontal + halfWidth, y: vertical },
-      { x: -horizontal - halfWidth, y: vertical },
-    ];
+    const ring = (gap, primary = false) => {
+      const below = item.wheelRadius + gap - box.y;
+      const above = -item.wheelRadius - gap - box.height - box.y;
+      const right = item.wheelRadius + gap + halfWidth;
+      const left = -item.wheelRadius - gap - halfWidth;
+      const centerY = -box.y - halfHeight;
+      return [
+        { x: 0, y: below, primary },
+        { x: 0, y: above },
+        { x: right, y: centerY },
+        { x: left, y: centerY },
+        { x: right, y: below },
+        { x: left, y: below },
+        { x: right, y: above },
+        { x: left, y: above },
+      ];
+    };
+    return [...ring(8, true), ...ring(28), ...ring(50)];
   };
   const intersects = (a, b, padding = 0) => (
     a.x < b.x + b.width + padding && a.x + a.width + padding > b.x &&
@@ -695,23 +688,34 @@ function metropolitanProfile(city) {
     return {
       city,
       live,
-      verifiedRestaurants: city.data.available,
+      restaurantCount: city.data.available,
       cuisineDiversity: countryNodes.filter((country) => country.data.available > 0).length,
       completeness: 1,
       composition,
       highlights: [...countryNodes].sort((a, b) => b.data.available - a.data.available).slice(0, 3).map((country) => `${country.data.flag} ${country.data.name}`),
     };
   }
-  const random = seededRandom(`home-${city.data.id}`);
-  const composition = Object.fromEntries(Object.keys(CONTINENT_COLORS).map((continent) => [continent, 0.18 + random()]));
+  const previewCountries = countryNodes.map((country) => ({
+    country,
+    value: previewCount(city.data.id, country.data.id),
+  }));
+  const composition = Object.fromEntries(Object.keys(CONTINENT_COLORS).map((continent) => [continent, 0]));
+  previewCountries.forEach(({ country, value }) => {
+    const continent = country.parent?.data.name;
+    if (continent in composition) composition[continent] += value;
+  });
   return {
     city,
     live,
-    verifiedRestaurants: 0,
-    cuisineDiversity: 0,
+    restaurantCount: d3.sum(previewCountries, ({ value }) => value),
+    cuisineDiversity: previewCountries.filter(({ value }) => value > 0).length,
     completeness: 0,
     composition,
-    highlights: [],
+    highlights: previewCountries
+      .filter(({ value }) => value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3)
+      .map(({ country }) => `${country.data.flag} ${country.data.name}`),
   };
 }
 
@@ -734,8 +738,8 @@ function continentRingArcs(profile) {
 }
 
 function cityNodeAriaLabel(profile) {
-  if (!profile.live) return `${profile.city.data.name}, coming soon, verification pending`;
-  return `${profile.city.data.name}, ${profile.verifiedRestaurants} verified restaurants across ${profile.cuisineDiversity} cuisine origins`;
+  const qualifier = profile.live ? "verified" : "preview";
+  return `${profile.city.data.name}, ${profile.restaurantCount} ${qualifier} restaurants across ${profile.cuisineDiversity} cuisine origins`;
 }
 
 function activateMetropolitan(profile) {
