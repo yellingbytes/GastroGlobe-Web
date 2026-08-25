@@ -1125,25 +1125,16 @@ body.is-home-cuisine-returning .home-city-nodes {
 
 .home-world-repeats { pointer-events: none; }
 
-.home-city-leaders line {
-  stroke: rgba(29, 33, 31, 0.7);
-  stroke-width: 1.35;
-  stroke-dasharray: 4 2.5;
+.home-city-marker-line,
+.home-city-label-line {
+  stroke: rgba(29, 33, 31, 0.58);
+  stroke-width: 1;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
-}
-
-.home-city-anchor-halo {
-  fill: rgba(242, 239, 232, 0.98);
-  stroke: rgba(29, 33, 31, 0.86);
-  stroke-width: 1.35;
-  vector-effect: non-scaling-stroke;
-}
-
-.home-city-anchor-dot {
-  fill: var(--ink);
   pointer-events: none;
 }
+
+.home-city-label-line { stroke: rgba(29, 33, 31, 0.42); }
 
 .home-city-node {
   cursor: pointer;
@@ -1186,7 +1177,8 @@ body.is-home-cuisine-returning .home-city-nodes {
 }
 
 .home-city-name,
-.home-city-meta {
+.home-city-meta,
+.home-city-count {
   paint-order: stroke;
   stroke: rgba(242, 239, 232, 0.96);
   stroke-linejoin: round;
@@ -1201,11 +1193,34 @@ body.is-home-cuisine-returning .home-city-nodes {
   stroke-width: 3px;
 }
 
+.home-city-node.is-available .home-city-name {
+  fill: var(--paper);
+  stroke: none;
+}
+
 .home-city-meta {
   fill: var(--ink-soft);
   font-size: 11px;
   stroke-width: 2.4px;
   letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.home-city-count-badge rect {
+  fill: rgba(29, 33, 31, 0.92);
+  stroke: rgba(242, 239, 232, 0.96);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-city-count {
+  fill: var(--paper);
+  stroke: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
@@ -1280,11 +1295,10 @@ body.is-home-cuisine-returning .home-city-nodes {
   .home-world-heading > p:last-child { display: none; }
   .home-world-status { display: none; }
   .home-world-atlas .home-city-name { font-size: 12px; }
-  .home-city-node.is-label-hidden .home-city-name { opacity: 0; }
-  .home-city-node.is-label-hidden:hover .home-city-name,
-  .home-city-node.is-label-hidden:focus-visible .home-city-name { opacity: 1; }
-  .home-city-node[aria-hidden="true"] .home-city-name,
-  .home-city-node[aria-hidden="true"] .home-city-meta { display: none; }
+  .home-city-node.is-label-hidden .home-city-label { opacity: 0; }
+  .home-city-node.is-label-hidden:hover .home-city-label,
+  .home-city-node.is-label-hidden:focus-visible .home-city-label { opacity: 1; }
+  .home-city-node[aria-hidden="true"] .home-city-label { display: none; }
   .home-city-node.is-preview .home-city-meta { display: none; }
   .city-world-back { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: 44px; height: 44px; }
   .has-city-back .map-breadcrumbs { top: 58px; left: 10px; max-width: calc(100% - 20px); }

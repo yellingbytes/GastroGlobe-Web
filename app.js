@@ -98,6 +98,80 @@ function buildDataIndex() {
   countryNodes = (munich?.children ?? []).flatMap((continent) => continent.children ?? []);
 }
 
+function resolveMetropolitanMarkerCollisions(items, width, height) {
+  const minimumGap = METROPOLITAN_MARKER_RADIUS * 2 + 4;
+  items.forEach((item) => {
+    item.x = item.anchorX;
+    item.y = item.anchorY;
+  });
+  for (let pass = 0; pass < 28; pass += 1) {
+    let moved = false;
+    for (let leftIndex = 0; leftIndex < items.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < items.length; rightIndex += 1) {
+        const left = items[leftIndex];
+        const right = items[rightIndex];
+        let dx = right.x - left.x;
+        let dy = right.y - left.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance >= minimumGap) continue;
+        if (distance < 0.01) {
+          dx = rightIndex % 2 ? 1 : -1;
+          dy = 0.5;
+          distance = Math.hypot(dx, dy);
+        }
+        const overlap = minimumGap - distance;
+        const unitX = dx / distance;
+        const unitY = dy / distance;
+        const leftShare = left.live ? 0.08 : right.live ? 0.92 : 0.5;
+        const rightShare = 1 - leftShare;
+        left.x -= unitX * overlap * leftShare;
+        left.y -= unitY * overlap * leftShare;
+        right.x += unitX * overlap * rightShare;
+        right.y += unitY * overlap * rightShare;
+        moved = true;
+      }
+    }
+    items.forEach((item) => {
+      const spring = item.live ? 0.42 : 0.12;
+      item.x += (item.anchorX - item.x) * spring;
+      item.y += (item.anchorY - item.y) * spring;
+      item.x = clamp(item.x, item.wheelRadius + 3, width - item.wheelRadius - 3);
+      item.y = clamp(item.y, item.wheelRadius + 3, height - item.wheelRadius - 3);
+    });
+    if (!moved) break;
+  }
+  for (let pass = 0; pass < 10; pass += 1) {
+    let separated = true;
+    for (let leftIndex = 0; leftIndex < items.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < items.length; rightIndex += 1) {
+        const left = items[leftIndex];
+        const right = items[rightIndex];
+        const dx = right.x - left.x || 0.001;
+        const dy = right.y - left.y || 0.001;
+        const distance = Math.hypot(dx, dy);
+        if (distance >= minimumGap) continue;
+        const overlap = minimumGap - distance + 0.1;
+        const unitX = dx / distance;
+        const unitY = dy / distance;
+        const leftShare = left.live ? 0.05 : right.live ? 0.95 : 0.5;
+        left.x -= unitX * overlap * leftShare;
+        left.y -= unitY * overlap * leftShare;
+        right.x += unitX * overlap * (1 - leftShare);
+        right.y += unitY * overlap * (1 - leftShare);
+        separated = false;
+      }
+    }
+    if (separated) break;
+  }
+  items.forEach((item) => {
+    const displacement = Math.hypot(item.x - item.anchorX, item.y - item.anchorY);
+    if (displacement < 1.5) {
+      item.x = item.anchorX;
+      item.y = item.anchorY;
+    }
+  });
+}
+
 function renderGallery({ initialHomeTransform = null } = {}) {
   const requestedHomeTransform = initialHomeTransform || retainedHomeTransform;
   if (requestedHomeTransform) retainedHomeTransform = { ...requestedHomeTransform };
@@ -129,46 +203,9 @@ function renderGallery({ initialHomeTransform = null } = {}) {
       x: anchor[0],
       y: anchor[1],
       wheelRadius: METROPOLITAN_MARKER_RADIUS,
-      collisionRadius: Math.max(
-        METROPOLITAN_MARKER_RADIUS + (compact ? 34 : 30),
-        profile.city.data.name.length * 4.2 + 12,
-      ),
     };
   });
-  if (compact) {
-    cityItems.forEach((item) => {
-      if (!item.live) return;
-      item.fx = item.anchorX;
-      item.fy = item.anchorY;
-    });
-  }
-  const simulation = d3.forceSimulation(cityItems)
-    .force("x", d3.forceX((item) => item.anchorX).strength(0.46))
-    .force("y", d3.forceY((item) => item.anchorY).strength(0.46))
-    .force("collide", d3.forceCollide((item) => item.collisionRadius).iterations(8))
-    .stop();
-  for (let index = 0; index < (compact ? 300 : 220); index += 1) simulation.tick();
-  cityItems.forEach((item) => {
-    if (compact) {
-      if (item.live) {
-        item.x = item.anchorX;
-        item.y = item.anchorY;
-        return;
-      }
-      const dx = item.x - item.anchorX;
-      const dy = item.y - item.anchorY;
-      const distance = Math.hypot(dx, dy);
-      const maxDisplacement = Math.max(34, Math.min(44, width * 0.11));
-      if (distance > maxDisplacement) {
-        const ratio = maxDisplacement / distance;
-        item.x = item.anchorX + dx * ratio;
-        item.y = item.anchorY + dy * ratio;
-      }
-    }
-    item.x = clamp(item.x, item.wheelRadius + 34, width - item.wheelRadius - 34);
-    item.y = clamp(item.y, compact ? 152 : item.wheelRadius + 32, height - (compact ? 160 : item.wheelRadius + 38));
-    if (!compact && item.x > width - 390) item.y = Math.min(item.y, height - 210);
-  });
+  resolveMetropolitanMarkerCollisions(cityItems, width, height);
   const repeatedCityItems = worldOffsets.flatMap((worldOffset, repeatIndex) => cityItems.map((item) => ({
     ...item,
     worldOffset,
@@ -209,28 +246,6 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     worldWidth,
   };
   const leaderLayer = svg.select(".home-city-leaders");
-  leaderLayer
-    .selectAll("line")
-    .data(repeatedCityItems.filter((item) => Math.hypot(item.x - item.anchorX, item.y - item.anchorY) > 7))
-    .join("line")
-    .attr("x1", (item) => item.anchorX + item.worldOffset)
-    .attr("y1", (item) => item.anchorY)
-    .attr("x2", (item) => item.renderX)
-    .attr("y2", (item) => item.y);
-  leaderLayer.selectAll("circle.home-city-anchor-halo")
-    .data(repeatedCityItems, (item) => `${item.city.data.id}-${item.repeatIndex}`)
-    .join("circle")
-    .attr("class", "home-city-anchor-halo")
-    .attr("cx", (item) => item.anchorX + item.worldOffset)
-    .attr("cy", (item) => item.anchorY)
-    .attr("r", 4.5);
-  leaderLayer.selectAll("circle.home-city-anchor-dot")
-    .data(repeatedCityItems, (item) => `${item.city.data.id}-${item.repeatIndex}`)
-    .join("circle")
-    .attr("class", "home-city-anchor-dot")
-    .attr("cx", (item) => item.anchorX + item.worldOffset)
-    .attr("cy", (item) => item.anchorY)
-    .attr("r", 2);
 
   const nodes = svg.select(".home-city-nodes")
     .selectAll("g")
@@ -263,21 +278,44 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   nodes.append("circle")
     .attr("class", "home-city-center")
     .attr("r", 2.8);
-  nodes.append("text")
+  nodes.append("line")
+    .attr("class", "home-city-label-line")
+    .attr("visibility", "hidden");
+  const labels = nodes.append("g")
+    .attr("class", "home-city-label");
+  labels.append("text")
     .attr("class", "home-city-name")
     .attr("text-anchor", "middle")
-    .attr("y", (item) => item.wheelRadius + 19)
+    .attr("y", 0)
     .text((item) => item.city.data.name);
-  nodes.append("text")
+  const countBadges = labels.filter((item) => item.live)
+    .append("g")
+    .attr("class", "home-city-count-badge")
+    .attr("transform", "translate(0,17)");
+  countBadges.append("rect")
+    .attr("x", -65)
+    .attr("y", -27)
+    .attr("width", 130)
+    .attr("height", 35)
+    .attr("rx", 2);
+  countBadges.append("text")
+    .attr("class", "home-city-count")
+    .attr("text-anchor", "middle")
+    .attr("y", 3.5)
+    .text((item) => `${item.verifiedRestaurants.toLocaleString("en")} restaurants`);
+  countBadges.lower();
+  labels.filter((item) => !item.live).append("text")
     .attr("class", "home-city-meta")
     .attr("text-anchor", "middle")
-    .attr("y", (item) => item.wheelRadius + 33)
-    .text((item) => item.live ? `${item.verifiedRestaurants.toLocaleString("en")} verified` : "Coming...");
-  if (compact) {
-    const declutter = () => declutterMobileCityLabels(svg.node());
-    declutter();
-    document.fonts?.ready.then(declutter);
-  }
+    .attr("y", 17)
+    .text("Coming soon");
+  nodes.filter((item) => item.live).raise();
+  const layoutLabels = () => {
+    layoutMetropolitanLabels(svg.node(), cityItems, repeatedCityItems, width, height, compact);
+    renderMetropolitanLeaderLines(leaderLayer, repeatedCityItems);
+  };
+  layoutLabels();
+  document.fonts?.ready.then(layoutLabels);
   bindHomeWorldZoom(svg, width, height, worldWidth, {
     cellSize,
     scale: 1,
@@ -286,36 +324,148 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   });
 }
 
-function declutterMobileCityLabels(svgElement) {
-  const groups = [...svgElement.querySelectorAll('.home-city-node[role="button"]')];
-  const markers = groups.map((group) => ({ group, item: group.__data__ }));
+function layoutMetropolitanLabels(svgElement, cityItems, repeatedItems, width, height, compact) {
+  const groupByCity = new Map(
+    [...svgElement.querySelectorAll('.home-city-node[role="button"]')]
+      .map((group) => [group.__data__.city.data.id, group]),
+  );
   const occupied = [];
-  markers
-    .sort((a, b) => Number(b.item.live) - Number(a.item.live))
-    .forEach(({ group, item }) => {
-      const label = group.querySelector('.home-city-name');
+  const markerPadding = 5;
+  const candidatesFor = (item, box) => {
+    const vertical = item.wheelRadius + 8 - box.y;
+    const horizontal = item.wheelRadius + 8;
+    const halfWidth = box.width / 2;
+    const halfHeight = box.height / 2;
+    return [
+      { x: 0, y: vertical, primary: true },
+      { x: 0, y: -item.wheelRadius - 10 - box.height - box.y },
+      { x: horizontal + halfWidth, y: -box.y - halfHeight },
+      { x: -horizontal - halfWidth, y: -box.y - halfHeight },
+      { x: horizontal + halfWidth, y: vertical },
+      { x: -horizontal - halfWidth, y: vertical },
+    ];
+  };
+  const intersects = (a, b, padding = 0) => (
+    a.x < b.x + b.width + padding && a.x + a.width + padding > b.x &&
+    a.y < b.y + b.height + padding && a.y + a.height + padding > b.y
+  );
+  const markerOverlap = (rect, item) => cityItems.some((other) => {
+    if (other === item) return false;
+    const closestX = clamp(other.x, rect.x, rect.x + rect.width);
+    const closestY = clamp(other.y, rect.y, rect.y + rect.height);
+    return Math.hypot(other.x - closestX, other.y - closestY) < other.wheelRadius + markerPadding;
+  });
+
+  [...cityItems]
+    .sort((a, b) => Number(b.live) - Number(a.live) || a.city.data.name.localeCompare(b.city.data.name))
+    .forEach((item) => {
+      const group = groupByCity.get(item.city.data.id);
+      const label = group?.querySelector('.home-city-label');
       if (!label) return;
+      label.removeAttribute('transform');
       const box = label.getBBox();
-      const rect = {
-        x: item.x + box.x - 3,
-        y: item.y + box.y - 2,
-        width: box.width + 6,
-        height: box.height + 4,
-      };
-      const overlapsLabel = occupied.some((other) => (
-        rect.x < other.x + other.width && rect.x + rect.width > other.x &&
-        rect.y < other.y + other.height && rect.y + rect.height > other.y
-      ));
-      const overlapsMarker = markers.some(({ item: other }) => {
-        if (other === item) return false;
-        const closestX = clamp(other.x, rect.x, rect.x + rect.width);
-        const closestY = clamp(other.y, rect.y, rect.y + rect.height);
-        return Math.hypot(other.x - closestX, other.y - closestY) < other.wheelRadius + 3;
+      let chosen = null;
+      let fallback = null;
+      let fallbackPenalty = Infinity;
+      candidatesFor(item, box).forEach((candidate, index) => {
+        const rect = {
+          x: item.x + candidate.x + box.x - 3,
+          y: item.y + candidate.y + box.y - 2,
+          width: box.width + 6,
+          height: box.height + 4,
+        };
+        const labelConflicts = occupied.filter((other) => intersects(rect, other, 3)).length;
+        const markerConflicts = markerOverlap(rect, item) ? 1 : 0;
+        const outside = rect.x < 4 || rect.y < 4 || rect.x + rect.width > width - 4 || rect.y + rect.height > height - 4;
+        const penalty = labelConflicts * 1000 + markerConflicts * 700 + Number(outside) * 1400 + index * 10;
+        if (penalty < fallbackPenalty) {
+          fallbackPenalty = penalty;
+          fallback = { candidate, rect };
+        }
+        if (!chosen && penalty === index * 10) chosen = { candidate, rect };
       });
-      const hidden = !item.live && (overlapsLabel || overlapsMarker);
+      const placement = chosen ?? fallback;
+      const hidden = compact && !item.live && (!chosen || !placement?.candidate.primary);
+      item.labelHidden = hidden;
+      item.labelX = placement?.candidate.x ?? 0;
+      item.labelY = placement?.candidate.y ?? item.wheelRadius + 18;
+      item.labelDisplaced = !hidden && !placement?.candidate.primary;
+      item.labelBounds = placement?.rect ?? null;
+      if (item.labelBounds) {
+        const localBounds = {
+          x: item.labelBounds.x - item.x,
+          y: item.labelBounds.y - item.y,
+          width: item.labelBounds.width,
+          height: item.labelBounds.height,
+        };
+        item.labelLineX = clamp(0, localBounds.x, localBounds.x + localBounds.width);
+        item.labelLineY = clamp(0, localBounds.y, localBounds.y + localBounds.height);
+      } else {
+        item.labelLineX = item.labelX;
+        item.labelLineY = item.labelY;
+      }
       group.classList.toggle('is-label-hidden', hidden);
-      if (!hidden) occupied.push(rect);
+      label.setAttribute('transform', `translate(${item.labelX},${item.labelY})`);
+      if (!hidden && item.labelBounds) occupied.push(item.labelBounds);
     });
+
+  const placementByCity = new Map(cityItems.map((item) => [item.city.data.id, item]));
+  repeatedItems.forEach((item) => {
+    const placement = placementByCity.get(item.city.data.id);
+    Object.assign(item, {
+      labelHidden: placement.labelHidden,
+      labelX: placement.labelX,
+      labelY: placement.labelY,
+      labelDisplaced: placement.labelDisplaced,
+      labelBounds: placement.labelBounds,
+      labelLineX: placement.labelLineX,
+      labelLineY: placement.labelLineY,
+    });
+  });
+  d3.select(svgElement).selectAll('.home-city-node')
+    .classed('is-label-hidden', (item) => item.labelHidden)
+    .select('.home-city-label')
+    .attr('transform', (item) => `translate(${item.labelX},${item.labelY})`);
+  d3.select(svgElement).selectAll('.home-city-node .home-city-label-line')
+    .attr('visibility', (item) => item.labelDisplaced && !item.labelHidden ? null : 'hidden')
+    .attr('x1', (item) => {
+      const distance = Math.max(0.001, Math.hypot(item.labelLineX, item.labelLineY));
+      return item.labelLineX / distance * (item.wheelRadius + 2);
+    })
+    .attr('y1', (item) => {
+      const distance = Math.max(0.001, Math.hypot(item.labelLineX, item.labelLineY));
+      return item.labelLineY / distance * (item.wheelRadius + 2);
+    })
+    .attr('x2', (item) => item.labelLineX)
+    .attr('y2', (item) => item.labelLineY);
+}
+
+function renderMetropolitanLeaderLines(layer, items) {
+  const markerLines = items
+    .filter((item) => Math.hypot(item.x - item.anchorX, item.y - item.anchorY) > 1.5)
+    .map((item) => {
+      const dx = item.renderX - (item.anchorX + item.worldOffset);
+      const dy = item.y - item.anchorY;
+      const distance = Math.max(0.001, Math.hypot(dx, dy));
+      const unitX = dx / distance;
+      const unitY = dy / distance;
+      return {
+        ...item,
+        x1: item.anchorX + item.worldOffset,
+        y1: item.anchorY,
+        x2: item.renderX - unitX * (item.wheelRadius + 2),
+        y2: item.y - unitY * (item.wheelRadius + 2),
+      };
+    });
+  layer.selectAll('line.home-city-marker-line')
+    .data(markerLines, (item) => `${item.city.data.id}-${item.repeatIndex}`)
+    .join('line')
+    .attr('class', 'home-city-marker-line')
+    .attr('x1', (item) => item.x1)
+    .attr('y1', (item) => item.y1)
+    .attr('x2', (item) => item.x2)
+    .attr('y2', (item) => item.y2);
+
 }
 
 function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
@@ -344,8 +494,6 @@ function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
       layer.attr("transform", `translate(${wrappedX},${y}) scale(${k})`);
       layer.selectAll(".home-city-node")
         .attr("transform", (item) => `translate(${item.renderX},${item.y}) scale(${1 / k})`);
-      layer.selectAll(".home-city-anchor-halo").attr("r", 4.5 / k);
-      layer.selectAll(".home-city-anchor-dot").attr("r", 2 / k);
       const gridSize = initialView.cellSize * k;
       atlas.style.setProperty("--home-grid-size", `${gridSize}px`);
       atlas.style.setProperty("--home-grid-x", `${wrappedX % gridSize}px`);
