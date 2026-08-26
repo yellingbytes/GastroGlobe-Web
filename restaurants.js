@@ -295,6 +295,11 @@ export function restaurantsForCity(cityId) {
   return editionsById.get(cityId)?.restaurants ?? [];
 }
 
+// Compatibility exports for the currently deployed Munich-first app shell. Keep these
+// until every consumer has moved to the city-aware accessors above.
+export const countries = countriesForCity("munich");
+export const datasetMeta = datasetMetaForCity("munich");
+
 export const totalLiveRestaurants = editionList.reduce((sum, edition) => sum + edition.restaurants.length, 0);
 
 export const metropolitanEditions = [
