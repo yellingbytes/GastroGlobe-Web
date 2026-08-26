@@ -1,33 +1,46 @@
-import {
-  countryTaxonomy,
-  datasetMeta,
-  regionTaxonomy,
-  restaurants as sourceRestaurants,
-} from "./data/munich-restaurants.js?v=2026-08-02-1";
+import * as munichSource from "./data/munich-restaurants.js?v=2026-08-02-1";
+import * as berlinSource from "./data/berlin-restaurants.js?v=2026-08-25-1";
 import {
   applyMunichChinaEditorialUpdate,
   applyMunichChinaTaxonomyUpdate,
-} from "./data/munich-china-editorial-overrides.js?v=2026-08-02-1";
+} from "./data/munich-china-editorial-overrides.js?v=2026-08-26-1";
 import {
   legacyGeographicAssignments,
   researchedCountryRegions,
 } from "./data/global-culinary-regions.js?v=2026-08-05-1";
+import { applyBerlinEditorialUpdate } from "./data/berlin-regional-findings.js?v=2026-08-25-2";
 
-applyMunichChinaEditorialUpdate({ datasetMeta, regionTaxonomy, restaurants: sourceRestaurants });
+// Every city is assembled the same way: an OpenStreetMap-derived base dataset, then any
+// hand-researched regional layers on top. Munich carries more of those layers than Berlin
+// only because it was audited first, not because the two are modelled differently.
+const editionSpecs = [
+  {
+    id: "munich",
+    source: munichSource,
+    regionalTaxonomyUrl: "./data/munich-regional-cuisine-taxonomy.json?v=2026-08-26-1",
+    applyEditorialUpdates(dataset) {
+      applyMunichChinaEditorialUpdate(dataset);
+    },
+    applyTaxonomyUpdates(taxonomy, dataset) {
+      applyMunichChinaTaxonomyUpdate(taxonomy, dataset.restaurants);
+      applyResearchedCountryTaxonomies(taxonomy, dataset);
+    },
+  },
+  {
+    id: "berlin",
+    source: berlinSource,
+    regionalTaxonomyUrl: "./data/berlin-regional-cuisine-taxonomy.json?v=2026-08-25-2",
+    applyEditorialUpdates(dataset) {
+      applyBerlinEditorialUpdate(dataset);
+    },
+  },
+];
 
-const regionalTaxonomyResponse = await fetch(new URL("./data/munich-regional-cuisine-taxonomy.json?v=2026-08-02-1", import.meta.url));
-if (!regionalTaxonomyResponse.ok) {
-  throw new Error(`Regional cuisine taxonomy could not load (${regionalTaxonomyResponse.status}).`);
-}
-const regionalCuisineTaxonomy = await regionalTaxonomyResponse.json();
-applyMunichChinaTaxonomyUpdate(regionalCuisineTaxonomy, sourceRestaurants);
-applyResearchedCountryTaxonomies(regionalCuisineTaxonomy);
-
-const countryById = new Map(countryTaxonomy.map((country) => [country.id, country]));
-const regionById = new Map(regionTaxonomy.map((region) => [`${region.countryId}/${region.id}`, region]));
 const regionalFoodEmoji = {
   bavaria: "🥨",
   franconia: "🍺",
+  swabia: "🥨",
+  baden: "🍷",
   guangdong: "🥟",
   "northeast-china": "🍲",
   "gansu-lanzhou": "🍜",
@@ -37,11 +50,20 @@ const regionalFoodEmoji = {
   "shanxi-shaanxi-noodles": "🍜",
   "xinjiang-uyghur": "🐑",
   yunnan: "🍄",
+  tibetan: "🏔️",
+  "jiangsu-zhejiang-shanghai": "🍤",
+  "northern-china": "🥟",
   "campania-pizza": "🍕",
+  sardinia: "🐑",
   "sushi-tradition": "🍣",
   "ramen-tradition": "🍜",
   "noodle-traditions": "🍜",
   "tapas-tradition": "🫒",
+  alsace: "🥨",
+  "central-anatolia": "🥟",
+  "south-india": "🥞",
+  bengali: "🐟",
+  hawaii: "🌺",
 };
 
 const taxonomyCountryAliases = new Map([
@@ -52,7 +74,19 @@ function normalizeTaxonomyName(value) {
   return value.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-function applyResearchedCountryTaxonomies(taxonomy) {
+function cuisineLabel(value) {
+  return value
+    .split(";")
+    .map((part) => part.trim().replaceAll("_", " "))
+    .filter(Boolean)
+    .map((part) => part.replace(/\b\w/g, (letter) => letter.toUpperCase()))
+    .join(" · ");
+}
+
+// Rewrites a country's regional nodes from the researched culinary-genealogy report,
+// carrying over only restaurant assignments that already had evidence behind them.
+function applyResearchedCountryTaxonomies(taxonomy, dataset) {
+  const { countryTaxonomy, regionTaxonomy, restaurants: sourceRestaurants } = dataset;
   const continentByName = new Map(taxonomy.continents.map((continent) => [continent.name, continent]));
   const sourceRegionById = new Map(regionTaxonomy.map((region) => [region.id, region]));
   const sourceRestaurantById = new Map(sourceRestaurants.map((restaurant) => [restaurant.id, restaurant]));
@@ -97,26 +131,26 @@ function applyResearchedCountryTaxonomies(taxonomy) {
           id: restaurant.id,
           name: restaurant.name,
           evidenceLevel: "dataset-geographic",
-          evidence: `Existing Munich dataset assignment to ${sourceRegion?.name ?? regionDefinition.name}.`,
+          evidence: `Existing dataset assignment to ${sourceRegion?.name ?? regionDefinition.name}.`,
           sourceUrls: [restaurant.source].filter(Boolean),
         });
       }
 
-      const restaurants = [];
+      const regionRestaurants = [];
       const localIds = new Set();
       for (const evidenceRestaurant of evidenceRestaurants) {
         const sourceRestaurant = sourceRestaurantById.get(evidenceRestaurant.id);
         if (!sourceRestaurant || sourceRestaurant.countryId !== countryId || localIds.has(evidenceRestaurant.id)) continue;
         localIds.add(evidenceRestaurant.id);
         claimedRestaurantIds.add(evidenceRestaurant.id);
-        restaurants.push({ ...evidenceRestaurant, name: sourceRestaurant.name });
+        regionRestaurants.push({ ...evidenceRestaurant, name: sourceRestaurant.name });
       }
       return {
         name: regionDefinition.name,
         emoji: regionDefinition.emoji,
         geographicCenter: regionDefinition.geographicCenter,
-        restaurantCount: restaurants.length,
-        restaurants,
+        restaurantCount: regionRestaurants.length,
+        restaurants: regionRestaurants,
       };
     });
 
@@ -152,67 +186,119 @@ function applyResearchedCountryTaxonomies(taxonomy) {
   taxonomy.generatedAt = "2026-08-05";
 }
 
-const regionalCountryById = new Map(
-  regionalCuisineTaxonomy.continents.flatMap((continent) =>
-    continent.countries.map((country) => {
-      const sourceCountry = countryTaxonomy.find((candidate) =>
-        candidate.name === country.country || candidate.flag === country.emoji,
-      );
-      const countryId = sourceCountry?.id ?? taxonomyCountryAliases.get(country.country);
-      return countryId ? [countryId, country] : null;
-    }).filter(Boolean),
-  ),
-);
-
-function cuisineLabel(value) {
-  return value
-    .split(";")
-    .map((part) => part.trim().replaceAll("_", " "))
-    .filter(Boolean)
-    .map((part) => part.replace(/\b\w/g, (letter) => letter.toUpperCase()))
-    .join(" · ");
+async function loadRegionalTaxonomy(url) {
+  const response = await fetch(new URL(url, import.meta.url));
+  if (!response.ok) {
+    throw new Error(`Regional cuisine taxonomy could not load (${response.status}) for ${url}.`);
+  }
+  return response.json();
 }
 
-export { datasetMeta };
-
-export const restaurants = sourceRestaurants.map((restaurant) => {
-  const country = countryById.get(restaurant.countryId);
-  const region = regionById.get(`${restaurant.countryId}/${restaurant.regionId}`);
-  return {
-    ...restaurant,
-    country: country.name,
-    continent: country.continent,
-    flag: country.flag,
-    symbol: regionalFoodEmoji[region.id] ?? country.flag,
-    markerKind: regionalFoodEmoji[region.id] ? "food" : "flag",
-    region: region.name,
-    originLat: region.lat,
-    originLng: region.lng,
-    cuisine: cuisineLabel(restaurant.cuisine),
+async function createEdition(spec) {
+  // The imported dataset modules are shared live bindings, and the editorial layers mutate
+  // what they are handed. Copy first so one city's overrides can never leak into another.
+  const dataset = {
+    datasetMeta: { ...spec.source.datasetMeta },
+    countryTaxonomy: spec.source.countryTaxonomy.map((country) => ({ ...country })),
+    regionTaxonomy: spec.source.regionTaxonomy.map((region) => ({ ...region })),
+    restaurants: spec.source.restaurants.map((restaurant) => ({ ...restaurant })),
   };
-});
+  spec.applyEditorialUpdates?.(dataset);
 
-export const countries = countryTaxonomy.map((country) => {
-  const countryRestaurants = restaurants.filter((restaurant) => restaurant.countryId === country.id);
-  const sourceById = new Map(countryRestaurants.map((restaurant) => [restaurant.id, restaurant]));
-  const regionalCountry = regionalCountryById.get(country.id);
+  const regionalCuisineTaxonomy = await loadRegionalTaxonomy(spec.regionalTaxonomyUrl);
+  spec.applyTaxonomyUpdates?.(regionalCuisineTaxonomy, dataset);
+
+  const countryById = new Map(dataset.countryTaxonomy.map((country) => [country.id, country]));
+  const regionById = new Map(dataset.regionTaxonomy.map((region) => [`${region.countryId}/${region.id}`, region]));
+
+  const regionalCountryById = new Map(
+    regionalCuisineTaxonomy.continents.flatMap((continent) =>
+      continent.countries.map((country) => {
+        const sourceCountry = dataset.countryTaxonomy.find((candidate) =>
+          candidate.name === country.country || candidate.flag === country.emoji,
+        );
+        const countryId = sourceCountry?.id ?? taxonomyCountryAliases.get(country.country);
+        return countryId ? [countryId, country] : null;
+      }).filter(Boolean),
+    ),
+  );
+
+  const restaurants = dataset.restaurants.map((restaurant) => {
+    const country = countryById.get(restaurant.countryId);
+    const region = regionById.get(`${restaurant.countryId}/${restaurant.regionId}`);
+    return {
+      ...restaurant,
+      cityId: spec.id,
+      country: country.name,
+      continent: country.continent,
+      flag: country.flag,
+      symbol: regionalFoodEmoji[region.id] ?? country.flag,
+      markerKind: regionalFoodEmoji[region.id] ? "food" : "flag",
+      region: region.name,
+      originLat: region.lat,
+      originLng: region.lng,
+      cuisine: cuisineLabel(restaurant.cuisine),
+    };
+  });
+
+  const countries = dataset.countryTaxonomy.map((country) => {
+    const countryRestaurants = restaurants.filter((restaurant) => restaurant.countryId === country.id);
+    const sourceById = new Map(countryRestaurants.map((restaurant) => [restaurant.id, restaurant]));
+    const regionalCountry = regionalCountryById.get(country.id);
+    return {
+      ...country,
+      restaurants: countryRestaurants,
+      regionalCuisines: regionalCountry?.regions.map((region) => ({
+        name: region.name,
+        emoji: region.emoji,
+        geographicCenter: region.geographicCenter,
+        restaurantCount: region.restaurants.length,
+        restaurants: region.restaurants.map((restaurant) => sourceById.get(restaurant.id)).filter(Boolean),
+      })) ?? [],
+      classificationLabel: regionalCountry?.classificationLabel,
+      canonicalStatus: regionalCountry?.canonicalStatus,
+    };
+  });
+
   return {
-    ...country,
-    restaurants: countryRestaurants,
-    regionalCuisines: regionalCountry?.regions.map((region) => ({
-      name: region.name,
-      emoji: region.emoji,
-      geographicCenter: region.geographicCenter,
-      restaurantCount: region.restaurants.length,
-      restaurants: region.restaurants.map((restaurant) => sourceById.get(restaurant.id)).filter(Boolean),
-    })) ?? [],
-    classificationLabel: regionalCountry?.classificationLabel,
-    canonicalStatus: regionalCountry?.canonicalStatus,
+    id: spec.id,
+    datasetMeta: dataset.datasetMeta,
+    regionTaxonomy: dataset.regionTaxonomy,
+    restaurants,
+    countries,
+    regionalCountryById,
   };
-});
+}
+
+const editionList = await Promise.all(editionSpecs.map(createEdition));
+const editionsById = new Map(editionList.map((edition) => [edition.id, edition]));
+
+export const liveCityIds = editionList.map((edition) => edition.id);
+
+export function getEdition(cityId) {
+  return editionsById.get(cityId) ?? null;
+}
+
+export function isLiveCity(cityId) {
+  return editionsById.has(cityId);
+}
+
+export function countriesForCity(cityId) {
+  return editionsById.get(cityId)?.countries ?? [];
+}
+
+export function datasetMetaForCity(cityId) {
+  return editionsById.get(cityId)?.datasetMeta ?? null;
+}
+
+export function restaurantsForCity(cityId) {
+  return editionsById.get(cityId)?.restaurants ?? [];
+}
+
+export const totalLiveRestaurants = editionList.reduce((sum, edition) => sum + edition.restaurants.length, 0);
 
 export const metropolitanEditions = [
-  { id: "munich", name: "Munich", country: "Germany", lat: 48.1351, lng: 11.582, live: true },
+  { id: "munich", name: "Munich", country: "Germany", lat: 48.1351, lng: 11.582 },
   { id: "london", name: "London", country: "United Kingdom", lat: 51.5072, lng: -0.1276 },
   { id: "berlin", name: "Berlin", country: "Germany", lat: 52.52, lng: 13.405 },
   { id: "paris", name: "Paris", country: "France", lat: 48.8566, lng: 2.3522 },
@@ -230,7 +316,7 @@ export const metropolitanEditions = [
   { id: "singapore", name: "Singapore", country: "Singapore", lat: 1.3521, lng: 103.8198 },
   { id: "tokyo", name: "Tokyo", country: "Japan", lat: 35.6762, lng: 139.6503 },
   { id: "melbourne", name: "Melbourne", country: "Australia", lat: -37.8136, lng: 144.9631 },
-];
+].map((edition) => ({ ...edition, live: editionsById.has(edition.id) }));
 
 export const continentCenters = {
   Americas: { lat: 8, lng: -82, ringHue: "red" },
@@ -240,26 +326,25 @@ export const continentCenters = {
   Oceania: { lat: -25, lng: 140, ringHue: "green" },
 };
 
-export function buildAtlasHierarchy() {
-  const munich = metropolitanEditions.find((edition) => edition.id === "munich");
-  const liveMetropolitan = {
-    ...munich,
+function buildLiveMetropolitan(edition, definition) {
+  return {
+    ...definition,
     kind: "metropolitan",
-    available: restaurants.length,
+    available: edition.restaurants.length,
     children: Object.entries(continentCenters)
       .map(([continentName, center]) => {
-        const continentCountries = countries.filter((country) => country.continent === continentName);
+        const continentCountries = edition.countries.filter((country) => country.continent === continentName);
         if (!continentCountries.length) return null;
         return {
-          id: `continent-${continentName.toLowerCase()}`,
+          id: `${edition.id}-continent-${continentName.toLowerCase()}`,
           name: continentName,
           kind: "continent",
           ...center,
           available: continentCountries.reduce((sum, country) => sum + country.restaurants.length, 0),
           children: continentCountries.map((country) => {
-            const regionalCountry = regionalCountryById.get(country.id);
+            const regionalCountry = edition.regionalCountryById.get(country.id);
             return {
-              id: `country-${country.id}`,
+              id: `country-${edition.id}-${country.id}`,
               countryId: country.id,
               name: country.name,
               flag: country.flag,
@@ -269,23 +354,26 @@ export function buildAtlasHierarchy() {
               available: country.restaurants.length,
               children: regionalCountry
                 ? buildRegionalCuisineChildren(country, regionalCountry)
-                : buildLegacyRegionChildren(country),
+                : buildLegacyRegionChildren(country, edition.regionTaxonomy),
             };
           }),
         };
       })
       .filter(Boolean),
   };
+}
 
-  const plannedMetropolitans = metropolitanEditions
-    .filter((edition) => !edition.live)
-    .map((edition) => ({
-      ...edition,
+export function buildAtlasHierarchy() {
+  const children = metropolitanEditions.map((definition) => {
+    const edition = editionsById.get(definition.id);
+    if (edition) return buildLiveMetropolitan(edition, definition);
+    return {
+      ...definition,
       kind: "metropolitan",
       planned: true,
       available: 0,
       children: Object.entries(continentCenters).map(([continentName, center]) => ({
-        id: `${edition.id}-continent-${continentName.toLowerCase()}`,
+        id: `${definition.id}-continent-${continentName.toLowerCase()}`,
         name: continentName,
         kind: "continent",
         ...center,
@@ -293,14 +381,15 @@ export function buildAtlasHierarchy() {
         layoutValue: 1,
         emptyEdition: true,
       })),
-    }));
+    };
+  });
 
   return {
     id: "atlas-root",
     name: "Metropolitan atlas",
     kind: "root",
-    available: restaurants.length,
-    children: [liveMetropolitan, ...plannedMetropolitans],
+    available: totalLiveRestaurants,
+    children,
   };
 }
 
@@ -366,7 +455,7 @@ function restaurantNode(restaurant, region) {
   };
 }
 
-function buildLegacyRegionChildren(country) {
+function buildLegacyRegionChildren(country, regionTaxonomy) {
   const regions = regionTaxonomy
     .filter((region) => region.countryId === country.id)
     .map((region) => {

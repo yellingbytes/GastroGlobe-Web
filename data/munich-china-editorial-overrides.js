@@ -1,18 +1,15 @@
 const UPDATE_DATE = "2026-08-02";
 
 const CHINA_REGIONS = [
-  { id: "sichuan", name: "Sichuan · Chongqing", taxonomyName: "Sichuan / Chongqing", emoji: "🌶️", lat: 30.65, lng: 104.07 },
+  { id: "sichuan", name: "Sichuan / Chongqing", taxonomyName: "Sichuan / Chongqing", emoji: "🌶️", lat: 30.65, lng: 104.07 },
+  { id: "guangdong", name: "Cantonese", taxonomyName: "Cantonese", emoji: "🥢", lat: 23.13, lng: 113.26 },
+  { id: "shanxi-shaanxi-noodles", name: "Shanxi / Shaanxi", taxonomyName: "Shanxi / Shaanxi", emoji: "🍝", lat: 34.3416, lng: 108.9398 },
+  { id: "xinjiang-uyghur", name: "Xinjiang / Uyghur", taxonomyName: "Xinjiang / Uyghur", emoji: "🐑", lat: 43.82, lng: 87.62 },
+  { id: "gansu-lanzhou", name: "Gansu", taxonomyName: "Gansu", emoji: "🍜", lat: 36.0611, lng: 103.8343 },
   { id: "hunan", name: "Hunan", taxonomyName: "Hunan", emoji: "🥘", lat: 28.23, lng: 112.94 },
-  { id: "guangdong", name: "Guangdong · Cantonese", taxonomyName: "Cantonese / Guangdong", emoji: "🥢", lat: 23.13, lng: 113.26 },
-  { id: "jiangsu-zhejiang-shanghai", name: "Jiangsu · Zhejiang · Shanghai", taxonomyName: "Jiangsu / Zhejiang / Shanghai", emoji: "🍜", lat: 31.2, lng: 120.6 },
-  { id: "northern-china", name: "Northern China · Beijing", taxonomyName: "Northern China / Beijing", emoji: "🥟", lat: 39.9, lng: 116.4 },
-  { id: "northeast-china", name: "Northeast China · Dongbei", taxonomyName: "Northeast / Dongbei", emoji: "🍲", lat: 43.9, lng: 125.3 },
-  { id: "shanxi-shaanxi-noodles", name: "Shanxi · Shaanxi noodles", taxonomyName: "Shanxi / Shaanxi noodles", emoji: "🍝", lat: 34.3416, lng: 108.9398 },
-  { id: "gansu-lanzhou", name: "Gansu · Lanzhou", taxonomyName: "Gansu / Lanzhou", emoji: "🍜", lat: 36.0611, lng: 103.8343 },
+  { id: "northeast-china", name: "Dongbei", taxonomyName: "Dongbei", emoji: "🍲", lat: 43.9, lng: 125.3 },
   { id: "yunnan", name: "Yunnan", taxonomyName: "Yunnan", emoji: "🍄", lat: 25.04, lng: 102.72 },
-  { id: "fujian-taiwan", name: "Fujian · Taiwan", taxonomyName: "Fujian / Taiwan culinary family", emoji: "🐟", lat: 24.8, lng: 119.1 },
-  { id: "xinjiang-uyghur", name: "Xinjiang · Uyghur", taxonomyName: "Xinjiang / Uyghur", emoji: "🐑", lat: 43.82, lng: 87.62 },
-  { id: "tibetan", name: "Tibetan", taxonomyName: "Tibetan", emoji: "🏔️", lat: 29.65, lng: 91.12 },
+  { id: "fujian-taiwan", name: "Fujian / Taiwan", taxonomyName: "Fujian / Taiwan", emoji: "🐟", lat: 24.8, lng: 119.1 },
 ];
 
 const REGION_BY_RESTAURANT_ID = new Map(Object.entries({
