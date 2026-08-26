@@ -1,0 +1,786 @@
+{
+  "schemaVersion": "1.0.0",
+  "city": "Berlin",
+  "country": "Germany",
+  "datasetSnapshot": "2026-08-25",
+  "generatedAt": "2026-08-25",
+  "sourceDataset": "data/berlin-restaurants.js",
+  "hierarchy": [
+    "World",
+    "Continent",
+    "Country",
+    "Regional Cuisine",
+    "Restaurant"
+  ],
+  "methodology": {
+    "purpose": "Represent culinary diversity rather than political geography.",
+    "classificationRule": "A restaurant is assigned to exactly one regional cuisine only when its own website, menu, official social profile, or several independent public sources support that assignment. An OpenStreetMap cuisine tag on its own is treated as a candidate to verify, not as evidence. Dish formats alone do not establish regional identity.",
+    "exclusions": [
+      "generic Asian",
+      "fusion",
+      "buffet",
+      "pan-Asian",
+      "pan-national restaurant without a dominant regional identity"
+    ],
+    "zeroCounts": "Taxonomically meaningful regional cuisines remain present when no dedicated Berlin restaurant could be verified.",
+    "unclassified": "Restaurants that are nationally tagged but lack adequate regional evidence remain outside regional counts. They are not evidence that the regional tradition is absent, only that it is not verified in this snapshot.",
+    "politicalGeographyNote": "Culinary regions may cross modern borders. The Fujian–Taiwan culinary family and the Tibetan tradition are grouped under China for analytical continuity and make no sovereignty claim.",
+    "evidenceLevels": {
+      "high": "First-party restaurant website, menu or official social profile explicitly names the regional cuisine.",
+      "medium": "Several independent public sources agree on the region, the menu repeatedly and dominantly reflects one tradition, or chef/founder origin is documented."
+    }
+  },
+  "continents": [
+    {
+      "name": "Asia",
+      "countries": [
+        {
+          "country": "China",
+          "emoji": "🇨🇳",
+          "sourceRestaurantCount": 144,
+          "classifiedRestaurantCount": 62,
+          "unclassifiedRestaurantCount": 82,
+          "auditNote": "Phase 1 Berlin audit (2026-08-25): all 158 China-tagged records were researched individually against first-party sites, menus and Berlin food press. Eleven records were removed as not dedicated Chinese restaurants and three as permanently closed; the source count reflects the remaining 144. Restaurants whose operators name two or more co-equal regions (Hot Spot, Peking Ente, tangs kantine, Hua Li Du, Feast) are deliberately left unclassified rather than forced into one bucket.",
+          "regions": [
+            {
+              "name": "Sichuan / Chongqing",
+              "emoji": "🌶️",
+              "geographicCenter": {
+                "lat": 30.65,
+                "lng": 104.07
+              },
+              "restaurantCount": 25,
+              "restaurants": [
+                {
+                  "id": "osm-node-13104328001",
+                  "name": "0086",
+                  "evidenceLevel": "high",
+                  "evidence": "Its own listings and Instagram brand it a Sichuan restaurant and independent coverage describes authentic Sichuan cooking; the menu is dominated by shuizhu fish, cumin lamb and Sichuan peppercorn dishes.",
+                  "sourceUrls": [
+                    "https://www.smart-travelling.net/en/locations/0086/",
+                    "https://www.instagram.com/0086berlin/"
+                  ]
+                },
+                {
+                  "id": "osm-node-6353108381",
+                  "name": "Chengdu",
+                  "evidenceLevel": "high",
+                  "evidence": "The Berlin Chinese-food outlet pinwo.de ran an opening feature framing it explicitly as Sichuan — Sichuan pepper, chilli and hot oil, with paper-wrapped fish, dry-pot shrimp and mapo tofu.",
+                  "sourceUrls": [
+                    "https://www.pinwo.de/de/stories/chengdu-restaurant-berlin-opening",
+                    "https://chengdurestaurant.de/"
+                  ]
+                },
+                {
+                  "id": "osm-node-2121100044",
+                  "name": "Chengdu Nudelhaus",
+                  "evidenceLevel": "medium",
+                  "evidence": "pinwo.de's Berlin noodle guide categorises it a Sichuan noodle house serving Yibin ran mian and braised beef noodle soup, and its Chinese name 蜀味记 uses Shu, the classical name for Sichuan.",
+                  "sourceUrls": [
+                    "https://www.pinwo.de/en/discover/cuisine/noodles",
+                    "https://de.restaurantguru.com/Nudelhaus-Chengdu-%E8%9C%80%E5%91%B3%E8%AE%B0-Berlin"
+                  ]
+                },
+                {
+                  "id": "osm-node-862031023",
+                  "name": "Chen's Wok",
+                  "evidenceLevel": "medium",
+                  "evidence": "Several independent listings consistently describe a Szechuan destination built around a Sichuan hotpot buffet; no first-party regional wording was reachable.",
+                  "sourceUrls": [
+                    "https://wolt.com/en/deu/berlin/restaurant/chens-wok",
+                    "https://restaurantguru.com/Chens-Wok-Berlin"
+                  ]
+                },
+                {
+                  "id": "osm-node-9971643710",
+                  "name": "Chuan House",
+                  "evidenceLevel": "medium",
+                  "evidence": "The name carries 川 and the published menu is dominantly Sichuan — mapo tofu, dry-fried dishes, vegan duck \"nach Sichuan-Art\"; three independent menu aggregators describe it as Szechuan. Menu dominance rather than a self-declaration.",
+                  "sourceUrls": [
+                    "https://www.speisekarte.de/berlin/restaurant/chuan_house/speisekarte",
+                    "https://www.thefork.com/restaurant/chuan-house-r806311"
+                  ]
+                },
+                {
+                  "id": "osm-node-664244069",
+                  "name": "Dschunke",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site states outright \"Ein besonderer Platz in unserem Herzen hat die Küche unserer Heimat Sichuan\" and calls hotpot \"der berühmte Feuertopf aus Sichuan, unserer Heimat\" — an explicit self-declaration plus owner origin.",
+                  "sourceUrls": [
+                    "https://dschunke-berlin.de/"
+                  ]
+                },
+                {
+                  "id": "osm-node-13312054339",
+                  "name": "Hi! Chili",
+                  "evidenceLevel": "high",
+                  "evidence": "Its own trading name on delivery storefronts is \"Hi! Chili 海椒 (Sichuan Tapas Bistro)\", Berlin Food Stories files it under the same name, and the menu is a coherent Sichuan set including Zhong dumplings and pickled-pepper beef.",
+                  "sourceUrls": [
+                    "https://www.berlinfoodstories.com/map/hi-chili-sichuan-tapas-bistro",
+                    "https://www.hichili.de/en"
+                  ]
+                },
+                {
+                  "id": "osm-node-11275488168",
+                  "name": "Hotpot & Nudeln",
+                  "evidenceLevel": "medium",
+                  "evidence": "The restaurant's own ordering site builds the menu on make-your-own hotpot, malatang and Chongqing xiaomian, and states the hotpot tradition comes from Sichuan.",
+                  "sourceUrls": [
+                    "https://hotpot-nudeln.de/",
+                    "https://www.pinwo.de/en/discover/cuisine/noodles"
+                  ]
+                },
+                {
+                  "id": "osm-node-12554553712",
+                  "name": "Houtang Hotpot",
+                  "evidenceLevel": "high",
+                  "evidence": "Its own site and a ceecee.cc feature both state the restaurant comes from Chengdu, the Sichuan capital, and the room is themed on 1930s Chengdu; it is an outpost of a Chengdu hotpot brand.",
+                  "sourceUrls": [
+                    "https://houtang-hotpot.de/",
+                    "https://ceecee.cc/en/hot-hotter-hou-tang-hotpot-teilen-auf-der-wohl-historischsten-flaniermeile-des-westens/"
+                  ]
+                },
+                {
+                  "id": "osm-node-2388293853",
+                  "name": "Lala Noodle",
+                  "evidenceLevel": "high",
+                  "evidence": "The full trading name is \"LaLa Noodle of Sichuan\", the official site is headed \"Authentische Sichuan-Küche in Berlin\", and its Facebook page is registered as sichuangourmetberlin.",
+                  "sourceUrls": [
+                    "https://www.lalanoodle-sichuan.de/",
+                    "https://www.facebook.com/sichuangourmetberlin/"
+                  ]
+                },
+                {
+                  "id": "osm-node-6201545247",
+                  "name": "Liu Chengdu Weidao",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site brands it \"authentische Sichuan Nudeln, Teigtaschen & Snacks\" and the full name is LIU ChengduWeidao – Chuan Chuan Xiang und Nudelhaus; Berlin Food Stories lists it under Sichuan.",
+                  "sourceUrls": [
+                    "https://chengduweidao.de/",
+                    "https://www.berlinfoodstories.com/top-lists/the-best-chinese-restaurants-in-berlin"
+                  ]
+                },
+                {
+                  "id": "osm-node-3658883811",
+                  "name": "Man Kee",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site declares \"traditionelle Szechuan Küche\" and explains \"Die Szechuan Küche ist die Küche des Westen\", with gong bao chicken and mapo tofu mit Sichuan Pfeffer. Its Cantonese-style romanisation would have misled a name-based guess.",
+                  "sourceUrls": [
+                    "https://www.mankee-berlin.de/",
+                    "https://www.facebook.com/ChinarestaurantManKee/"
+                  ]
+                },
+                {
+                  "id": "osm-node-11782177864",
+                  "name": "Sanku Maots'ai",
+                  "evidenceLevel": "high",
+                  "evidence": "Its Chinese name 三顾冒菜 identifies the Chengdu maocai franchise whose corporate site markets 成都冒菜加盟; maocai is a Chengdu single-portion hotpot format and the Berlin broth line-up leads with mala.",
+                  "sourceUrls": [
+                    "https://www.corner.inc/place/642178",
+                    "http://www.sangumc.com/"
+                  ]
+                },
+                {
+                  "id": "osm-node-11991388869",
+                  "name": "Sanku Maots'ai",
+                  "evidenceLevel": "high",
+                  "evidence": "The original Berlin-Mitte location of the same 三顾冒菜 Chengdu maocai franchise, listed on the operator's own site.",
+                  "sourceUrls": [
+                    "https://www.sankumaotsai.de/",
+                    "http://www.sangumc.com/"
+                  ]
+                },
+                {
+                  "id": "osm-node-11283328950",
+                  "name": "Shoo Loong Kan",
+                  "evidenceLevel": "high",
+                  "evidence": "The Berlin outpost of 小龙坎老火锅, a Chengdu-founded Sichuan laohuoguo brand; independent Berlin coverage describes an authentic Sichuan hotpot with mala broths and a sauce bar.",
+                  "sourceUrls": [
+                    "https://shooloongkan-berlin.com/en/__trashed/",
+                    "https://www.tripadvisor.com/Restaurant_Review-g187323-d28126205-Reviews-Shoo_Loong_Kan_Hot_Pot_Berlin-Berlin.html"
+                  ]
+                },
+                {
+                  "id": "osm-node-566185651",
+                  "name": "Sichuan China-Restaurant",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site is built entirely around Sichuan — \"Die Cuisine Sichuans ist eine der berühmtesten Länderküchen Chinas\" — and cites Chengdu's UNESCO gastronomy designation; reviews corroborate a mapo tofu, gong bao and yuxiang card.",
+                  "sourceUrls": [
+                    "https://sichuan-restaurant.de/",
+                    "https://www.tripadvisor.com/Restaurant_Review-g187323-d4947086-Reviews-China_Restaurant_SICHUAN-Berlin.html"
+                  ]
+                },
+                {
+                  "id": "osm-node-9705662317",
+                  "name": "Sùsù Vegan Food",
+                  "evidenceLevel": "medium",
+                  "evidence": "The Berlin publication ceecee headlines it \"SÙSÙ 素素: SZECHUAN CUISINE IN VEGAN\" and listings describe an authentically Sichuanese vegan menu led by a mapo tofu rice bowl.",
+                  "sourceUrls": [
+                    "https://ceecee.cc/en/susu-%E7%B4%A0%E7%B4%A0-szechuan-kueche-in-vegan-empfohlen-von-frederik-wegner/",
+                    "https://www.happycow.net/reviews/susu-vegan-food-berlin-445962"
+                  ]
+                },
+                {
+                  "id": "osm-node-13082815901",
+                  "name": "SzeChuan",
+                  "evidenceLevel": "medium",
+                  "evidence": "The Berliner's restaurant-openings feature describes \"bold, authentic Sichuan flavours\" with the owners promising no Germanised tweaks, and the venue brands itself SzeChuan Küche Wedding on its own Instagram.",
+                  "sourceUrls": [
+                    "https://www.the-berliner.com/food/restaurant-openings-where-to-eat-in-september-2025/",
+                    "https://weddingweiser.de/koennte-wedding-ein-chinatown-werden/"
+                  ]
+                },
+                {
+                  "id": "osm-node-1187355563",
+                  "name": "Szechuan House",
+                  "evidenceLevel": "medium",
+                  "evidence": "It trades as Shu Wei Fang – Szechuan House (蜀味坊, where 蜀 is the classical name for Sichuan) on a dedicated domain titled \"Authentic Sichuan Cuisine in Berlin\", with menus led by mapo tofu, gong bao and dry-pot dishes.",
+                  "sourceUrls": [
+                    "https://szechuan-house.com/",
+                    "https://wolt.com/en/deu/berlin/restaurant/shu-wei-fang-szechuan-house-china-restaurant"
+                  ]
+                },
+                {
+                  "id": "osm-node-3858167542",
+                  "name": "Tian Fu",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site is titled \"Authentische Sichuan Küche in Berlin\" and Creme Guides independently reports the head chef comes from Chengdu; the Chinese name is 天府酒家.",
+                  "sourceUrls": [
+                    "https://tianfu.de/",
+                    "https://www.cremeguides.com/berlin/chinesisches-restaurant-tian-fu/"
+                  ]
+                },
+                {
+                  "id": "osm-node-2823404643",
+                  "name": "Tianfuzius",
+                  "evidenceLevel": "medium",
+                  "evidence": "Berlin's first all-vegan Chinese restaurant (天府子); Mit Vergnügen and speisekarte.de both describe a large selection of Sichuan dishes.",
+                  "sourceUrls": [
+                    "https://mitvergnuegen.com/2016/vegetarisch-chinesisch-essen-das-tianfuzius-in-schoeneberg/",
+                    "http://tianfuzius.de/"
+                  ]
+                },
+                {
+                  "id": "osm-node-4706620191",
+                  "name": "The Tree - Noodle House",
+                  "evidenceLevel": "medium",
+                  "evidence": "Two independent German food outlets describe it as Sichuan — Mit Vergnügen (\"Feine chinesische Küche aus Sichuan\") and Jäger und Sammler (\"Nudeln nach Sichuan-Art\") — and Creme Guides adds that dishes follow traditional Sichuan recipes.",
+                  "sourceUrls": [
+                    "https://mitvergnuegen.com/2017/feine-chinesische-kueche-aus-sichuan-the-tree-im-prenzlauer-berg/",
+                    "https://www.cremeguides.com/berlin/the-tree/"
+                  ]
+                },
+                {
+                  "id": "osm-node-3901335182",
+                  "name": "Wei Dao Jia",
+                  "evidenceLevel": "medium",
+                  "evidence": "pinwo.de lists Sichuan as its primary regional focus and the documented menu is repeatedly Sichuan — fuqi feipian, koushui ji, mapo tofu, shuizhu niurou, mao xue wang. Temporarily closed with a stated 6 March 2026 reopening.",
+                  "sourceUrls": [
+                    "https://www.pinwo.de/en/restaurants/wei-dao-jia",
+                    "https://www.berlinfoodstories.com/map/weidaojia"
+                  ]
+                },
+                {
+                  "id": "osm-node-8477053410",
+                  "name": "CÀI Kitchen",
+                  "evidenceLevel": "high",
+                  "evidence": "It traded as \"CÀI Kitchen Berlin – Szechuan Vegan Bistro\" on its own domain and Berlin Food Stories describes vegan Sichuan cooking with dan dan-style noodles, so the OpenStreetMap szechuan tag is verified rather than inherited. Reported closed around November 2025 but not operator-confirmed.",
+                  "sourceUrls": [
+                    "https://caikitchen.berlin/",
+                    "https://www.berlinfoodstories.com/map/cai-kitchen"
+                  ]
+                },
+                {
+                  "id": "osm-node-13404135798",
+                  "name": "Chuan Garden",
+                  "evidenceLevel": "high",
+                  "evidence": "It trades as Chuan Garden – Sichuan Kitchen & Bar (川园); tip Berlin's opening piece is headlined on its celebration of Sichuan cuisine and Berlin Food Stories' review is titled \"The Sichuan Rabbit Hole\", citing Zigong cold rabbit.",
+                  "sourceUrls": [
+                    "https://www.tip-berlin.de/food/essen-gehen/chuan-garden-torstrasse/",
+                    "https://www.berlinfoodstories.com/reviews/chuan-garden-the-sichuan-rabbit-hole"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Cantonese / Guangdong",
+              "emoji": "🥢",
+              "geographicCenter": {
+                "lat": 23.13,
+                "lng": 113.26
+              },
+              "restaurantCount": 9,
+              "restaurants": [
+                {
+                  "id": "osm-node-285898054",
+                  "name": "Aroma",
+                  "evidenceLevel": "high",
+                  "evidence": "A long-standing Kantstraße Cantonese dim-sum institution: Eat This titles its entry \"Aroma — Cantonese Dim Sum in Charlottenburg\" and Berlin Food Stories lists it among the city's Cantonese addresses, with trolley dim sum and char siu bao.",
+                  "sourceUrls": [
+                    "https://www.eatthisdot.com/en/restaurant/aroma",
+                    "https://www.berlinfoodstories.com/map/aroma"
+                  ]
+                },
+                {
+                  "id": "osm-node-3907093252",
+                  "name": "Aroma",
+                  "evidenceLevel": "medium",
+                  "evidence": "The brand's own Instagram announces this as \"unsere zweite AROMA Filiale\" on Warschauer Straße and posts dim sum from it; one aggregator muddies the picture with a Sichuan claim.",
+                  "sourceUrls": [
+                    "https://www.instagram.com/reel/DT2yLOCDIp_/",
+                    "https://www.corner.inc/place/1326914"
+                  ]
+                },
+                {
+                  "id": "osm-node-448913480",
+                  "name": "Bao Gao Club",
+                  "evidenceLevel": "medium",
+                  "evidence": "The official site self-describes as Hong Kong style dim sum and Cantonese BBQ pork; it also sells Taiwanese gua bao, so the concept is Cantonese-led but partly cross-regional.",
+                  "sourceUrls": [
+                    "https://baogaoclub.de/",
+                    "https://baogaoclub.de/pages/about"
+                  ]
+                },
+                {
+                  "id": "osm-node-11757648969",
+                  "name": "Boa Goa Club",
+                  "evidenceLevel": "medium",
+                  "evidence": "The record's coordinates resolve to Markthalle Neun, where Bao Gao Club runs a stall serving the same Hong Kong-style dim sum as its Prenzlauer Berg restaurant. The OpenStreetMap name is misspelt \"Boa Goa\".",
+                  "sourceUrls": [
+                    "https://markthalleneun.de/en/market/bao-gao-club"
+                  ]
+                },
+                {
+                  "id": "osm-node-454226396",
+                  "name": "Chinarestaurant Hey Cheuk Lau",
+                  "evidenceLevel": "medium",
+                  "evidence": "The restaurant's own menu description states it specialises in Cantonese cuisine and includes a passage on the Pearl delta Cantonese school; the dim sum and clay-pot menu matches.",
+                  "sourceUrls": [
+                    "https://www.speisekarte.de/berlin/restaurant/china_restaurant_hey_cheuk_lau",
+                    "http://www.hey-cheuk-lau.de/"
+                  ]
+                },
+                {
+                  "id": "osm-node-2352412653",
+                  "name": "Good Friends",
+                  "evidenceLevel": "high",
+                  "evidence": "visitBerlin describes \"Chinese and Cantonese cuisine\", Mit Vergnügen calls it \"Kantonesische Küche und Hausmannskost\", and Berlin Food Stories identifies it as Cantonese, anchored by the roast-duck and siu-mei window. Open since 1993.",
+                  "sourceUrls": [
+                    "https://www.visitberlin.de/en/good-friends",
+                    "https://www.berlinfoodstories.com/top-lists/the-best-chinese-restaurants-in-berlin"
+                  ]
+                },
+                {
+                  "id": "osm-node-318522785",
+                  "name": "Hee Lam Mun",
+                  "evidenceLevel": "high",
+                  "evidence": "A Berliner Zeitung feature documents that Sun Chow \"Thomas\" Fung opened it in 1987 as a classic Cantonese restaurant, that he is from Hong Kong and speaks Cantonese, and that he travels to Asia annually to keep the kitchen current.",
+                  "sourceUrls": [
+                    "https://www.berliner-zeitung.de/wochenende/in-steglitz-gibt-es-eines-der-besten-china-restaurants-in-berlin-li.164549",
+                    "http://www.heelammun.de/"
+                  ]
+                },
+                {
+                  "id": "osm-node-492145802",
+                  "name": "Hong Kong Canteen",
+                  "evidenceLevel": "medium",
+                  "evidence": "A Tagesspiegel review documents that head chef Mr. Chen comes from the family behind Good Friends and Ming Dynastie and that dim sum is the kitchen's calling card; the Chinese name 旺角 is Mongkok.",
+                  "sourceUrls": [
+                    "https://www.tagesspiegel.de/gesellschaft/genuss/restaurantkritik-hongkong-canteen-hier-gehen-chinesen-in-berlin-wein-trinken-13094656.html",
+                    "https://www.instagram.com/hongkong_canteen/"
+                  ]
+                },
+                {
+                  "id": "osm-node-2306709234",
+                  "name": "Tak Kee",
+                  "evidenceLevel": "high",
+                  "evidence": "Berlin Food Stories published a dedicated review titled \"A Cantonese Revelation in Wilmersdorf\", reporting the restaurant is owned by Hong Kongers with Cantonese clay-pot dishes as its signature.",
+                  "sourceUrls": [
+                    "https://www.berlinfoodstories.com/reviews/a-cantonese-revelation-in-wilmersdorf",
+                    "https://www.berlinfoodstories.com/map/tak-kee"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Jiangsu / Zhejiang / Shanghai",
+              "emoji": "🍤",
+              "geographicCenter": {
+                "lat": 31.2,
+                "lng": 120.6
+              },
+              "restaurantCount": 2,
+              "restaurants": [
+                {
+                  "id": "osm-node-3974152804",
+                  "name": "Miss Wu",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site states the cuisine originates \"in der kleinen Wasserstadt Nanxun im südöstlichen China\" and brands itself 私房菜; Nanxun is a canal town in Huzhou, Zhejiang. Creme Guides repeats the Nanxun origin.",
+                  "sourceUrls": [
+                    "https://www.misswu.de/portal/portal.html",
+                    "https://www.cremeguides.com/berlin/chinesisches-restaurant-miss-wu/"
+                  ]
+                },
+                {
+                  "id": "osm-node-3578225334",
+                  "name": "Shan Shan",
+                  "evidenceLevel": "medium",
+                  "evidence": "The official site advertises \"Speisen nach traditioneller Nanjing oder Peking-Art\" and credits Chef Zhu as a former five-star chef at the Nanjing Jin Ling, with Huaiyang signatures such as squirrel fish and lion's-head meatballs. Berlin Food Stories describes it instead as Northern Chinese, so the assignment is contested.",
+                  "sourceUrls": [
+                    "http://www.berlinrestaurant-shanshan.de/",
+                    "https://www.speisekarte.de/berlin/restaurant/bar_restaurant_shan_shan/speisekarte"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Northern China / Beijing",
+              "emoji": "🥟",
+              "geographicCenter": {
+                "lat": 39.9,
+                "lng": 116.4
+              },
+              "restaurantCount": 3,
+              "restaurants": [
+                {
+                  "id": "osm-node-4393198449",
+                  "name": "Cha For Tee",
+                  "evidenceLevel": "medium",
+                  "evidence": "Independent press (ceecee.cc, Berliner Zeitung) documents that founder Nai-Ya Xu's family recipes come from Beijing and describes the handmade jiaozi as Beijing-style.",
+                  "sourceUrls": [
+                    "https://ceecee.cc/en/cha-for-tee-experimentelle-dim-sum-kreationen/",
+                    "https://www.berliner-zeitung.de/article/berlin-food-drink-dim-sum-kleines-dumpling-restaurant-im-kreuzberger-bergmannkiez-restaurant-cha-for-tee-maultaeschchen-und-die-deutsch-chinesische-freundschaft-303522"
+                  ]
+                },
+                {
+                  "id": "osm-node-6326356395",
+                  "name": "Rotbohnen",
+                  "evidenceLevel": "medium",
+                  "evidence": "The operator's own site headlines \"unsere traditionellen nordchinesischen Spezialitäten\" and its About page calls it a traditionelles nordchinesisches Restaurant; the menu is dominated by handmade baozi, jianbing and jiaozi.",
+                  "sourceUrls": [
+                    "https://www.rotbohnen.de/",
+                    "https://www.rotbohnen.de/%C3%BCber-uns"
+                  ]
+                },
+                {
+                  "id": "osm-node-7004944187",
+                  "name": "Rotbohnen",
+                  "evidenceLevel": "medium",
+                  "evidence": "The same operator and self-description; this branch is family-run with the owner's parents cooking, and third-party coverage repeatedly flags Dongbei home cooking such as DiSanXian alongside the handmade dumplings.",
+                  "sourceUrls": [
+                    "https://www.rotbohnen.de/",
+                    "https://us.trip.com/restaurant/germany/berlin/detail/rotbohnen-teigtaschen-148122543/"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Shanxi / Shaanxi noodles",
+              "emoji": "🍜",
+              "geographicCenter": {
+                "lat": 34.3416,
+                "lng": 108.9398
+              },
+              "restaurantCount": 16,
+              "restaurants": [
+                {
+                  "id": "osm-node-2496651313",
+                  "name": "Bang Bang Handpulled Noodles",
+                  "evidenceLevel": "medium",
+                  "evidence": "The whole concept is biang biang noodles, a Xi'an/Shaanxi hand-pulled tradition, confirmed by The Berliner's review and the pinwo Berlin food map. No source names Shaanxi for this specific restaurant, so the attribution rests on the tradition it is built around.",
+                  "sourceUrls": [
+                    "https://www.the-berliner.com/food/long-noodles-longer-lines-mehringdamm-bang-bang-handpulled-noodles/",
+                    "https://www.pinwo.de/en/discover/cuisine/noodles"
+                  ]
+                },
+                {
+                  "id": "osm-node-728168468",
+                  "name": "Holly",
+                  "evidenceLevel": "high",
+                  "evidence": "Berlin Food Stories identifies it specifically as Xi'an (Shaanxi) cuisine and a Tagesspiegel review is built around the Xi'an canon — roujiamo, cold bean-jelly, cucumber salad and cumin lamb skewers.",
+                  "sourceUrls": [
+                    "https://www.berlinfoodstories.com/map/holly-china-restaurant",
+                    "https://www.tagesspiegel.de/gesellschaft/restaurantkritik-holly-bohnen-gelee-gurkensalat-schweinebauch-285949.html"
+                  ]
+                },
+                {
+                  "id": "osm-node-1665206587",
+                  "name": "Jade Palast",
+                  "evidenceLevel": "medium",
+                  "evidence": "The menu is dominated by hand-pulled lamian beef noodle soups pulled in the window, and the Chinese name 玉面阁 centres noodles. No source explicitly says Lanzhou or Gansu, so this rests on menu dominance rather than a declaration.",
+                  "sourceUrls": [
+                    "https://kulturexpresso.de/schlangestehen-fuer-handgezogene-nudeln-im-jade-palast/",
+                    "https://www.pinwo.de/en/discover/cuisine/noodles"
+                  ]
+                },
+                {
+                  "id": "osm-node-2335267600",
+                  "name": "Lanzhou Beef Noodles",
+                  "evidenceLevel": "high",
+                  "evidence": "pinwo.de's dedicated Lanzhou-lamian guide lists this location and describes the canonical Gansu broth options — clear, hongshao, sour-cabbage and chilli-oil.",
+                  "sourceUrls": [
+                    "https://www.pinwo.de/en/stories/lanzhou-lamian-berlin",
+                    "https://wolt.com/en/deu/berlin/restaurant/lanzhou-beef-noodles-fhain"
+                  ]
+                },
+                {
+                  "id": "osm-node-3954289646",
+                  "name": "Lanzhou Beef Noodles",
+                  "evidenceLevel": "high",
+                  "evidence": "The same hand-pulled Lanzhou beef-noodle format with an active storefront and a signature braised beef and radish noodle soup; pinwo.de treats it as an independent location rather than a branch.",
+                  "sourceUrls": [
+                    "https://wolt.com/en/deu/berlin/restaurant/lanzhou-beef-noodles",
+                    "https://neotaste.com/de/restaurants/berlin/lanzhou-beef-noodles"
+                  ]
+                },
+                {
+                  "id": "osm-node-3141881398",
+                  "name": "Mr. Noodle Chen",
+                  "evidenceLevel": "high",
+                  "evidence": "Listings describe a specialist in Lanzhou hand-pulled beef noodles bringing \"the rich culinary heritage of Northwest China\" to Germany, with lamian, biang biang noodles and roujiamo, hand-pulled daily and halal.",
+                  "sourceUrls": [
+                    "https://www.pinwo.de/en/stories/lanzhou-lamian-berlin",
+                    "https://joinhalal.com/en/locations/restaurant/mr-noodle-chen-berlin-wedding-23319/"
+                  ]
+                },
+                {
+                  "id": "osm-node-10048738548",
+                  "name": "Mr. Noodle Chen",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site states it serves authentic Lanzhou hand-pulled beef noodles, bringing the culinary heritage of Northwest China to Germany; the Chinese name 陈香贵兰州牛肉面 identifies the Lanzhou beef-noodle chain.",
+                  "sourceUrls": [
+                    "https://mrnoodlechen.de/",
+                    "https://mrnoodlechen.de/menu/"
+                  ]
+                },
+                {
+                  "id": "osm-node-3708028928",
+                  "name": "Shanxi Nudelhaus",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site and the Chinese name 山西面馆 identify Shanxi cuisine, with the house speciality being Shanxi knife-cut noodles (刀削面) shaved to order.",
+                  "sourceUrls": [
+                    "https://www.shanxi-nudelhaus.de/",
+                    "https://www.lieferando.de/en/menu/shanxi-nudelhaus-berlin"
+                  ]
+                },
+                {
+                  "id": "osm-node-2053256252",
+                  "name": "Wen Cheng",
+                  "evidenceLevel": "high",
+                  "evidence": "The brand's own site names \"the legendary Biang Biang noodles from China's Shanxi province\", hand-pulled in an open kitchen; tip Berlin and The Berliner independently identify the wide Shaanxi belt noodle as the house style.",
+                  "sourceUrls": [
+                    "https://www.wenchengnoodles.com/",
+                    "https://www.tip-berlin.de/essen-trinken/wen-cheng-handpulled-noodles-berlin/"
+                  ]
+                },
+                {
+                  "id": "osm-node-8880887144",
+                  "name": "Wen Cheng I",
+                  "evidenceLevel": "high",
+                  "evidence": "The original Prenzlauer Berg location of the same biang biang noodle brand, listed on the official Berlin locations page as \"Schönhauser\".",
+                  "sourceUrls": [
+                    "https://www.wenchengnoodles.com/locations/berlin",
+                    "https://www.qiez.de/wen-cheng-berlin-prenzlauer-berg/"
+                  ]
+                },
+                {
+                  "id": "osm-node-697751131",
+                  "name": "Wen Cheng II",
+                  "evidenceLevel": "high",
+                  "evidence": "Listed on the brand's official Berlin locations page as the \"Rosa-Luxemburg\" branch at Schönhauser Allee 10.",
+                  "sourceUrls": [
+                    "https://www.wenchengnoodles.com/locations/berlin"
+                  ]
+                },
+                {
+                  "id": "osm-node-9197928543",
+                  "name": "Wen Cheng III",
+                  "evidenceLevel": "high",
+                  "evidence": "Has its own page on the brand's official site under locations/berlin/simon-dach-str and appears on the Berlin locations index.",
+                  "sourceUrls": [
+                    "https://www.wenchengnoodles.com/locations/berlin/simon-dach-str"
+                  ]
+                },
+                {
+                  "id": "osm-node-3303223691",
+                  "name": "Xi-Mian",
+                  "evidenceLevel": "high",
+                  "evidence": "The restaurant's own History page is devoted to exactly two traditions — biang biang noodles from Shaanxi and Lanzhou noodles from Gansu — and pinwo.de independently files the operation as northwestern Chinese.",
+                  "sourceUrls": [
+                    "https://www.xi-mian.de/en/history",
+                    "https://www.pinwo.de/en/discover/cuisine/noodles"
+                  ]
+                },
+                {
+                  "id": "osm-node-3553888905",
+                  "name": "Tao Yuan Noodle House",
+                  "evidenceLevel": "medium",
+                  "evidence": "The menu leads with Lanzhou beef noodle soup, You Po Mian and Biang Biang Mian, and pinwo.de files it under northwestern Chinese. The northwestern lean is dominant but not exclusive.",
+                  "sourceUrls": [
+                    "https://www.tao-yuan-noodle-house-berlin.de/",
+                    "https://www.pinwo.de/en/discover/cuisine/noodles"
+                  ]
+                },
+                {
+                  "id": "osm-node-12215965639",
+                  "name": "The Noodle Town Mitte",
+                  "evidenceLevel": "medium",
+                  "evidence": "pinwo.de classifies it as northwestern Chinese with a biang-biang-centred line-up and the Instagram handle is titled \"Chinese Hand Pulled Noodles\".",
+                  "sourceUrls": [
+                    "https://www.pinwo.de/en/discover/cuisine/noodles",
+                    "https://www.instagram.com/thenoodletown/"
+                  ]
+                },
+                {
+                  "id": "osm-node-2940856560",
+                  "name": "Zhang Lala Beef Noodles",
+                  "evidenceLevel": "high",
+                  "evidence": "The official English page is titled \"Authentic Lanzhou beef noodles in Berlin\" and states it brings traditional Lanzhou beef noodle soup from northwest China; pinwo.de files it under the Lanzhou tradition.",
+                  "sourceUrls": [
+                    "https://zhanglala-beefnoodles.de/en/",
+                    "https://www.pinwo.de/en/stories/lanzhou-lamian-berlin"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Northeast / Dongbei",
+              "emoji": "🍲",
+              "geographicCenter": {
+                "lat": 43.9,
+                "lng": 125.3
+              },
+              "restaurantCount": 2,
+              "restaurants": [
+                {
+                  "id": "osm-node-2951410134",
+                  "name": "Fu Li Lai - Fulilai",
+                  "evidenceLevel": "medium",
+                  "evidence": "German food writing describes home cooking from northeastern China prepared by traditional family methods, built around jiaozi and bao, with a Chinese-language menu and a largely Chinese clientele.",
+                  "sourceUrls": [
+                    "https://berlinfoodexplosion.com/fulilai/",
+                    "https://wolt.com/en/deu/berlin/restaurant/chinesisches-restaurant-fu-li-lai"
+                  ]
+                },
+                {
+                  "id": "osm-node-2336889413",
+                  "name": "Lulu's China Restaurant",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site states \"Authentische Auswahl an Spezialitäten aus Nordostchina (Dongbei-Küche)\" and pinwo.de independently tags it Northeastern Chinese cuisine, listing Dongbei first.",
+                  "sourceUrls": [
+                    "https://www.lulus-china-restaurant.de/",
+                    "https://www.pinwo.de/en/restaurants/lulu-s"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Hunan",
+              "emoji": "🥘",
+              "geographicCenter": {
+                "lat": 28.23,
+                "lng": 112.94
+              },
+              "restaurantCount": 0,
+              "restaurants": []
+            },
+            {
+              "name": "Yunnan",
+              "emoji": "🍄",
+              "geographicCenter": {
+                "lat": 25.04,
+                "lng": 102.72
+              },
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-2029768586",
+                  "name": "Do De Li",
+                  "evidenceLevel": "medium",
+                  "evidence": "The official site describes \"authentische Köstlichkeiten der südchinesischen Kochkunst\" and centres the menu on Yunnan crossing-the-bridge noodle soups; Creme Guides and a Kantstraße food guide both state it has served Yunnan cuisine since the late 1990s.",
+                  "sourceUrls": [
+                    "https://www.dodeli.de/",
+                    "https://www.cremeguides.com/berlin/do-de-li-suedchinesisches-restaurant-kantstrasse/"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Fujian / Taiwan culinary family",
+              "emoji": "🐟",
+              "geographicCenter": {
+                "lat": 24.8,
+                "lng": 119.1
+              },
+              "restaurantCount": 2,
+              "restaurants": [
+                {
+                  "id": "osm-node-9974739217",
+                  "name": "Mibap",
+                  "evidenceLevel": "high",
+                  "evidence": "The official site brands it \"MIBAP — Taiwanese Fusion Kitchen\", tip Berlin featured it as a Taiwanese street-food restaurant, and the menu is consistently Taiwanese with gua bao, Taiwanese beef noodle and Taiwan kimchi.",
+                  "sourceUrls": [
+                    "https://www.mibap.berlin/en",
+                    "https://www.tip-berlin.de/essen-trinken/restaurants/mibap-taiwanesisches-restaurant-torstrasse/"
+                  ]
+                },
+                {
+                  "id": "osm-node-2018810774",
+                  "name": "牛稼莊 Beef House",
+                  "evidenceLevel": "high",
+                  "evidence": "German directories categorise it as Taiwanese and the Berlin Chinese-community site Huanying.Berlin lists it under 台湾美食; the concept is Taiwanese beef noodle soup.",
+                  "sourceUrls": [
+                    "https://www.huanying.berlin/taiwan-beef-house/",
+                    "https://onlinestreet.de/poi/TC9mUUJuQUN2S2hOWHNIYitFN0FWQT09"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Xinjiang / Uyghur",
+              "emoji": "🐑",
+              "geographicCenter": {
+                "lat": 43.82,
+                "lng": 87.62
+              },
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-4553089238",
+                  "name": "Chen's Beef Noodle House",
+                  "evidenceLevel": "high",
+                  "evidence": "The official website states the restaurant introduces diners to the flavours of Xinjiang cuisine and bills itself as Berlin's first halal hand-pulled noodle spot. Some third-party listings call it Taiwanese beef noodle; the first-party Xinjiang claim outranks them.",
+                  "sourceUrls": [
+                    "https://chensbeefnoodlehouse.food/",
+                    "https://chensbeefnoodlehouse.food/menu/"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Tibetan",
+              "emoji": "🏔️",
+              "geographicCenter": {
+                "lat": 29.65,
+                "lng": 91.12
+              },
+              "restaurantCount": 1,
+              "restaurants": [
+                {
+                  "id": "osm-node-4591621523",
+                  "name": "Happy Momo",
+                  "evidenceLevel": "medium",
+                  "evidence": "The restaurant's own ordering site repeatedly labels dishes Tibetan — \"tibetische, hausgemachte Nudeln\" and a farmer's salad \"nach Art tibetischer Nomaden\" — rather than Nepali, and listings describe an Amdo-plateau origin.",
+                  "sourceUrls": [
+                    "https://www.happy-momo-berlin.de/",
+                    "https://restaurantguru.com/Happy-Momo-Berlin"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
