@@ -1,0 +1,1066 @@
+[
+  {
+    "id": "osm-node-5362318662",
+    "name": "All Seasons - Chinesisches Erlebnisrestaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Own \"Über uns\" page describes only \"asiatische Spezialitäten\", a large buffet, a Mongolian show kitchen and entertainment. Germany's largest Chinese restaurant by seats.",
+    "checkedSources": [
+      "https://www.allseasons-berlin.de/all-seasons/"
+    ]
+  },
+  {
+    "id": "osm-node-2403685459",
+    "name": "Asia Deli",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Local press praises an un-westernised menu with Mapo Tofu and fish-fragrant aubergine, but no source names a region and the spread is a generic mainland mix. Genuine Chinese restaurant despite the \"Asia\" name.",
+    "checkedSources": [
+      "https://weddingweiser.de/asia-deli-nichts-ist-wie-es-scheint-sondern-viel-besser/"
+    ]
+  },
+  {
+    "id": "osm-node-1399712719",
+    "name": "Bambus China Restaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Only directory listings and generic reviews; no website, menu or press naming a region.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/china_restaurant_bambus"
+    ]
+  },
+  {
+    "id": "osm-node-1077596664",
+    "name": "Ben Wei",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "Official site claims only \"authentisches chinesisches Restaurant\" and mixes jiaozi, baozi, Chinese BBQ and maocai — a deliberately cross-regional card.",
+    "checkedSources": [
+      "https://www.benwei-essence.de/"
+    ]
+  },
+  {
+    "id": "osm-node-1522122185",
+    "name": "Chi-Chi-Kan",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "Own site claims only \"authentische chinesische Küche\"; the menu spans Peking duck, soup dumplings and shrimp dim sum with no dominant tradition.",
+    "checkedSources": [
+      "https://www.chichikan.de/"
+    ]
+  },
+  {
+    "id": "osm-node-660678960",
+    "name": "China City",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Broad menu described as \"predominantly from the Asian region\" plus dim sum. The restaurant's own site serves a self-signed TLS certificate and could not be read directly.",
+    "checkedSources": [
+      "http://china-city.eu/"
+    ]
+  },
+  {
+    "id": "osm-node-1078744626",
+    "name": "China Food",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Generic sauce-driven menu; one aggregator adds Thai and Vietnamese items. Flagged as an exclusion candidate pending a manual menu check.",
+    "checkedSources": [
+      "https://www.china-food-berlin.de/contact"
+    ]
+  },
+  {
+    "id": "osm-way-109936745",
+    "name": "China Garden",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Run by the Chen family since 2008 with an à-la-carte menu and local delivery; no region named. Address resolved via Nominatim to Hermsdorfer Damm 134, 13467.",
+    "checkedSources": [
+      "https://china-garden.berlin/"
+    ]
+  },
+  {
+    "id": "osm-node-527894799",
+    "name": "China Haus",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Standard German-Chinese Tagesmenü format. Address resolved to Köpenicker Str. 33, 12524.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/china_haus"
+    ]
+  },
+  {
+    "id": "osm-way-58692064",
+    "name": "China Restaurant Evergreen",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Own site and all directories give only \"chinesische Küche\".",
+    "checkedSources": [
+      "https://www.restaurant-evergreen.de/"
+    ]
+  },
+  {
+    "id": "osm-node-7000737221",
+    "name": "China Restaurant Panda II",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Textbook German-Chinese menu of chop suey, hot-and-sour soup and crispy duck. Closure uncertain: one Yelp listing for the address is marked closed while a duplicate listing and other directories still show hours.",
+    "checkedSources": [
+      "https://restaurantguru.com/Panda-Berlin-2"
+    ]
+  },
+  {
+    "id": "osm-node-3379283605",
+    "name": "China Snack",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The restaurant's own ordering portal categorises the operation as \"Chinesisch, Thailändisch, Vietnamesisch\". Flagged as an exclusion candidate pending a manual menu check.",
+    "checkedSources": [
+      "https://www.chinasnackberlinkantstrasse.de/"
+    ]
+  },
+  {
+    "id": "osm-node-1340883148",
+    "name": "China Town Restaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Buffet plus German lunch-menu format. Address resolved to Mariendorfer Damm 442, 12107.",
+    "checkedSources": [
+      "https://restaurantguru.com/China-Town-Berlin"
+    ]
+  },
+  {
+    "id": "osm-node-438098471",
+    "name": "China-Restaurant Hua Ting",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The restaurant's own English homepage claims only \"traditional Asian cuisine with Chinese dishes as our specialty\".",
+    "checkedSources": [
+      "https://www.huating.de/index_eng.html"
+    ]
+  },
+  {
+    "id": "osm-node-559589814",
+    "name": "China-Restaurant Hui Feng",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The only dish reviewers single out is crispy Peking duck — an isolated dish, which is not sufficient evidence.",
+    "checkedSources": [
+      "https://www.hui-feng.de/"
+    ]
+  },
+  {
+    "id": "osm-node-9797339519",
+    "name": "China-Restaurant Neu Wuzhou",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "Classic German-Chinese delivery fare. Wuzhou (梧州) is a Guangxi city, but nothing on the site or in reviews supports a Guangxi or Cantonese identity.",
+    "checkedSources": [
+      "https://www.neu-wuzhou-berlin.de/speisekarte"
+    ]
+  },
+  {
+    "id": "osm-node-4428767782",
+    "name": "Chuwoo",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "Trades as \"CHUWOO 初伍 (Chinesische Nudeln, Dim Sum, Gebäck)\" — deliberately pan-Chinese. The menu mixes northwestern hand-pulled noodles, Sichuan dan dan and Jiangnan xiao long bao.",
+    "checkedSources": [
+      "https://www.chuwoo-berlin.de/"
+    ]
+  },
+  {
+    "id": "osm-node-3974023956",
+    "name": "Deli-House",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "One local blog states it \"specialises in Szechuan food\", but this is a single non-independent mention with no official site or menu to corroborate it. The best re-check candidate in the set.",
+    "checkedSources": [
+      "https://www.34c.de/2020/02/22/deli-house-nurnberger-strasse/"
+    ]
+  },
+  {
+    "id": "osm-node-12747998498",
+    "name": "Dump Ling",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "Own site describes only handmade dumplings, noodles and \"authentische chinesische Gerichte\"; the menu straddles Chongqing 重庆小面 and Jiangnan xiao long bao.",
+    "checkedSources": [
+      "https://www.dump-ling.de/"
+    ]
+  },
+  {
+    "id": "osm-node-13770346501",
+    "name": "En Lee Cai - China Restaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "One aggregator describes it as Cantonese, but no official site, menu or press exists. It is the successor business at Kurfürstendamm 218 to Ho Lin Wah, which closed in December 2023.",
+    "checkedSources": [
+      "https://wolt.com/de/deu/berlin/restaurant/en-lee-cai-berlin"
+    ]
+  },
+  {
+    "id": "osm-node-3956575301",
+    "name": "Feast",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "Deliberately pan-regional by design: its own framing is \"Modern Chinese Cuisine\" bringing together north and south, with Peking duck, Sichuan dishes and Wenzhou/Qingtian snacks side by side.",
+    "checkedSources": [
+      "https://www.chinahirn.de/2021/11/01/chinahirn-isst-in-2/"
+    ]
+  },
+  {
+    "id": "osm-node-603110313",
+    "name": "Feng Yuan",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Neighbourhood delivery restaurant; own site and directories describe only \"chinesische Küche\".",
+    "checkedSources": [
+      "https://www.chinarestaurantfengyuan.de/"
+    ]
+  },
+  {
+    "id": "osm-node-429878216",
+    "name": "Fu Duo",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Local restaurant with generic Chinese listings. Address resolved to Triftstraße 33, 13127 (the node sits on the Zeuschelstraße corner).",
+    "checkedSources": [
+      "https://fu-duo.eatbu.com/?lang=en"
+    ]
+  },
+  {
+    "id": "osm-node-2352412652",
+    "name": "FúFú Bistro",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Yunnan",
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "Its merchant listing describes \"authentic Southwest Chinese cuisine\", specifying both Yunnan-style rice noodles and fiery Sichuan specialities — straddling two regions. A high-value re-check.",
+    "checkedSources": [
+      "https://wolt.com/de/deu/berlin/restaurant/fufu-bistro"
+    ]
+  },
+  {
+    "id": "osm-node-5892970977",
+    "name": "Goji",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "Listing sites tag it Cantonese with dim sum as the signature, but the restaurant's own website makes no regional claim and the corroboration is aggregator tags rather than editorial or menu evidence.",
+    "checkedSources": [
+      "https://goji-berlin.de/"
+    ]
+  },
+  {
+    "id": "osm-node-364265473",
+    "name": "Golden Garden",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Small family-run restaurant; own site and directories describe only \"asiatische/chinesische Küche\". Address resolved to Heinersdorfer Straße 19a, 12209.",
+    "checkedSources": [
+      "https://www.golden-garden.de/"
+    ]
+  },
+  {
+    "id": "osm-node-2347507165",
+    "name": "Green Flavor",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Candidate region checked and rejected",
+    "candidateRegions": [],
+    "researchNotes": "One aggregator claims an \"authentic taste of Zhejiang\", but the restaurant's own website explicitly declines a regional identity, framing itself around a pan-Chinese philosophy and a vegetable-forward kitchen. The aggregator claim is discarded.",
+    "checkedSources": [
+      "https://www.greenflavor.de/"
+    ]
+  },
+  {
+    "id": "osm-node-324792568",
+    "name": "Happy Buddha",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "Listings explicitly describe a menu spanning \"flavors from various regions of China\".",
+    "checkedSources": [
+      "https://happy-buddha.eatbu.com/?lang=en"
+    ]
+  },
+  {
+    "id": "osm-node-2325901152",
+    "name": "Hot Spot",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Jiangsu / Zhejiang / Shanghai"
+    ],
+    "researchNotes": "Well documented as genuinely three-region: Berliner Zeitung, Creme Guides, Falstaff and Schlemmer-Atlas all report that Jianhu Wu and Huiqin Wang cook original recipes from Sichuan, Jiangsu and Shanghai. A documented multi-region case rather than a data gap.",
+    "checkedSources": [
+      "https://www.berliner-zeitung.de/mensch-metropole/gastro-kritik-das-hot-spot-in-berlin-charlottenburg-vereint-chinesische-kueche-und-deutsche-weinkultur-li.48313",
+      "https://www.cremeguides.com/berlin/restaurant-hot-spot-charlottenburg/"
+    ]
+  },
+  {
+    "id": "osm-node-459671853",
+    "name": "Hua Li Du",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Cantonese / Guangdong",
+      "Jiangsu / Zhejiang / Shanghai",
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "The restaurant's own listing describes \"classical Chinese cuisine with specialties from Canton, Shanghai and Sichuan\" — an explicit three-region survey menu. A second, separate Hua Li Du exists at Sonnenallee 164.",
+    "checkedSources": [
+      "https://www.hualidu-berlin.de/"
+    ]
+  },
+  {
+    "id": "osm-node-667890442",
+    "name": "Jade Palast 2",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The official site describes chef Ye cooking the taste of his homeland, rendered as \"Qiantian\", which does not map onto any region in this taxonomy; the speciality is hand-pulled noodles. A genuine second branch, not a duplicate.",
+    "checkedSources": [
+      "https://jadepalast.de/jade.html"
+    ]
+  },
+  {
+    "id": "osm-node-3794337620",
+    "name": "Jing Yang",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Sources disagree on the region",
+    "candidateRegions": [
+      "Hunan",
+      "Jiangsu / Zhejiang / Shanghai"
+    ],
+    "researchNotes": "Sources conflict: a 2013 German blog headline calls it a \"Hunan-Garküche\", while pinwo.de's current profile shows a Jiangnan-dominant menu with Sichuan cold dishes. The Hunan claim is single-source and thirteen years old.",
+    "checkedSources": [
+      "https://www.pinwo.de/en/restaurants/jing-yang"
+    ]
+  },
+  {
+    "id": "osm-node-2008876351",
+    "name": "Kaiser Drachen",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Only German business directories and local-paper listings, all describing generic \"chinesische Spezialitäten\". Address resolved to Stubenrauchstraße 78, 12487.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/kaiser_drachen_chinarestaurant"
+    ]
+  },
+  {
+    "id": "osm-node-12101029720",
+    "name": "Kamala-Vegan",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "A genuinely dedicated fully vegan Chinese restaurant and tea house, so it is kept in the set. The menu carries some Sichuan-labelled items alongside Cantonese-style mock duck, with no dominant tradition and no regional self-claim.",
+    "checkedSources": [
+      "https://www.happycow.net/reviews/kamala-vegan-berlin-415641"
+    ]
+  },
+  {
+    "id": "osm-node-574773731",
+    "name": "Kongfu Chili",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Sources disagree on the region",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Shanxi / Shaanxi noodles"
+    ],
+    "researchNotes": "The restaurant's own site deliberately avoids a regional claim, saying only \"authentische chinesische kulinarische Erfahrung\". Berlin Food Stories calls it Sichuan, but the signature item is a Shaanxi belt noodle — the two signals point at different regions.",
+    "checkedSources": [
+      "https://www.kongfuchili.de/",
+      "https://www.berlinfoodstories.com/map/kongfu-chili"
+    ]
+  },
+  {
+    "id": "osm-node-3009308510",
+    "name": "Ky Ngo Asia-Imbiss",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [],
+    "researchNotes": "Only directory stubs exist; no menu, website or social presence. The proprietor name is Vietnamese, so this may be a Vietnamese-run generic Asia-Imbiss — flagged for an on-the-ground check. Address completes to Mittelbuschweg 17, 12055.",
+    "checkedSources": [
+      "https://onlinestreet.de/poi/NFNuRDVxUnZ2WmwrOWYyRWtHTG9WUT09"
+    ]
+  },
+  {
+    "id": "osm-node-3876636457",
+    "name": "Lao Xiang",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Sources disagree on the region",
+    "candidateRegions": [
+      "Northern China / Beijing"
+    ],
+    "researchNotes": "Berlin Food Stories classifies it Northern Chinese while an independent long-form review describes a menu spanning Shanghai, Sichuan, Beijing duck and dim sum. The name is 老乡 (\"fellow villager\"), not 湘 (Hunan) — a name-based Hunan inference would have been wrong.",
+    "checkedSources": [
+      "https://www.berlinfoodstories.com/map/lao-xiang",
+      "https://cathzine.substack.com/p/lao-xiang"
+    ]
+  },
+  {
+    "id": "osm-node-7539041783",
+    "name": "Le Moon China Restaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "Now trades as \"Willing China Restaurant\"; the OpenStreetMap name is stale. Descriptions mention Sichuan heat alongside standard sweet-and-sour dishes, with no dominant tradition.",
+    "checkedSources": [
+      "https://www.berlinfoodstories.com/map/le-moon"
+    ]
+  },
+  {
+    "id": "osm-node-573418204",
+    "name": "Lecker Song",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The menu is organised purely by dumpling type with no regional framing; \"dim sum\" here means assorted dumplings rather than a Cantonese yum cha service.",
+    "checkedSources": [
+      "https://www.leckersong.de/"
+    ]
+  },
+  {
+    "id": "osm-node-4452434689",
+    "name": "Lei's Küche",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Hunan",
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "The restaurant's own menu labels dishes under two regions simultaneously — \"Hunan-Spezialität\" and \"nach Hunan-Art\" alongside \"Mapo Tofu nach Sichuan-Art\". A genuine two-region menu.",
+    "checkedSources": [
+      "https://www.leiskuche-berlin.de/"
+    ]
+  },
+  {
+    "id": "osm-node-3072346935",
+    "name": "Lon-Men",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A long-running third-generation delivery restaurant offering Szechuan dishes, Peking duck and vegetarian options together — a broad German-Chinese menu. Not the same business as Lon Men's Noodle House, a separate Taiwanese restaurant on Kantstraße.",
+    "checkedSources": [
+      "https://restaurantguru.com/Lon-Men-Berlin"
+    ]
+  },
+  {
+    "id": "osm-node-2952526064",
+    "name": "Long Li House",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "The restaurant's own contact page advertises \"Chinesisch, Thailändisch, Vietnamesisch\" and the menu includes Thai curries and Indonesian-style fried rice. Chinese is dominant so it was not excluded, but it is a mixed-menu operation.",
+    "checkedSources": [
+      "https://www.long-li-house-berlin.de/contact"
+    ]
+  },
+  {
+    "id": "osm-node-949590831",
+    "name": "Long March Canteen",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Cantonese / Guangdong",
+      "Hunan"
+    ],
+    "researchNotes": "Coverage consistently describes an explicitly pan-regional concept — dim sum at lunch and regional small plates at dinner drawing on Sichuan, Cantonese and Hunan traditions at once. Deliberately multi-regional by design.",
+    "checkedSources": [
+      "https://www.yelp.com/biz/long-march-canteen-berlin"
+    ]
+  },
+  {
+    "id": "osm-node-2776721738",
+    "name": "Look & Feel Restaurant 008GRILL",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Trades as \"008 Look & Feel Grill\", a Chinese table-grill concept with automated per-table grills; the own site describes \"modern Chinese BBQ\" with no regional attribution.",
+    "checkedSources": [
+      "https://www.008grill.de/index.html"
+    ]
+  },
+  {
+    "id": "osm-node-5001796524",
+    "name": "Lu Kitchen",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The verifiable menu is bao buns, xian bing, soups and rice dishes. Nothing on its social or delivery listings claims Shandong or uses 鲁; \"Lu\" is more likely a surname.",
+    "checkedSources": [
+      "https://www.instagram.com/lukitchen_berlin/"
+    ]
+  },
+  {
+    "id": "osm-node-508679743",
+    "name": "Lucky chinese",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A buffet-and-menu neighbourhood restaurant; reviews note the food tastes Germanised. No regional claim anywhere.",
+    "checkedSources": [
+      "http://www.lucky-chinese.de/"
+    ]
+  },
+  {
+    "id": "osm-node-12204875352",
+    "name": "Lucky Star",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "One aggregator describes Cantonese dishes plus all-you-can-eat hot pot, but this is single-source and hot pot is not Cantonese; the restaurant's own domain failed to serve over TLS.",
+    "checkedSources": [
+      "https://www.yelp.com/biz/lucky-star-berlin"
+    ]
+  },
+  {
+    "id": "osm-node-1387921995",
+    "name": "Man-Far",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A long-standing à-la-carte neighbourhood restaurant with a standard broad German-Chinese card. Address resolved to Brunsbütteler Damm 260, 13581.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/china_restaurant_man_far"
+    ]
+  },
+  {
+    "id": "osm-node-998544690",
+    "name": "Mayflower",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Own site and all listings describe \"traditionelle, authentische chinesische Küche\" with cheap lunch menus; no regional claim in German or English.",
+    "checkedSources": [
+      "http://www.chinarestaurant-mayflower.de/"
+    ]
+  },
+  {
+    "id": "osm-node-448814556",
+    "name": "Ming Dynastie",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "The group's own site claims only \"Feinste authentische Spezialitäten aus Fernostasien\" and foregrounds live dim sum production; Peking duck, dim sum and Sichuan dishes appear together. This is the Jannowitzbrücke flagship.",
+    "checkedSources": [
+      "https://www.ming-dynastie.de/"
+    ]
+  },
+  {
+    "id": "osm-node-925523575",
+    "name": "Ming Dynastie",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "Confirmed as \"Ming Dynastie II\" on the group's own website — a genuine second branch with the same menu, concept and absence of a regional claim.",
+    "checkedSources": [
+      "https://www.ming-dynastie.de/"
+    ]
+  },
+  {
+    "id": "osm-node-1194782058",
+    "name": "Ming Jia",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Family-run restaurant advertising \"traditionelle chinesische Küche\" and \"asiatische Spezialitäten\" with house-made dim sum; no region named.",
+    "checkedSources": [
+      "https://www.mingjia.de/"
+    ]
+  },
+  {
+    "id": "osm-node-8118282317",
+    "name": "Mr. Liu",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A broad card of spring rolls, Peking wraps, dumplings, noodles and poultry, described only as a \"harmonious blend of spiciness and mildness\".",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/mr_liu_china_restaurant"
+    ]
+  },
+  {
+    "id": "osm-node-3714150071",
+    "name": "Nin Hao",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Jiangsu / Zhejiang / Shanghai"
+    ],
+    "researchNotes": "An all-you-can-eat hotpot house with eight broths ranging from spicy Sichuan to mild Japanese sukiyaki — deliberately pan-regional. Owner Gengui Ni is documented as having cooked for decades in Shanghai, but the menu is not Shanghainese.",
+    "checkedSources": [
+      "https://panda.kulturarche.de/feuertopf-das-nin-hao-in-der-bismarckstrasse-berliner-china-restaurants/"
+    ]
+  },
+  {
+    "id": "osm-node-3089158092",
+    "name": "Panda Garden",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The official site describes only \"Chinesische Küche mit Herz\" with a general menu plus a dim sum specialities sheet; no region is named.",
+    "checkedSources": [
+      "https://panda-garden.de/"
+    ]
+  },
+  {
+    "id": "osm-node-1251095626",
+    "name": "Peking Ente",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Northern China / Beijing",
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "The official site's own tagline is \"Spezialitäten aus Peking und der Provinz Szechuan\", and Creme Guides reports owner Mengling Tang serving traditional dishes from both regions. Two co-equal regions are claimed by the primary source.",
+    "checkedSources": [
+      "https://www.peking-ente-berlin.de/",
+      "https://www.cremeguides.com/berlin/chinesisches-restaurant-peking-ente-in-mitte/"
+    ]
+  },
+  {
+    "id": "osm-node-976288688",
+    "name": "Peking Perle",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The official site promises traditional dishes across \"die vielfältige Welt der chinesischen Küche\" — explicitly pan-Chinese with no region named. Opened 2025 in the former Landhaus Perle; address resolved to Falkenseer Damm 17, 13585.",
+    "checkedSources": [
+      "https://pekingperle-restaurant-hotel.de/"
+    ]
+  },
+  {
+    "id": "osm-node-6276672897",
+    "name": "Phoenix China Restaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A standard à-la-carte-plus-buffet operation with no regional claim on any listing or its own booking page.",
+    "checkedSources": [
+      "https://chinarestaurantphoenix.eatbu.com/?lang=en"
+    ]
+  },
+  {
+    "id": "osm-node-539466869",
+    "name": "Pong's",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "One directory profile describes \"kantonesisch geprägte Küche\" and duck specialities, but the restaurant's own site says only \"beste traditionelle Küche\". A single directory blurb is not sufficient.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/pongs_china_restaurant"
+    ]
+  },
+  {
+    "id": "osm-node-432472653",
+    "name": "Regent",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Directory and review listings describe a general Asian/Chinese harbourside restaurant with roast duck and no regional tradition. The node appears mis-placed: the registered address is Imchenallee 44, 14089.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/china_restaurant_regent"
+    ]
+  },
+  {
+    "id": "osm-way-129007112",
+    "name": "Reuter Terrassen",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The official site sells an all-you-can-eat buffet of up to eighty dishes under the generic banner \"asiatische Esskultur\". Borderline for exclusion but it is a dedicated China-Restaurant.",
+    "checkedSources": [
+      "https://www.reuter-terrassen.de/"
+    ]
+  },
+  {
+    "id": "osm-node-4947636022",
+    "name": "Royal Gourmet Chinarestaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A broad Chinese menu plus a Mongolian-BBQ-style buffet. The \"Mongolian BBQ\" format is a Taiwanese-invented buffet grill, not evidence of Inner Mongolian or Xinjiang cuisine.",
+    "checkedSources": [
+      "https://www.yelp.com/biz/royal-gourmet-berlin"
+    ]
+  },
+  {
+    "id": "osm-node-262359118",
+    "name": "Ruyixuan Hotpot",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "The official site pitches an imperial-palace aesthetic and TCM-principled broths without naming a region, and the broth line-up is deliberately multi-regional in an all-you-can-eat format.",
+    "checkedSources": [
+      "https://ruyixuanhotpot.de/"
+    ]
+  },
+  {
+    "id": "osm-node-282756005",
+    "name": "Shanghai",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Candidate region checked and rejected",
+    "candidateRegions": [],
+    "researchNotes": "The name-versus-cuisine trap: the restaurant's own ordering site is titled \"Chinesisch, Vietnamesisch, Asiatisch bestellen\" and the card is broad, with nothing claiming Shanghainese cooking and no Shanghai signatures dominating.",
+    "checkedSources": [
+      "https://www.chinarestaurant-shanghai-berlin.de/"
+    ]
+  },
+  {
+    "id": "osm-node-3354419283",
+    "name": "Shifang House",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "Several aggregator blurbs describe \"bold Sichuan flavors\", but there is no official site or social account making that claim, the blurbs appear machine-generated and mutually derivative, and one simultaneously lists a Hunan-style chopped-pepper fish.",
+    "checkedSources": [
+      "https://wolt.com/en/deu/berlin/restaurant/shifang-house-ranckestr"
+    ]
+  },
+  {
+    "id": "osm-node-525495698",
+    "name": "Sun Wah",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "The booking page markets only \"Asian & Chinese cuisine\". The name reads as a Cantonese romanisation (新華), which is suggestive of ownership but is name-only evidence.",
+    "checkedSources": [
+      "https://sun-wah.eatbu.com/?lang=en"
+    ]
+  },
+  {
+    "id": "osm-node-693289414",
+    "name": "Tai-Lee",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A third-generation family business since 1978 with no regional claim. Closure uncertain: speisekarte.de marks it permanently closed while several directories still publish live hours — needs a phone check before the record is retired.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/china_restaurant_tai_lee"
+    ]
+  },
+  {
+    "id": "osm-node-662421078",
+    "name": "tangs kantine",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Jiangsu / Zhejiang / Shanghai",
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "The restaurant's own site states it orientates itself on Sichuan and Shanghai cuisine and also offers Cantonese dim sum — three regions named, two of them co-equal. A \"too many regions\" case rather than too little evidence.",
+    "checkedSources": [
+      "https://www.tangs-kantine.de/"
+    ]
+  },
+  {
+    "id": "osm-node-1512604659",
+    "name": "the Butterfly Lovers",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Fujian / Taiwan culinary family"
+    ],
+    "researchNotes": "A genuine all-vegan Chinese restaurant opened in 2021, so not merely a tea or cultural concept, but its own positioning is an explicit mix of Sichuan, Taiwanese and Hu cai.",
+    "checkedSources": [
+      "https://ceecee.cc/en/the-butterfly-lovers-vegane-chinesische-kueche-am-weinbergspark/"
+    ]
+  },
+  {
+    "id": "osm-node-30020303",
+    "name": "Tibet Haus",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Candidate region checked and rejected",
+    "candidateRegions": [
+      "Tibetan"
+    ],
+    "researchNotes": "The OpenStreetMap tibetan tag is not supported: the restaurant self-describes as the first \"Tibetan, Nepalese and Thai\" specialty restaurant in Germany and carries Thai curries. A three-country menu does not support a Tibetan classification.",
+    "checkedSources": [
+      "https://www.yelp.com/biz/gastst%C3%A4tte-tibet-haus-berlin-2"
+    ]
+  },
+  {
+    "id": "osm-node-9569467224",
+    "name": "Ting Song",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "Trades as 随园·听松 Hotpot Restaurant & Teahouse; its own marketing stresses eight broths and \"traditional and contemporary flavours from China\" rather than a single provincial identity.",
+    "checkedSources": [
+      "https://wolt.com/en/deu/berlin/restaurant/hotpot-restaurant-ting-song"
+    ]
+  },
+  {
+    "id": "osm-node-4515085565",
+    "name": "Tu-Long",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "Trades as \"China Bistro Tu-Long\", a high-volume bistro near TU Berlin with a short seventeen-dish card described only as \"authentisch chinesische Küche\".",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/china_bistro_tu_long"
+    ]
+  },
+  {
+    "id": "osm-node-9405754841",
+    "name": "UUU",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "An eight-seat Chinese fine-dining counter whose concept is described by two independent outlets as a tasting tour through \"die kulinarische Vielfalt Chinas\" — explicitly pan-regional. Address resolved to Sprengelstraße 15, 13353.",
+    "checkedSources": [
+      "https://uuu-berlin.de/",
+      "https://weddingweiser.de/uuu-eine-kulinarische-china-reise/"
+    ]
+  },
+  {
+    "id": "osm-node-8618005917",
+    "name": "Wan Loi China Restaurant",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "A long-running neighbourhood restaurant in Rudow with a standard German-Chinese card. Address resolved to Neuköllner Straße 302, 12357; the premises previously traded under other names.",
+    "checkedSources": [
+      "https://www.wan-loi.de/bildergalerie/speisekarte/"
+    ]
+  },
+  {
+    "id": "osm-node-11426631969",
+    "name": "Wen's Küche",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Suggestive but under-evidenced; needs a menu check",
+    "candidateRegions": [],
+    "researchNotes": "A small Mariendorf home-cooking spot with no official site and no press. The one line describing \"Cantonese lightness meets Shanghai depth\" comes from an auto-generated aggregator page and is not usable evidence. Address resolved to Mariendorfer Damm 175, 12107.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/wens_kueche"
+    ]
+  },
+  {
+    "id": "osm-node-795171980",
+    "name": "Wok Show",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [
+      "Northern China / Beijing"
+    ],
+    "researchNotes": "A well-documented family restaurant famous for handmade jiaozi. Jiaozi lean northern, but that is a single dish family and no source states an owner origin or a northern house identity — deliberately not upgraded.",
+    "checkedSources": [
+      "https://mitvergnuegen.com/tipps/jianbing-crepes-und-jiaozi-im-wok-show/"
+    ]
+  },
+  {
+    "id": "osm-node-2476267528",
+    "name": "Wunderbar",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "The official site (恩典之家) claims \"authentisch chinesisches Restaurant\" and traditional technique with no province named. Genuinely a dedicated Chinese restaurant despite the German name.",
+    "checkedSources": [
+      "https://wunderbar-essen.de/"
+    ]
+  },
+  {
+    "id": "osm-node-6253992970",
+    "name": "YiLa Nudel",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Sources disagree on the region",
+    "candidateRegions": [
+      "Sichuan / Chongqing",
+      "Shanxi / Shaanxi noodles"
+    ],
+    "researchNotes": "The own site claims only \"authentic Chinese cuisine\". pinwo.de labels it Sichuan-style, but its lead dishes are Youpo Mian (Shaanxi) and Zhajiang Mian (Beijing), so the single source and the menu conflict.",
+    "checkedSources": [
+      "https://www.yila-nudel.de/en",
+      "https://www.pinwo.de/en/discover/cuisine/noodles"
+    ]
+  },
+  {
+    "id": "osm-node-12537401302",
+    "name": "YOU MI 优米",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [
+      "Sichuan / Chongqing"
+    ],
+    "researchNotes": "The official site advertises handmade dim sum, spicy Szechuan specialities, hotpot and house curries side by side — a broad Chinese card rather than one tradition. Previously traded as Deli House.",
+    "checkedSources": [
+      "https://you-mi.de/"
+    ]
+  },
+  {
+    "id": "osm-node-540879629",
+    "name": "Yumcha Heroes",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Candidate region checked and rejected",
+    "candidateRegions": [
+      "Cantonese / Guangdong"
+    ],
+    "researchNotes": "A name-only trap declined: 飲茶 is a Cantonese term, but the restaurant's own site defines yumcha generically as an ancient tradition in Chinese tea houses and never claims a Cantonese identity; the menu is a modern dumpling card.",
+    "checkedSources": [
+      "https://www.yumchaheroes.com/"
+    ]
+  },
+  {
+    "id": "osm-node-5398239819",
+    "name": "Zhong Hua",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Multiple co-equal regions; no single dominant tradition",
+    "candidateRegions": [],
+    "researchNotes": "The own menu is headed \"Chinesisch, Thailändisch, Asiatisch\" with dedicated Thai curry sections, and the Chinese half mixes Szechuan, Hong Kong and Shanghai dish names. Borderline for exclusion.",
+    "checkedSources": [
+      "https://www.zhong-hua.de/menu"
+    ]
+  },
+  {
+    "id": "osm-node-7687404191",
+    "name": "Zhou's Fine",
+    "countryId": "china",
+    "cityId": "berlin",
+    "reason": "Insufficient regional evidence",
+    "candidateRegions": [],
+    "researchNotes": "An all-you-can-eat venue in the Ratskeller Reinickendorf described as a buffet of assorted Asian dishes plus Peking duck. Borderline for exclusion, and no 2026 trading confirmation was found.",
+    "checkedSources": [
+      "https://www.speisekarte.de/berlin/restaurant/zhous_fine"
+    ]
+  }
+]

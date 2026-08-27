@@ -1,4 +1,13 @@
-import { buildAtlasHierarchy, countries, datasetMeta, googleMapsUrl, metropolitanEditions } from "./restaurants.js?v=metropolitan-editions-18";
+import {
+  buildAtlasHierarchy,
+  countriesForCity,
+  datasetMetaForCity,
+  googleMapsUrl,
+  isLiveCity,
+  liveCityIds,
+  metropolitanEditions,
+  totalLiveRestaurants,
+} from "./restaurants.js?v=multi-city-4";
 
 const D3_URL = "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm";
@@ -46,6 +55,7 @@ let worldMesh;
 let hierarchyRoot;
 let cityNodes = [];
 let countryNodes = [];
+const defaultLiveCityId = liveCityIds[0] ?? "munich";
 let resizeTimer;
 let cursorMoveFrame = 0;
 let cursorClientX = 0;
@@ -94,8 +104,22 @@ function buildDataIndex() {
   hierarchyRoot = d3.hierarchy(buildAtlasHierarchy());
   hierarchyRoot.sum((datum) => datum.layoutValue ?? 0);
   cityNodes = hierarchyRoot.children ?? [];
-  const munich = cityNodes.find((node) => node.data.id === "munich");
-  countryNodes = (munich?.children ?? []).flatMap((continent) => continent.children ?? []);
+  focusCountryNodesOn(defaultLiveCityId);
+}
+
+// `countryNodes` is the flat country list for whichever edition is on screen. The gallery
+// and the previews for cities without a dataset borrow the default edition's shape.
+function countryNodesOf(cityNode) {
+  return (cityNode?.children ?? []).flatMap((continent) => continent.children ?? []);
+}
+
+function focusCountryNodesOn(cityId) {
+  const city = cityNodes.find((node) => node.data.id === cityId && node.data.live);
+  countryNodes = countryNodesOf(city ?? cityNodes.find((node) => node.data.live));
+}
+
+function activeCityId() {
+  return state.cityId && isLiveCity(state.cityId) ? state.cityId : defaultLiveCityId;
 }
 
 function resolveMetropolitanMarkerCollisions(items, width, height, compact, obstacles = []) {
@@ -175,6 +199,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   state.countryId = null;
   state.cuisineId = null;
   state.treeFocusId = null;
+  focusCountryNodesOn(defaultLiveCityId);
   const width = Math.max(360, scene.clientWidth || window.innerWidth || 1200);
   const height = Math.max(540, scene.clientHeight || window.innerHeight || 760);
   const compact = width < 720;
@@ -598,8 +623,11 @@ function homeContinentForFeature(feature) {
 function metropolitanProfile(city) {
   const live = Boolean(city.data.live);
   if (live) {
+    // Each live edition has its own countries. Reading the module-global `countryNodes` here made
+    // every live city report the focused edition's composition, so Berlin drew Munich's.
+    const nodes = countryNodesOf(city);
     const composition = Object.fromEntries(Object.keys(CONTINENT_COLORS).map((continent) => [continent, 0]));
-    countryNodes.forEach((country) => {
+    nodes.forEach((country) => {
       const continent = country.parent?.data.name;
       if (continent in composition) composition[continent] += country.data.available;
     });
@@ -607,10 +635,10 @@ function metropolitanProfile(city) {
       city,
       live,
       restaurantCount: city.data.available,
-      cuisineDiversity: countryNodes.filter((country) => country.data.available > 0).length,
+      cuisineDiversity: nodes.filter((country) => country.data.available > 0).length,
       completeness: 1,
       composition,
-      highlights: [...countryNodes].sort((a, b) => b.data.available - a.data.available).slice(0, 3).map((country) => `${country.data.flag} ${country.data.name}`),
+      highlights: [...nodes].sort((a, b) => b.data.available - a.data.available).slice(0, 3).map((country) => `${country.data.flag} ${country.data.name}`),
     };
   }
   const previewCountries = countryNodes.map((country) => ({
@@ -671,9 +699,9 @@ function activateMetropolitan(profile) {
 }
 
 function cityCardMarkup(city) {
-  const live = city.data.id === "munich";
+  const live = Boolean(city.data.live);
   const caption = live
-    ? `${city.data.country} · ${datasetMeta.includedRestaurants.toLocaleString("en")} restaurants`
+    ? `${city.data.country} · ${(datasetMetaForCity(city.data.id)?.includedRestaurants ?? city.data.available).toLocaleString("en")} restaurants`
     : `${city.data.country} · Coming...`;
   return `
     <button class="metropolitan-card world-card${live ? " is-live" : " is-planned"}" type="button" data-city-id="${escapeHtml(city.data.id)}" aria-label="Open ${escapeHtml(city.data.name)} culinary world map">
@@ -739,7 +767,7 @@ async function openCity(cityId) {
   if (cityTransitionInFlight) return;
   const homeMap = scene.querySelector(".home-world-map");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (cityId !== "munich" || !homeMap?.__homeGrid || reduceMotion) {
+  if (!isLiveCity(cityId) || !homeMap?.__homeGrid || reduceMotion) {
     commitCityOpen(cityId);
     return;
   }
@@ -748,7 +776,7 @@ async function openCity(cityId) {
   scene.setAttribute("aria-busy", "true");
   document.body.classList.add("is-home-cuisine-morphing");
   const status = scene.querySelector(".home-world-status");
-  if (status) status.textContent = `${datasetMeta.includedRestaurants.toLocaleString("en")} Munich restaurants · reshaping the world`;
+  if (status) status.textContent = `${totalLiveRestaurants.toLocaleString("en")} restaurants · reshaping the world`;
   try {
     const clusterReveal = captureHomeCuisineClusters(homeMap, cityId);
     pendingCuisineClusterReveal = clusterReveal;
@@ -798,7 +826,7 @@ function buildHomeCuisineSourcePlans(homeMap) {
   return { cellSize, plans, worldWidth };
 }
 
-function captureHomeCuisineClusters(homeMap, cityId = "munich") {
+function captureHomeCuisineClusters(homeMap, cityId = defaultLiveCityId) {
   const { cellSize, plans, worldWidth } = buildHomeCuisineSourcePlans(homeMap);
   const layer = homeMap.querySelector(".home-world-zoom-layer");
   const matrix = layer?.getScreenCTM();
@@ -991,7 +1019,7 @@ async function animateCuisineClustersIntoPlace(clusterReveal, handoffOverlay) {
 async function returnToWorld() {
   if (cityTransitionInFlight || !state.cityId) return;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const clusterReveal = state.cityId === "munich" ? activeCuisineClusterReveal : null;
+  const clusterReveal = isLiveCity(state.cityId) ? activeCuisineClusterReveal : null;
   if (!clusterReveal) {
     activeCuisineClusterReveal = null;
     renderGallery();
@@ -1056,6 +1084,7 @@ function homeCountryCellAnchor(cells, countryNode, projection, cellSize) {
 function commitCityOpen(cityId) {
   document.body.classList.remove("home-world-view");
   state.cityId = cityId;
+  focusCountryNodesOn(cityId);
   state.countryId = null;
   state.cuisineId = null;
   state.treeFocusId = null;
@@ -1111,7 +1140,7 @@ function ensureCityBackButton() {
 function renderWorldMap() {
   const city = cityNodes.find((node) => node.data.id === state.cityId);
   if (!city) return renderGallery();
-  const live = city.data.id === "munich";
+  const live = Boolean(city.data.live);
   const values = live
     ? countryNodes
     : countryNodes.map((node) => previewCountryNode(city.data.id, node));
@@ -1129,7 +1158,7 @@ function renderWorldMap() {
       ${breadcrumbMarkup(city, null)}
       <div class="map-heading">
         <p><strong>${escapeHtml(city.data.name)}</strong> through the world’s kitchens</p>
-        <span>${live ? `${datasetMeta.includedRestaurants.toLocaleString("en")} restaurants · flag size shows density` : "Coming... · dataset pending"}</span>
+        <span>${live ? `${(datasetMetaForCity(city.data.id)?.includedRestaurants ?? city.data.available).toLocaleString("en")} restaurants · flag size shows density` : "Coming... · dataset pending"}</span>
       </div>
       <svg class="world-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="world-map-title world-map-desc">
         <title id="world-map-title">Country cuisines represented in ${escapeHtml(city.data.name)}</title>
@@ -1338,7 +1367,7 @@ function renderCountryMap() {
 function cuisineNodesFor(country) {
   const directRestaurants = country.children?.every((child) => child.data.kind === "restaurant");
   if (directRestaurants) {
-    const source = countries.find((item) => item.id === country.data.countryId);
+    const source = countriesForCity(activeCityId()).find((item) => item.id === country.data.countryId);
     return [{
       data: {
         id: `national-${country.data.countryId}`,
@@ -1564,7 +1593,7 @@ function treeDisplayName(datum) {
 function renderCuisineCartogram() {
   const city = cityNodes.find((node) => node.data.id === state.cityId);
   if (!city) return renderGallery();
-  const live = city.data.id === "munich";
+  const live = Boolean(city.data.live);
   const values = live ? countryNodes : countryNodes.map((node) => previewCountryNode(city.data.id, node));
   const width = Math.max(720, scene.clientWidth || 1200);
   const height = Math.max(520, scene.clientHeight || 760);
@@ -1718,7 +1747,7 @@ function renderCuisineCartogram() {
 function renderSvgBalloonCartogram() {
   const city = cityNodes.find((node) => node.data.id === state.cityId);
   if (!city) return renderGallery();
-  const live = city.data.id === "munich";
+  const live = Boolean(city.data.live);
   const values = live ? countryNodes : countryNodes.map((node) => previewCountryNode(city.data.id, node));
   const width = Math.max(720, scene.clientWidth || 1200);
   const height = Math.max(520, scene.clientHeight || 760);
@@ -1874,7 +1903,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=mobile-anchor-labels-1"
+          src="./experiments/claude-cartogram.html?v=berlin-wide-6&city=${encodeURIComponent(city.data.id)}"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
@@ -2103,7 +2132,7 @@ function declutterBalloonLabels(svgElement) {
 function renderEditorialWorldAtlas() {
   const city = cityNodes.find((node) => node.data.id === state.cityId);
   if (!city) return renderGallery();
-  const live = city.data.id === "munich";
+  const live = Boolean(city.data.live);
   const values = live ? countryNodes : countryNodes.map((node) => previewCountryNode(city.data.id, node));
   const width = Math.max(720, scene.clientWidth || 1200);
   const height = Math.max(520, scene.clientHeight || 760);
@@ -2507,15 +2536,6 @@ function buildGridCartogram(values, width, height) {
     item.nameFontSize = clamp(8 + Math.sqrt(item.displayArea) * 0.38, 11, 15);
   });
   relaxCartogramLabels(items, cellSize, columns, rows);
-  window.__dbg = items.map((e) => ({
-    name: e.node.data.name,
-    quota: e.quota,
-    cells: e.cells.length,
-    stamp: e.stampCells?.length ?? null,
-    onStamp: e.stampIndex ? e.cells.filter((c) => e.stampIndex.has(`${c.x - e.seedX},${c.y - e.seedY}`)).length : 0,
-    seedX: e.seedX, seedY: e.seedY,
-    cellList: e.cells, stampList: e.stampCells,
-  }));
   return { items, columns, rows, cellSize, gridWidth, gridHeight, originX, originY };
 }
 
@@ -2566,17 +2586,6 @@ function relaxCartogramAnchors(items, columns, rows, resolutionScale) {
     item.anchorX = clamp(item.x, minAnchorX, maxAnchorX);
     item.anchorY = clamp(item.y, minAnchorY, maxAnchorY);
   });
-  let t = 0, ok = 0; const bad = [];
-  for (let i = 0; i < items.length; i += 1) for (let j = i + 1; j < items.length; j += 1) {
-    const a = items[i], b = items[j];
-    if (a.node.parent?.data.name !== b.node.parent?.data.name) continue;
-    const tx = Math.abs(b.baseX - a.baseX) < 4 ? 0 : Math.sign(b.baseX - a.baseX);
-    const ty = Math.abs(b.baseY - a.baseY) < 4 ? 0 : Math.sign(b.baseY - a.baseY);
-    t += 1;
-    if ((tx === 0 || tx === Math.sign(b.anchorX - a.anchorX)) && (ty === 0 || ty === Math.sign(b.anchorY - a.anchorY))) ok += 1;
-    else bad.push(`${a.node.data.name}|${b.node.data.name}`);
-  }
-  window.__bearing = { pct: +(ok / t * 100).toFixed(1), bad };
 }
 
 // Keeps countries on the correct side of one another. forceLink and forceCollide only

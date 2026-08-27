@@ -28,7 +28,7 @@
           "sourceRestaurantCount": 56,
           "classifiedRestaurantCount": 25,
           "unclassifiedRestaurantCount": 31,
-          "auditNote": "Phase 1 audit (2026-07-25): re-researched all 63 originally china-national-tagged restaurants via official sites, menus, social media, and independent local food press. 7 restaurants were removed from the Munich dataset entirely as not genuinely dedicated Chinese restaurants (fusion/pan-Asian concepts or credibly mis-tagged); the sourceRestaurantCount above reflects the remaining 56. See audit-report.md for the full restaurant-by-restaurant record, including 2 restaurants with unresolved closure signals that were kept unclassified pending field verification rather than removed.",
+          "auditNote": "Phase 1 audit (2026-07-25): re-researched all 63 originally china-national-tagged restaurants via official sites, menus, social media, and independent local food press. 7 restaurants were removed from the Munich dataset entirely as not genuinely dedicated Chinese restaurants (fusion/pan-Asian concepts or credibly mis-tagged); the sourceRestaurantCount above reflects the remaining 56. See reports/munich-audit-report.md for the full restaurant-by-restaurant record, including 2 restaurants with unresolved closure signals that were kept unclassified pending field verification rather than removed.",
           "regions": [
             {
               "name": "Sichuan / Chongqing",

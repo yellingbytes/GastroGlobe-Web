@@ -1,5 +1,5 @@
 import * as munichSource from "./data/munich-restaurants.js?v=2026-08-02-1";
-import * as berlinSource from "./data/berlin-restaurants.js?v=2026-08-25-1";
+import * as berlinSource from "./data/berlin-restaurants.js?v=2026-08-26-2";
 import {
   applyMunichChinaEditorialUpdate,
   applyMunichChinaTaxonomyUpdate,
@@ -8,7 +8,7 @@ import {
   legacyGeographicAssignments,
   researchedCountryRegions,
 } from "./data/global-culinary-regions.js?v=2026-08-05-1";
-import { applyBerlinEditorialUpdate } from "./data/berlin-regional-findings.js?v=2026-08-25-2";
+import { applyBerlinEditorialUpdate } from "./data/berlin-regional-findings.js?v=2026-08-26-2";
 
 // Every city is assembled the same way: an OpenStreetMap-derived base dataset, then any
 // hand-researched regional layers on top. Munich carries more of those layers than Berlin
@@ -29,7 +29,7 @@ const editionSpecs = [
   {
     id: "berlin",
     source: berlinSource,
-    regionalTaxonomyUrl: "./data/berlin-regional-cuisine-taxonomy.json?v=2026-08-25-2",
+    regionalTaxonomyUrl: "./data/berlin-regional-cuisine-taxonomy.json?v=2026-08-26-2",
     applyEditorialUpdates(dataset) {
       applyBerlinEditorialUpdate(dataset);
     },
@@ -479,14 +479,21 @@ function buildLegacyRegionChildren(country, regionTaxonomy) {
     })
     .filter(Boolean);
 
-  if (regions.length === 1 && regions[0].name === "National cuisine") {
-    return regions[0].children;
-  }
-
+  // Do NOT collapse a lone "National cuisine" region into its restaurants. Every view walks
+  // country -> region -> restaurant, and the cuisine drawer builds its Google Maps links from
+  // region.children; handing it restaurants one level early left all 27 Georgian restaurants,
+  // and every other single-region country, unreachable.
   return regions;
 }
 
 export function googleMapsUrl(restaurant) {
-  const query = encodeURIComponent(`${restaurant.name}, ${restaurant.address}`);
-  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  // OSM leaves roughly a fifth of records without addr:street, so their address is just the city
+  // and a name search drops the pin anywhere in it. Every record does carry exact coordinates,
+  // so pin those instead and keep the name search only where the street is actually known.
+  const hasStreetNumber = /\d/.test(restaurant.address ?? "");
+  const hasCoordinates = Number.isFinite(restaurant.lat) && Number.isFinite(restaurant.lng);
+  const query = !hasStreetNumber && hasCoordinates
+    ? `${restaurant.lat},${restaurant.lng}`
+    : `${restaurant.name}, ${restaurant.address}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
