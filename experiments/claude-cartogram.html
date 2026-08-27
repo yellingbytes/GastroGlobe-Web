@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Munich Eats the World — a cuisine cartogram</title>
+<title>A city eats the world — a cuisine cartogram</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=Jersey+10&display=swap" rel="stylesheet" />
@@ -302,8 +302,8 @@
 <div id="app">
   <div id="left">
     <div id="head">
-      <h1 id="map-title">The world inside Munich.</h1>
-      <p id="map-subtitle">FOOD CULTURES FROM AROUND THE WORLD, AS FOUND ACROSS MUNICH.</p>
+      <h1 id="map-title">The world inside this city.</h1>
+      <p id="map-subtitle">FOOD CULTURES FROM AROUND THE WORLD.</p>
     </div>
     <div id="mapwrap">
       <div id="mapscene">
@@ -349,12 +349,23 @@
       <div class="chips" id="d-chips"></div>
       <div class="list" id="d-list" role="list" aria-label="Restaurants" tabindex="0"></div>
     </div>
-    <footer>Source: OpenStreetMap restaurants in Munich plus curated regional-cuisine updates, snapshot 2026-08-03; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.</footer>
+    <footer id="source-note">Source: OpenStreetMap restaurants plus curated regional-cuisine updates; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.</footer>
   </aside>
 </div>
 
 <script type="module">
-import { countries as SOURCE_COUNTRIES, datasetMeta as SOURCE_META, googleMapsUrl } from '../restaurants.js?v=google-map-1';
+import { countriesForCity, datasetMetaForCity, liveCityIds, metropolitanEditions, googleMapsUrl } from '../restaurants.js?v=multi-city-4';
+
+// Which edition this frame is showing. The host page passes ?city=<id>; fall back to the
+// first edition that actually has a dataset so the page still works when opened directly.
+const CITY_ID = (() => {
+  const requested = new URLSearchParams(location.search).get('city');
+  return requested && liveCityIds.includes(requested) ? requested : liveCityIds[0];
+})();
+const CITY_NAME = metropolitanEditions.find((edition) => edition.id === CITY_ID)?.name ?? CITY_ID;
+const CITY_SUBTITLE = 'FOOD CULTURES FROM AROUND THE WORLD, AS FOUND ACROSS ' + CITY_NAME.toUpperCase() + '.';
+const SOURCE_COUNTRIES = countriesForCity(CITY_ID);
+const SOURCE_META = datasetMetaForCity(CITY_ID);
 
 const REGION_EMOJI_RULES = [
   [/sichuan|chongqing/i, '🌶️'],
@@ -474,6 +485,21 @@ const DATA = SOURCE_COUNTRIES
   })
   .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 const META = { total: SOURCE_META.includedRestaurants };
+
+// Stamp the edition onto the static chrome that ships in the HTML.
+document.title = CITY_NAME + ' Eats the World — a cuisine cartogram';
+{
+  const heading = document.getElementById('map-title');
+  if (heading) heading.textContent = 'The world inside ' + CITY_NAME + '.';
+  const subtitle = document.getElementById('map-subtitle');
+  if (subtitle) subtitle.textContent = CITY_SUBTITLE;
+  const note = document.getElementById('source-note');
+  if (note) {
+    note.textContent = 'Source: OpenStreetMap restaurants in ' + CITY_NAME
+      + ' plus curated regional-cuisine updates, snapshot ' + SOURCE_META.snapshotDate
+      + '; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.';
+  }
+}
 
 // Use one desktop-grade logical grid on every device. The responsive camera
 // scales that grid to the available screen, preserving the same silhouettes
@@ -2010,7 +2036,7 @@ function geographicRegionItems(country, specificRegions, visibleRegions, country
   });
   if (!anchors.length) return null;
 
-  // Every taxonomy region, including regions with no Munich restaurant, helps
+  // Every taxonomy region, including regions with no restaurant in this city, helps
   // define the geography. Their nearest-centre zones approximate recognizable
   // provincial or culinary-region contours; only represented cuisines render.
   const zones = new Map(anchors.map(anchor => [anchor.region.id, []]));
@@ -2257,7 +2283,7 @@ function renderCountryAtlas(country, options = {}) {
       if (!state.lookup[offset]) state.lookup[offset] = national.id;
     }
   }
-  el('map-title').textContent = country.name + ' inside Munich.';
+  el('map-title').textContent = country.name + ' inside ' + CITY_NAME + '.';
   el('map-subtitle').textContent = 'ZOOM IN FROM COUNTRY TO REGIONAL FOOD CULTURE.';
   el('ghost-control').hidden = true;
   el('status').textContent = visibleSpecific.length + (visibleSpecific.length === 1 ? ' region · ' : ' regions · ') + country.count + ' restaurants';
@@ -2307,8 +2333,8 @@ function commitWorldAtlas(transform = null) {
     rows: state.worldSnapshot.rows,
     off: state.worldSnapshot.off
   });
-  el('map-title').textContent = 'The world inside Munich.';
-  el('map-subtitle').textContent = 'FOOD CULTURES FROM AROUND THE WORLD, AS FOUND ACROSS MUNICH.';
+  el('map-title').textContent = 'The world inside ' + CITY_NAME + '.';
+  el('map-subtitle').textContent = CITY_SUBTITLE;
   el('mapwrap').classList.remove('country-view');
   el('ghost-control').hidden = false;
   el('ranksec').style.display = '';
@@ -2417,21 +2443,43 @@ function mapsSearchUrl(query) {
 
 function restaurantMapUrl(restaurant) {
   if (restaurant.address) return googleMapsUrl(restaurant);
-  return mapsSearchUrl([restaurant.name, restaurant.cuisine, 'Munich'].filter(Boolean).join(', '));
+  return mapsSearchUrl([restaurant.name, restaurant.cuisine, CITY_NAME].filter(Boolean).join(', '));
+}
+
+// Google geocodes a bare place noun, so 'Greece restaurants in Berlin' flew the embed to
+// Greece and 'Georgia restaurants in Berlin' to the Caucasus. The cuisine adjective carries no
+// place ambiguity, so use the one the country's own records use most. Region names are left out
+// of the query for the same reason ('Sichuan / Chongqing' geocodes to Sichuan); the restaurant
+// list beside the map is already filtered to the region.
+function cuisineAdjective(restaurants, fallback) {
+  const counts = new Map();
+  for (const restaurant of restaurants) {
+    for (const part of String(restaurant.cuisine || '').split('·')) {
+      const label = part.trim();
+      if (label) counts.set(label, (counts.get(label) || 0) + 1);
+    }
+  }
+  let best = fallback;
+  let bestCount = 0;
+  for (const [label, count] of counts) {
+    // Longest wins a tie so a lone 'African · Congolese' resolves to Congolese, not African.
+    if (count > bestCount || (count === bestCount && label.length > String(best).length)) {
+      best = label;
+      bestCount = count;
+    }
+  }
+  return best;
 }
 
 function activeGoogleMapQuery() {
   const country = state.activeCountry;
-  const region = state.activeRegion;
-  if (!country) return 'restaurants in Munich';
+  if (!country) return 'restaurants in ' + CITY_NAME;
   if (state.activeRestaurants.length === 1) {
     const restaurant = state.activeRestaurants[0];
     return [restaurant.name, restaurant.address].filter(Boolean).join(', ');
   }
-  const regionalName = region && !isNationalCuisine(region.regionName || region.name)
-    ? (region.regionName || region.name) + ' '
-    : '';
-  return regionalName + country.name + ' restaurants in Munich';
+  const pool = state.activeRestaurants.length ? state.activeRestaurants : (country.restaurants || []);
+  return cuisineAdjective(pool, country.name) + ' restaurants in ' + CITY_NAME;
 }
 
 function renderRestaurantList(restaurants) {
@@ -2585,7 +2633,7 @@ async function select(id) {
   el('d-close').textContent = 'Show on Google map';
   el('d-name').textContent = d.flag + '  ' + d.name;
   el('d-sum').textContent = d.count + (d.count === 1 ? ' restaurant · ' : ' restaurants · ') +
-    (Math.round(d.count / META.total * 1000) / 10) + '% of Munich\u2019s mapped kitchens · ' + d.continent +
+    (Math.round(d.count / META.total * 1000) / 10) + '% of ' + CITY_NAME + '\u2019s mapped kitchens · ' + d.continent +
     (d.classificationLabel ? ' · ' + d.classificationLabel : '');
   renderRegionFilterChips(d);
   setActiveRestaurantSelection(d.restaurants);
@@ -2595,7 +2643,7 @@ async function select(id) {
   el('s-share').textContent = (Math.round(d.count / META.total * 1000) / 10) + '%';
   el('s-total-label').textContent = 'Restaurants';
   el('s-count-label').textContent = 'Regions';
-  el('s-share-label').textContent = 'Of Munich';
+  el('s-share-label').textContent = 'Of ' + CITY_NAME;
   state.levelMorphing = true;
   state.levelMorphContext = { countryId: d.id, worldTransform: sourceTransform };
   document.body.classList.add('cluster-reveal-active');

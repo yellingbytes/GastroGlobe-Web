@@ -9,7 +9,10 @@
 export const regionalFindings = {
   china: {
     auditNote:
-      "Phase 1 Berlin audit (2026-08-25): all 158 China-tagged records were researched individually against first-party sites, menus and Berlin food press. Eleven records were removed as not dedicated Chinese restaurants and three as permanently closed; the source count reflects the remaining 144. Restaurants whose operators name two or more co-equal regions (Hot Spot, Peking Ente, tangs kantine, Hua Li Du, Feast) are deliberately left unclassified rather than forced into one bucket.",
+      "Phase 1 Berlin audit (2026-08-25, source widened 2026-08-26): all 158 sit-down China-tagged records were researched individually against first-party sites, menus and Berlin food press. Eleven were removed as not dedicated Chinese restaurants and three as permanently closed, leaving 144 audited restaurants in the country set. On 2026-08-26 the source query was widened to include counter-service (amenity=fast_food) records, which added 29 China-tagged operations that have NOT been researched — several of them (Biang Biang, Wen Cheng, Chen\u0027s Noodle House, Lu Kitchen, Tsingtao Pavillon) are exactly the northwestern-noodle and Shandong candidates the earlier query format had been hiding. Empty regions remain published because they are a genuine finding across all 158 records searched so far, but every zero count is provisional until the 29 pending records are audited. Restaurants whose operators name two or more co-equal regions (Hot Spot, Peking Ente, tangs kantine, Hua Li Du, Feast) are deliberately left unclassified rather than forced into one bucket.",
+    examinedRecordCount: 158,
+    auditedRestaurantCount: 144,
+    zeroCountsMeaningful: true,
     regions: [
       {
         name: "Sichuan / Chongqing",
@@ -524,6 +527,107 @@ export const regionalFindings = {
       },
     ],
   },
+  vietnam: {
+    auditNote:
+      "Berlin Vietnam audit, first pass (2026-08-25): 49 of the 325 Vietnam-tagged records were examined, 5 of which were removed as not dedicated Vietnamese restaurants, leaving 44 audited restaurants inside the country set. The remaining 276 have NOT been checked (the source was widened on 2026-08-26 to include counter-service records, which added 36), so the unclassified figure mixes 'checked, no regional evidence' with 'not yet reached' — see auditedRestaurantCount and pendingAuditCount. Empty regions are withheld until the audit is complete, because a zero count is only meaningful once a region has actually been searched for.",
+    examinedRecordCount: 49,
+    auditedRestaurantCount: 44,
+    zeroCountsMeaningful: false,
+    regions: [
+      {
+        name: "Hanoi / Red River Delta",
+        emoji: "🍜",
+        geographicCenter: { lat: 21.03, lng: 105.85 },
+        restaurants: [
+          {
+            id: "osm-node-1278254651",
+            evidenceLevel: "medium",
+            evidence:
+              "A cluster of German food-press sources independently describe northern Vietnamese cooking from monastery recipes: Eiswürfel im Schuh writes that the recipes \"orientieren sich an der nordvietnamesischen Küche und stammen aus Klöstern\", and welcome-to-berlin describes the same \"nordvietnamesische Esskultur\" cooked in clay pots. No first-person statement from the operator was reachable.",
+            sourceUrls: [
+              "https://eiswuerfelimschuh.de/gesunde-kuche-in-berlin-das-teehaus-chen-che/",
+              "https://www.welcome-to-berlin.com/de/berlin-lifestyle/kulinarisches-berlin/1121-teehaus-chen-che-in-berlin.html",
+            ],
+          },
+        ],
+      },
+      {
+        name: "Northern Mountains",
+        emoji: "🌿",
+        geographicCenter: { lat: 22.34, lng: 103.84 },
+        restaurants: [],
+      },
+      {
+        name: "North-Central",
+        emoji: "🥘",
+        geographicCenter: { lat: 18.68, lng: 105.68 },
+        restaurants: [],
+      },
+      {
+        name: "Huế / Imperial Central",
+        emoji: "🌶️",
+        geographicCenter: { lat: 16.46, lng: 107.59 },
+        restaurants: [],
+      },
+      {
+        name: "Quảng Nam–Đà Nẵng / South-Central",
+        emoji: "🍜",
+        geographicCenter: { lat: 15.88, lng: 108.34 },
+        restaurants: [
+          {
+            id: "osm-node-3478903874",
+            evidenceLevel: "medium",
+            evidence:
+              "The official site is titled \"Authentische Küche Mittelvietnams\" and the menu badges its two flagged regional dishes — cao lầu and mì Quảng, both Quảng Nam/Hội An signatures — as central Vietnamese; an independent interview describes it the same way. The kitchen is not single-region (it also advertises Mekong Delta herbs and a Saigon cơm tấm), but South-Central is the only tradition it claims as its base.",
+            sourceUrls: [
+              "https://anhba-restaurant.berlin/",
+              "https://berlin-audiovisuell.de/allgemein/anh-ba-koestlich-vietnamesisch/",
+            ],
+          },
+          {
+            id: "osm-node-8812657559",
+            evidenceLevel: "medium",
+            evidence:
+              "The same operator and branding as the Wilmersdorf house; this Neukölln listing states it \"combines the aromatic depth of Central Vietnam with the lightness of the South\". A genuine second branch with its own phone number and social page, not a duplicate.",
+            sourceUrls: [
+              "https://www.speisekarte.de/berlin/restaurant/anh_ba_restaurant_neukoelln",
+              "https://www.facebook.com/anhbaneukoelln/",
+            ],
+          },
+        ],
+      },
+      {
+        name: "Saigon / Southeast",
+        emoji: "🍲",
+        geographicCenter: { lat: 10.82, lng: 106.63 },
+        restaurants: [
+          {
+            id: "osm-node-14041309389",
+            evidenceLevel: "medium",
+            evidence:
+              "The Berlin outlet Qiez reports that founders Huy and Bao opened it to bring \"the taste of South Vietnam\" to Berlin, and the operator's own site brands the product as authentic Saigon-style bánh mì. A single-dish concept rather than a broad menu, which makes the regional claim load-bearing.",
+            sourceUrls: ["https://www.qiez.de/neu-mitte-banh-mi-ca-va-saigon/", "https://www.cavasaigon.de/"],
+          },
+          {
+            id: "osm-node-11363945056",
+            evidenceLevel: "medium",
+            evidence:
+              "The Berliner's October 2025 openings column describes it as bringing \"authentic Saigon-inspired bánh mì to Berlin, with recipes rooted in Vietnamese heritage\", and the operation is a single-focus bánh mì bakery built on that claim. Held at medium because the Saigon framing comes from press rather than a first-person statement.",
+            sourceUrls: [
+              "https://www.the-berliner.com/food/restaurant-openings-where-to-eat-in-october-2025/",
+              "https://www.instagram.com/banhten/",
+            ],
+          },
+        ],
+      },
+      {
+        name: "Mekong Delta",
+        emoji: "🐟",
+        geographicCenter: { lat: 10.04, lng: 105.79 },
+        restaurants: [],
+      },
+    ],
+  },
 };
 
 // Records removed from a country's set entirely: either not dedicated restaurants of that
@@ -641,6 +745,48 @@ export const excludedRestaurants = {
       reason:
         "Closed on 22 December 2023 and succeeded at the same Kurfürstendamm 218 premises by En Lee Cai, which is recorded separately. The two nodes describe one address at different times, so this is a temporal duplicate as well as a closure.",
       sourceUrls: ["https://cityseeker.com/berlin/879836-ho-lin-wah", "https://holinwah.eatbu.com/?lang=en"],
+    },
+  ],
+  vietnam: [
+    {
+      id: "osm-node-639631261",
+      name: "Asia Mami",
+      status: "not-dedicated",
+      reason:
+        "The published menu is organised as sushi, curries, duck, noodle and rice sections with \"vietnamesische Spezialitäten\" as one subsection among many; it trades as \"Asia Mami Vegan & Meat\".",
+      sourceUrls: ["https://www.speisekarte.de/berlin/restaurant/asia_mami_lichtenberg/speisekarte"],
+    },
+    {
+      id: "osm-node-628068896",
+      name: "Atuka",
+      status: "not-dedicated",
+      reason:
+        "Self-describes as \"Sushi Viet Cuisine\", listing bún chả Hanoi alongside katsudon, temaki and tataki, and also trades under the Katsudo Sushi brand.",
+      sourceUrls: ["https://atuka.de/", "https://atuka.de/restaurant-menu/"],
+    },
+    {
+      id: "osm-node-1450379591",
+      name: "Bambus am See",
+      status: "not-dedicated",
+      reason:
+        "Trades as \"Bambus Am See – Sushibar & Asiatisches Restaurant\", pairing phở and rice dishes with sushi prepared to traditional Japanese recipes.",
+      sourceUrls: ["https://www.pankow-weissensee-prenzlauerberg.berlin/de/shop/bambus-am-see-sushibar-asiatisches-restaurant"],
+    },
+    {
+      id: "osm-node-7889885897",
+      name: "Binh Minh",
+      status: "not-dedicated",
+      reason:
+        "Trades as \"Binh Minh Asiatische Küche\" with a Chinese-style menu — hot-and-sour soup, crispy roast duck, duck with hoisin — and is listed under Asian fusion. Vietnamese-run but not a Vietnamese kitchen.",
+      sourceUrls: ["https://www.binhminhasiatischekueche.de/"],
+    },
+    {
+      id: "osm-node-5913441996",
+      name: "Bowl Kitchen",
+      status: "not-dedicated",
+      reason:
+        "\"The Bowl Kitchen – authentische asiatische Rezepte\", inside an office building and open 07:30–16:00 on weekdays only: a workday canteen format rather than a Vietnamese restaurant.",
+      sourceUrls: ["https://bowl-kitchen-berlin.de/"],
     },
   ],
 };

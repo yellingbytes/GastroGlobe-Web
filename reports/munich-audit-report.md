@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-25
 **Scope:** All 63 Munich restaurants tagged `countryId: "china"` in `data/munich-restaurants.js`, prior to this audit uniformly classified `china-national` except for 5 restaurants (`Sichuan Ecke`, `yā | The Mandarin Room`, `Karwan`, `Taklamakan Restaurant`, `Tengri Tagh`).
-**Method:** Five parallel research passes covering every restaurant in the China set, each restaurant checked against official websites/menus, social media, delivery-platform listings, and independent local food press (München sehen, Mit Vergnügen München, haochibites, mucbook, Geheimtipp München, etc.). OSM cuisine tags alone were never treated as sufficient evidence. Two closure-flagged restaurants were separately re-verified by direct web search. See "Sources" in the updated `data/munich-regional-cuisine-taxonomy.json` and in `unresolved-restaurants.json` for the full citation trail.
+**Method:** Five parallel research passes covering every restaurant in the China set, each restaurant checked against official websites/menus, social media, delivery-platform listings, and independent local food press (München sehen, Mit Vergnügen München, haochibites, mucbook, Geheimtipp München, etc.). OSM cuisine tags alone were never treated as sufficient evidence. Two closure-flagged restaurants were separately re-verified by direct web search. See "Sources" in the updated `data/munich-regional-cuisine-taxonomy.json` and in `reports/munich-unresolved-restaurants.json` for the full citation trail.
 
 Phases 2–4 (India, Japan, Vietnam, Thailand, Korea, Italy, France, Spain, Türkiye, Mexico) were **not** part of this pass and remain unchanged from the prior dataset. This report and the accompanying data-file updates cover China only.
 
@@ -42,7 +42,7 @@ Phases 2–4 (India, Japan, Vietnam, Thailand, Korea, Italy, France, Spain, Tür
 | Northeast / Dongbei | 0 | No restaurant found with credible evidence |
 | Fujian / Taiwan culinary family | 0 | No restaurant found with credible evidence |
 | Tibetan | 0 | No restaurant found with credible evidence |
-| Unclassified | 31 | Generic, multi-regional, or insufficiently evidenced — see `unresolved-restaurants.json` |
+| Unclassified | 31 | Generic, multi-regional, or insufficiently evidenced — see `reports/munich-unresolved-restaurants.json` |
 
 A restaurant literally named **"Shanghai Restaurant"** was investigated specifically for the Jiangsu/Zhejiang/Shanghai bucket and rejected — its menu and reviews describe a generic multi-regional Chinese offering with no Shanghainese dishes (no xiaolongbao, no red-braising), exactly the name-vs-cuisine trap the research brief warned against. **"Seen"** turned out to be a well-documented Sichuan specialist (chef from Chengdu) despite a name giving no hint of that, and **"Wais Küche"** turned out to be a Cantonese/Macanese dim sum specialist run by a family from Macau — both genuine, well-evidenced restaurants, just not Jiangsu/Zhejiang/Shanghai.
 
@@ -68,7 +68,7 @@ Per the data-quality rule to remove restaurants not genuinely dedicated to the c
 
 ## Permanently closed / closure-uncertain restaurants
 
-No restaurant was found to be *unambiguously* permanently closed, but two carry unresolved closure signals. Rather than guess, both were **kept in the dataset as unclassified** and flagged in `unresolved-restaurants.json` for field verification:
+No restaurant was found to be *unambiguously* permanently closed, but two carry unresolved closure signals. Rather than guess, both were **kept in the dataset as unclassified** and flagged in `reports/munich-unresolved-restaurants.json` for field verification:
 
 - **Qin Cheng** (osm-node-701421198, Herzog-Wilhelm-Straße 7) — menu evidence would otherwise support Shanxi/Shaanxi noodles (Biangbiang noodles, name plausibly referencing Xi'an/Xianyang), but HappyCow reports it "permanently closed" (June 2025) while other sources suggest it may have relocated/rebranded to "Mian Noodles / Qin Cheng Sendling." Left unclassified pending verification.
 - **Meet Nudelbar** (osm-node-11365929071, Schillerstraße 14) — the same address now appears to host a differently-named business, "Sichuan Küche Nudelbar." Could not confirm whether this is the same business rebranded or a genuinely new tenant, so the entry was neither renamed nor deleted, only flagged.
@@ -90,7 +90,7 @@ The following name clusters were specifically checked for duplicate/stale OSM da
 
 ## Uncertain / notable restaurants worth a second look
 
-- **San Jie Mei** (osm-node-326725407) — the owner's own website explicitly documents a genuine *dual* regional identity (Cantonese dim sum background + husband specializing in "Yue- und Sichuan-Region" cuisine). This is unusually strong first-party evidence, but because the one-restaurant-one-region rule doesn't fit a documented dual concept cleanly, it was left unclassified rather than arbitrarily assigned to one region. Flagged distinctly in `unresolved-restaurants.json`.
+- **San Jie Mei** (osm-node-326725407) — the owner's own website explicitly documents a genuine *dual* regional identity (Cantonese dim sum background + husband specializing in "Yue- und Sichuan-Region" cuisine). This is unusually strong first-party evidence, but because the one-restaurant-one-region rule doesn't fit a documented dual concept cleanly, it was left unclassified rather than arbitrarily assigned to one region. Flagged distinctly in `reports/munich-unresolved-restaurants.json`.
 - **Fuyuan** — OSM lists its address as "Gräfelfing," but the street (Augustenstraße 21) and every other listing place it in central Munich (Maxvorstadt). Likely an OSM data error; left uncorrected as out of scope for a cuisine-classification audit, but flagged here for a future data-quality pass.
 
 ---
@@ -136,7 +136,7 @@ This is a large increase in *verified* coverage from the prior snapshot (7.9%, 5
 | Taklamakan Restaurant | Xinjiang/Uyghur (high) | Xinjiang / Uyghur (high) | High | Re-verified, unchanged | [taklamakan-restaurant.de](https://taklamakan-restaurant.de/taklamakan-restaurant-muenchen/) |
 | Tengri Tagh | Xinjiang/Uyghur (high) | Xinjiang / Uyghur (high) | High | Re-verified, unchanged | [tengritagh-uyghur.de](https://www.tengritagh-uyghur.de/en/reservierungen) |
 
-*(Restaurants not listed above remain `china-national`/unclassified — see `unresolved-restaurants.json` for the full record of every restaurant investigated and why it did not qualify — or were removed, see the exclusion table above.)*
+*(Restaurants not listed above remain `china-national`/unclassified — see `reports/munich-unresolved-restaurants.json` for the full record of every restaurant investigated and why it did not qualify — or were removed, see the exclusion table above.)*
 
 ---
 
