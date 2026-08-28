@@ -14,6 +14,13 @@ Then open `http://localhost:4317`.
 
 The prototype is framework-free.
 
+## Google Maps ratings
+
+Restaurant rows load their live Google Maps rating from the official Places API (New). Set
+`GOOGLE_MAPS_API_KEY` in the Vercel project for Production, Preview, and Development, then
+redeploy. The key stays inside the serverless `/api/google-rating` function and is never sent to
+the browser. The key's Google Cloud project must have Places API (New) and billing enabled.
+
 The Munich edition currently includes **1,196 named restaurants across 43 country cuisines** from an OpenStreetMap snapshot dated 18 July 2026 plus a small, source-linked editorial update. Every included record has sourced latitude/longitude data and links back to its OSM object.
 
 “All” is defined reproducibly as named `amenity=restaurant` features whose `cuisine=*` tag resolves to one country or an unambiguous country-origin tradition inside Munich’s municipal boundary. The normalization pipeline excludes fusion tags, generic-only group labels such as `asian` or `international`, multi-country records, unnamed records, and nearby duplicate features.

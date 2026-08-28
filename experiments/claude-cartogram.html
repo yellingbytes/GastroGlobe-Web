@@ -203,6 +203,7 @@
   #detail .li-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
   #detail .li-arrow { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
   #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  #detail .li-rating { min-width: 36px; color: var(--ink-soft); text-align: right; }
   button.close { flex: 0 0 auto; background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; line-height: 1.25; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; padding: 6px 9px; cursor: pointer; }
   button.close:hover { border-color: var(--ink); color: var(--ink); }
   .sheet-toggle { display: none; }
@@ -2482,8 +2483,89 @@ function activeGoogleMapQuery() {
   return cuisineAdjective(pool, country.name) + ' restaurants in ' + CITY_NAME;
 }
 
+const googleRatingRequests = new Map();
+const googleRatingQueue = [];
+const googleRatingTargets = new WeakMap();
+const GOOGLE_RATING_CONCURRENCY = 4;
+let googleRatingRequestsInFlight = 0;
+let googleRatingObserver = null;
+
+function googleRatingRequestKey(restaurant) {
+  return [CITY_ID, restaurant.id, restaurant.name, restaurant.address, restaurant.lat, restaurant.lng].join('|');
+}
+
+function fetchGoogleRating(restaurant) {
+  const params = new URLSearchParams({
+    name: restaurant.name,
+    address: restaurant.address || '',
+    city: CITY_NAME,
+  });
+  if (Number.isFinite(restaurant.lat)) params.set('lat', restaurant.lat);
+  if (Number.isFinite(restaurant.lng)) params.set('lng', restaurant.lng);
+  return fetch('/api/google-rating?' + params, { headers: { Accept: 'application/json' } })
+    .then(async response => {
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return Number.isFinite(payload.rating) ? payload : null;
+    })
+    .catch(() => null);
+}
+
+function pumpGoogleRatingQueue() {
+  while (googleRatingRequestsInFlight < GOOGLE_RATING_CONCURRENCY && googleRatingQueue.length) {
+    const job = googleRatingQueue.shift();
+    googleRatingRequestsInFlight += 1;
+    fetchGoogleRating(job.restaurant)
+      .then(job.resolve)
+      .finally(() => {
+        googleRatingRequestsInFlight -= 1;
+        pumpGoogleRatingQueue();
+      });
+  }
+}
+
+function googleRatingFor(restaurant) {
+  const key = googleRatingRequestKey(restaurant);
+  if (!googleRatingRequests.has(key)) {
+    googleRatingRequests.set(key, new Promise(resolve => {
+      googleRatingQueue.push({ restaurant, resolve });
+      pumpGoogleRatingQueue();
+    }));
+  }
+  return googleRatingRequests.get(key);
+}
+
+function hydrateGoogleRating(restaurant, rating, link) {
+  googleRatingFor(restaurant).then(result => {
+    if (!rating.isConnected || !result) return;
+    rating.textContent = '[' + Number(result.rating).toFixed(1) + ']';
+    rating.title = 'Google Maps rating ' + Number(result.rating).toFixed(1) + ' out of 5';
+    if (result.googleMapsUri) link.href = result.googleMapsUri;
+  });
+}
+
+function observeGoogleRating(restaurant, rating, link) {
+  if (!googleRatingObserver) {
+    hydrateGoogleRating(restaurant, rating, link);
+    return;
+  }
+  googleRatingTargets.set(rating, { restaurant, link });
+  googleRatingObserver.observe(rating);
+}
+
 function renderRestaurantList(restaurants) {
   const host = el('d-list');
+  googleRatingObserver?.disconnect();
+  googleRatingObserver = 'IntersectionObserver' in window
+    ? new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          googleRatingObserver.unobserve(entry.target);
+          const target = googleRatingTargets.get(entry.target);
+          if (target) hydrateGoogleRating(target.restaurant, entry.target, target.link);
+        }
+      }, { root: host, rootMargin: '140px 0px' })
+    : null;
   host.replaceChildren();
   if (!restaurants.length) {
     const empty = document.createElement('div');
@@ -2515,15 +2597,18 @@ function renderRestaurantList(restaurants) {
 
     const meta = document.createElement('span');
     meta.className = 'li-meta';
-    const cuisine = document.createElement('em');
-    cuisine.textContent = restaurant.cuisine || 'Restaurant';
+    const rating = document.createElement('em');
+    rating.className = 'li-rating';
+    rating.textContent = '[—]';
+    rating.title = 'Google Maps rating unavailable';
     const arrow = document.createElement('span');
     arrow.className = 'li-arrow';
     arrow.setAttribute('aria-hidden', 'true');
     arrow.textContent = '↗';
-    meta.append(cuisine, arrow);
+    meta.append(rating, arrow);
     link.append(main, meta);
     host.appendChild(link);
+    observeGoogleRating(restaurant, rating, link);
   }
 }
 
