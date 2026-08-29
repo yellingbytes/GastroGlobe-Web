@@ -16,7 +16,8 @@ The prototype is framework-free.
 
 ## Google Maps ratings
 
-Restaurant rows load their live Google Maps rating from the official Places API (New). Set
+Restaurant rows are sorted from highest to lowest by a hidden live Google Maps rating from the
+official Places API (New); the score itself is not displayed. Set
 `GOOGLE_MAPS_API_KEY` in the Vercel project for Production, Preview, and Development, then
 redeploy. The key stays inside the serverless `/api/google-rating` function and is never sent to
 the browser. The key's Google Cloud project must have Places API (New) and billing enabled.

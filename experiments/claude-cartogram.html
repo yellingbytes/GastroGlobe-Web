@@ -203,7 +203,6 @@
   #detail .li-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
   #detail .li-arrow { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
   #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
-  #detail .li-rating { min-width: 36px; color: var(--ink-soft); text-align: right; }
   button.close { flex: 0 0 auto; background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; line-height: 1.25; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; padding: 6px 9px; cursor: pointer; }
   button.close:hover { border-color: var(--ink); color: var(--ink); }
   .sheet-toggle { display: none; }
@@ -2485,10 +2484,10 @@ function activeGoogleMapQuery() {
 
 const googleRatingRequests = new Map();
 const googleRatingQueue = [];
-const googleRatingTargets = new WeakMap();
 const GOOGLE_RATING_CONCURRENCY = 4;
 let googleRatingRequestsInFlight = 0;
-let googleRatingObserver = null;
+let googleRatingServiceUnavailable = false;
+let restaurantListRenderToken = 0;
 
 function googleRatingRequestKey(restaurant) {
   return [CITY_ID, restaurant.id, restaurant.name, restaurant.address, restaurant.lat, restaurant.lng].join('|');
@@ -2504,7 +2503,10 @@ function fetchGoogleRating(restaurant) {
   if (Number.isFinite(restaurant.lng)) params.set('lng', restaurant.lng);
   return fetch('/api/google-rating?' + params, { headers: { Accept: 'application/json' } })
     .then(async response => {
-      if (!response.ok) return null;
+      if (!response.ok) {
+        if (response.status === 503) googleRatingServiceUnavailable = true;
+        return null;
+      }
       const payload = await response.json();
       return Number.isFinite(payload.rating) ? payload : null;
     })
@@ -2512,6 +2514,10 @@ function fetchGoogleRating(restaurant) {
 }
 
 function pumpGoogleRatingQueue() {
+  if (googleRatingServiceUnavailable) {
+    while (googleRatingQueue.length) googleRatingQueue.shift().resolve(null);
+    return;
+  }
   while (googleRatingRequestsInFlight < GOOGLE_RATING_CONCURRENCY && googleRatingQueue.length) {
     const job = googleRatingQueue.shift();
     googleRatingRequestsInFlight += 1;
@@ -2525,6 +2531,7 @@ function pumpGoogleRatingQueue() {
 }
 
 function googleRatingFor(restaurant) {
+  if (googleRatingServiceUnavailable) return Promise.resolve(null);
   const key = googleRatingRequestKey(restaurant);
   if (!googleRatingRequests.has(key)) {
     googleRatingRequests.set(key, new Promise(resolve => {
@@ -2535,37 +2542,37 @@ function googleRatingFor(restaurant) {
   return googleRatingRequests.get(key);
 }
 
-function hydrateGoogleRating(restaurant, rating, link) {
-  googleRatingFor(restaurant).then(result => {
-    if (!rating.isConnected || !result) return;
-    rating.textContent = '[' + Number(result.rating).toFixed(1) + ']';
-    rating.title = 'Google Maps rating ' + Number(result.rating).toFixed(1) + ' out of 5';
-    if (result.googleMapsUri) link.href = result.googleMapsUri;
-  });
-}
-
-function observeGoogleRating(restaurant, rating, link) {
-  if (!googleRatingObserver) {
-    hydrateGoogleRating(restaurant, rating, link);
+async function sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken) {
+  const ranked = await Promise.all(restaurants.map(async restaurant => ({
+    restaurant,
+    result: await googleRatingFor(restaurant),
+  })));
+  const host = el('d-list');
+  if (renderToken !== restaurantListRenderToken || !host.isConnected) return;
+  const rated = ranked.filter(entry => Number.isFinite(entry.result?.rating));
+  if (!rated.length) {
+    host.setAttribute('aria-busy', 'false');
     return;
   }
-  googleRatingTargets.set(rating, { restaurant, link });
-  googleRatingObserver.observe(rating);
+  ranked.sort((a, b) => {
+    const ratingDifference = (b.result?.rating ?? -Infinity) - (a.result?.rating ?? -Infinity);
+    return ratingDifference || a.restaurant.name.localeCompare(b.restaurant.name);
+  });
+  for (const entry of ranked) {
+    const row = rows.get(googleRatingRequestKey(entry.restaurant));
+    if (!row) continue;
+    if (entry.result?.googleMapsUri) row.href = entry.result.googleMapsUri;
+    host.appendChild(row);
+  }
+  host.setAttribute('aria-label', 'Restaurants, sorted by Google Maps rating');
+  host.setAttribute('aria-busy', 'false');
 }
 
 function renderRestaurantList(restaurants) {
   const host = el('d-list');
-  googleRatingObserver?.disconnect();
-  googleRatingObserver = 'IntersectionObserver' in window
-    ? new IntersectionObserver(entries => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          googleRatingObserver.unobserve(entry.target);
-          const target = googleRatingTargets.get(entry.target);
-          if (target) hydrateGoogleRating(target.restaurant, entry.target, target.link);
-        }
-      }, { root: host, rootMargin: '140px 0px' })
-    : null;
+  const renderToken = ++restaurantListRenderToken;
+  host.setAttribute('aria-label', 'Restaurants');
+  host.setAttribute('aria-busy', restaurants.length ? 'true' : 'false');
   host.replaceChildren();
   if (!restaurants.length) {
     const empty = document.createElement('div');
@@ -2575,6 +2582,7 @@ function renderRestaurantList(restaurants) {
     host.appendChild(empty);
     return;
   }
+  const rows = new Map();
   for (const restaurant of restaurants) {
     const link = document.createElement('a');
     link.className = 'li';
@@ -2597,19 +2605,16 @@ function renderRestaurantList(restaurants) {
 
     const meta = document.createElement('span');
     meta.className = 'li-meta';
-    const rating = document.createElement('em');
-    rating.className = 'li-rating';
-    rating.textContent = '[—]';
-    rating.title = 'Google Maps rating unavailable';
     const arrow = document.createElement('span');
     arrow.className = 'li-arrow';
     arrow.setAttribute('aria-hidden', 'true');
     arrow.textContent = '↗';
-    meta.append(rating, arrow);
+    meta.appendChild(arrow);
     link.append(main, meta);
     host.appendChild(link);
-    observeGoogleRating(restaurant, rating, link);
+    rows.set(googleRatingRequestKey(restaurant), link);
   }
+  sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken);
 }
 
 function renderGoogleMapView() {
