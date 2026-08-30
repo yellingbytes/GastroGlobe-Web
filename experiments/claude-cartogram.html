@@ -113,15 +113,6 @@
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
   }
-  .sharp-leader {
-    fill: none;
-    stroke: rgba(35,32,27,0.66);
-    stroke-width: 1.2px;
-    stroke-linecap: round;
-    vector-effect: non-scaling-stroke;
-  }
-  .sharp-leader-dot { fill: rgba(35,32,27,0.74); }
-  .sharp-leader-group[hidden] { display: none; }
   #labels {
     position: absolute;
     inset: 0;
@@ -136,13 +127,18 @@
   body.cluster-reveal-active #mapwrap { cursor: wait; pointer-events: none; }
   .lab {
     position: absolute;
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 2px;
     white-space: nowrap;
     pointer-events: auto;
     cursor: pointer;
     color: #1c1a16;
     font-family: var(--body);
-    font-size: 16px;
-    line-height: 1.25;
+    font-size: 14px;
+    line-height: 1.15;
     font-weight: 700;
     text-rendering: geometricPrecision;
     text-shadow:
@@ -153,17 +149,29 @@
        0 0 4px rgba(247,244,236,0.9);
   }
   .lab[hidden] { display: none; }
-  .lab-out { color: inherit; }
-  .lab-out.halo { background: rgba(244,240,230,0.92); box-shadow: 0 0 0 2px rgba(244,240,230,0.92); }
-  .lab-out span { font-family: var(--mono); font-size: 12px; font-weight: 600; color: #51493d; margin-left: 4px; }
-  .lab-in { text-align: center; }
-  .lab-in span { font-family: var(--mono); font-size: 11px; margin-left: 4px; }
-  .lab-mobile-region {
-    padding: 0;
-    font-size: 12px;
-    line-height: 1.15;
+  .lab:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 2px; }
+  .lab-name { display: inline-block; }
+  .lab-count {
+    display: inline-block;
+    border-radius: 2px;
+    background: var(--ink);
+    color: #f4f0e6;
+    min-width: 18px;
+    padding: 2px 4px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    text-shadow: none;
   }
-  .lab-mobile-region span { margin-left: 3px; font-size: 9px; color: var(--ink-soft); }
+  .lab-region { font-size: 13px; }
+  @media (max-width: 900px) {
+    .lab { gap: 3px; font-size: 12px; }
+    .lab-region { font-size: 12px; }
+    .lab-count { min-width: 17px; padding: 2px 3px; font-size: 10px; }
+  }
   #tip { position: absolute; z-index: 6; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
   #tip b { font-weight: 600; }
   #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
@@ -311,7 +319,6 @@
       </div>
       <svg id="sharp-overlay" aria-hidden="true">
         <g id="sharp-border-camera"></g>
-        <g id="sharp-leaders"></g>
       </svg>
       <canvas id="morphcv" aria-hidden="true"></canvas>
       <div id="labels"></div>
@@ -535,11 +542,9 @@ const state = {
   sel: null,
   hover: null,
   ghost: false,
-  leaders: [],
-  labelInk: null,
-  labelOwner: null,
   labelPriorityIds: new Set(),
   visibleLabelIds: new Set(),
+  labelReferenceScales: { world: null, country: null },
   levelMorphing: false,
   levelMorphContext: null,
   placed: [],
@@ -838,12 +843,10 @@ function sharpGridBoundaryPath(cells, cellSet, ox = 0, oy = 0) {
 function renderSharpOverlays() {
   const overlay = el('sharp-overlay');
   const borderCamera = el('sharp-border-camera');
-  const leaderHost = el('sharp-leaders');
   const wrap = el('mapwrap');
-  if (!overlay || !borderCamera || !leaderHost || !wrap) return;
+  if (!overlay || !borderCamera || !wrap) return;
   overlay.setAttribute('viewBox', '0 0 ' + Math.max(1, wrap.clientWidth) + ' ' + Math.max(1, wrap.clientHeight));
   borderCamera.replaceChildren();
-  leaderHost.replaceChildren();
 
   // Country view is deliberately contour-free: its grid cells carry both the
   // national silhouette and regional selection state. Drawing the vector
@@ -871,12 +874,6 @@ function renderSharpOverlays() {
     borderCamera.append(sharpSvgNode('path', attributes));
   }
 
-  state.leaders.forEach((leader, index) => {
-    const group = sharpSvgNode('g', { class: 'sharp-leader-group', 'data-index': index });
-    group.append(sharpSvgNode('line', { class: 'sharp-leader' }));
-    if (leader.dot) group.append(sharpSvgNode('circle', { class: 'sharp-leader-dot', r: 2 }));
-    leaderHost.append(group);
-  });
   updateSharpOverlay(state.currentTransform || d3.zoomIdentity);
 }
 
@@ -892,37 +889,6 @@ function updateSharpOverlay(transform) {
     'transform',
     'translate(' + snap(transform?.x || 0) + ',' + snap(transform?.y || 0) + ') scale(' + k + ')'
   );
-  for (const group of el('sharp-leaders').querySelectorAll('.sharp-leader-group')) {
-    const leader = state.leaders[Number(group.dataset.index)];
-    const visible = leader && state.visibleLabelIds.has(leader.id);
-    group.toggleAttribute('hidden', !visible);
-    if (!visible) continue;
-    const labelX = (transform?.x || 0) + leader.labelX * k;
-    const labelY = (transform?.y || 0) + leader.labelY * k;
-    const centerX = labelX + leader.labelWidth / 2;
-    const centerY = labelY + leader.labelHeight / 2;
-    const targetX = (transform?.x || 0) + leader.targetX * k;
-    const targetY = (transform?.y || 0) + leader.targetY * k;
-    const dx = targetX - centerX;
-    const dy = targetY - centerY;
-    const distance = Math.max(0.001, Math.hypot(dx, dy));
-    const edgeRatio = Math.min(1,
-      1 / Math.max(
-        Math.abs(dx) / Math.max(1, leader.labelWidth / 2 + 2),
-        Math.abs(dy) / Math.max(1, leader.labelHeight / 2 + 2)
-      )
-    );
-    const line = group.querySelector('line');
-    line.setAttribute('x1', snap(centerX + dx * edgeRatio));
-    line.setAttribute('y1', snap(centerY + dy * edgeRatio));
-    line.setAttribute('x2', snap(targetX - dx / distance * 2.5));
-    line.setAttribute('y2', snap(targetY - dy / distance * 2.5));
-    const dot = group.querySelector('circle');
-    if (dot) {
-      dot.setAttribute('cx', snap(targetX));
-      dot.setAttribute('cy', snap(targetY));
-    }
-  }
 }
 
 function draw() {
@@ -996,276 +962,92 @@ function draw() {
 }
 
 /* ---------- labels ---------- */
+function labelRevealRatio(item, rank) {
+  if (state.labelPriorityIds?.has(item.id)) return 1;
+  if (state.view === 'country') {
+    if (rank < 5 || item.count >= 10) return 1;
+    if (rank < 9 || item.count >= 3) return 1.4;
+    return 2;
+  }
+  if (rank < 10 || item.count >= 20) return 1;
+  if (rank < 18 || item.count >= 8) return 1.35;
+  if (rank < 30 || item.count >= 3) return 1.8;
+  return 2.5;
+}
+
+function mapLabelName(item, compact) {
+  if (state.view === 'country') return item.name;
+  if (!compact) return item.name;
+  if (item.id === 'united-kingdom') return 'UK';
+  if (item.id === 'united-states') return 'USA';
+  if (item.id === 'south-korea') return 'Korea';
+  if (item.id === 'bosnia-herzegovina') return 'Bosnia & Herz.';
+  return item.name;
+}
+
+function stableItemLabelAnchor(item) {
+  const meanX = d3.mean(item.cells, cell => cell[0] + 0.5);
+  const meanY = d3.mean(item.cells, cell => cell[1] + 0.5);
+  const anchorCell = item.cells.reduce((best, cell) => {
+    const distance = Math.hypot(cell[0] + 0.5 - meanX, cell[1] + 0.5 - meanY);
+    return !best || distance < best.distance ? { cell, distance } : best;
+  }, null)?.cell || item.cells[0] || [0, 0];
+  return {
+    x: (item.ox + anchorCell[0] + 0.5) * CELL,
+    y: (item.oy + anchorCell[1] + 0.5) * CELL
+  };
+}
+
 function layoutLabels() {
   const host = el('labels');
-  host.innerHTML = '';
-  state.leaders = [];
-  const W = state.cols * CELL, H = state.rows * CELL;
+  const wrap = el('mapwrap');
+  host.replaceChildren();
 
-  // exact ink mask: which grid cells are covered by a country silhouette
-  const ink = new Uint8Array(state.cols * state.rows);
-  const owner = new Array(state.cols * state.rows).fill(null);
-  for (const p of state.placed) for (const [dx, dy] of p.cells) {
-    const offset = (p.oy + dy) * state.cols + (p.ox + dx);
-    ink[offset] = 1;
-    owner[offset] = p.id;
-  }
-  state.labelInk = ink;
-  state.labelOwner = owner;
-  const landGap = 2;
-  const inkHit = r => {
-    const x0 = Math.floor((r.x - landGap) / CELL), x1 = Math.ceil((r.x + r.w + landGap) / CELL);
-    const y0 = Math.floor((r.y - landGap) / CELL), y1 = Math.ceil((r.y + r.h + landGap) / CELL);
-    let n = 0;
-    for (let y = Math.max(0, y0); y < Math.min(state.rows, y1); y++)
-      for (let x = Math.max(0, x0); x < Math.min(state.cols, x1); x++)
-        if (ink[y * state.cols + x]) n++;
-    return n;
-  };
-  const boxes = [];
-  const overlap = r => boxes.some(t => r.x < t.x + t.w && r.x + r.w > t.x && r.y < t.y + t.h && r.y + r.h > t.y);
-  const isSecondLevel = state.view === 'world';
-  const isMobileCountry = state.view === 'country' && el('mapwrap').clientWidth <= MOBILE_BREAKPOINT;
-  const insideOwner = (r, itemId) => {
-    const inset = 1.5;
-    const x0 = Math.floor((r.x + inset) / CELL);
-    const y0 = Math.floor((r.y + inset) / CELL);
-    const x1 = Math.floor((r.x + r.w - inset) / CELL);
-    const y1 = Math.floor((r.y + r.h - inset) / CELL);
-    if (x0 < 0 || y0 < 0 || x1 >= state.cols || y1 >= state.rows) return false;
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        if (state.lookup[y * state.cols + x] !== itemId) return false;
-      }
-    }
-    return true;
-  };
-  const segmentsCross = (a, b, c, d) => {
-    const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-    const abC = cross(a, b, c), abD = cross(a, b, d);
-    const cdA = cross(c, d, a), cdB = cross(c, d, b);
-    return abC * abD < 0 && cdA * cdB < 0;
-  };
-  const lineStartAtLabelEdge = (rect, target) => {
-    const center = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
-    const dx = target.x - center.x, dy = target.y - center.y;
-    const edgeRatio = Math.min(1,
-      1 / Math.max(
-        Math.abs(dx) / Math.max(1, rect.w / 2 + 2),
-        Math.abs(dy) / Math.max(1, rect.h / 2 + 2)
-      )
-    );
-    return { x: center.x + dx * edgeRatio, y: center.y + dy * edgeRatio };
-  };
-  const leaderConflicts = (itemId, start, target) => {
-    for (let step = 1; step < 10; step++) {
-      const phase = step / 10;
-      const x = start.x + (target.x - start.x) * phase;
-      const y = start.y + (target.y - start.y) * phase;
-      if (boxes.some(box => x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h)) return true;
-      const gx = Math.floor(x / CELL), gy = Math.floor(y / CELL);
-      if (gx >= 0 && gy >= 0 && gx < state.cols && gy < state.rows) {
-        const crossedOwner = state.lookup[gy * state.cols + gx];
-        if (crossedOwner && crossedOwner !== itemId) return true;
-      }
-    }
-    return state.leaders.some(leader =>
-      leader.lineStart && segmentsCross(start, target, leader.lineStart, { x: leader.targetX, y: leader.targetY })
-    );
-  };
+  const compact = wrap.clientWidth <= MOBILE_BREAKPOINT;
+  const ordered = [...state.placed].sort((a, b) => b.count - a.count || b.cells.length - a.cells.length);
+  const rankById = new Map(ordered.map((item, rank) => [item.id, rank]));
 
-  const closeLabelPriority = new Set(['united-kingdom', 'israel', 'greece', 'bulgaria']);
-  const outside = [...state.placed]
-    .sort((a, b) =>
-      Number(closeLabelPriority.has(b.id)) - Number(closeLabelPriority.has(a.id)) ||
-      b.count - a.count
-    );
+  for (const item of ordered) {
+    const label = document.createElement('div');
+    const fullName = item.regionName || item.name;
+    const visibleName = mapLabelName(item, compact);
+    const anchor = stableItemLabelAnchor(item);
+    const rank = rankById.get(item.id) || 0;
 
-  for (const p of outside) {
-    const d = document.createElement('div');
-    d.className = 'lab lab-out';
-    d.dataset.id = p.id;
-    d.setAttribute('role', 'button');
-    d.setAttribute('tabindex', '0');
-    d.setAttribute('aria-label', (p.regionName || p.name) + ', ' + p.count + (p.count === 1 ? ' restaurant' : ' restaurants'));
-    const activateLabel = event => {
+    label.className = 'lab lab-map-label' + (state.view === 'country' ? ' lab-region' : '');
+    label.dataset.id = item.id;
+    label.dataset.count = item.count;
+    label.dataset.rank = rank;
+    label.dataset.revealRatio = labelRevealRatio(item, rank);
+    label.dataset.mapX = anchor.x;
+    label.dataset.mapY = anchor.y;
+    label.setAttribute('role', 'button');
+    label.setAttribute('tabindex', '0');
+    label.setAttribute('aria-label', fullName + ', ' + item.count + (item.count === 1 ? ' restaurant' : ' restaurants'));
+    label.title = fullName + ' · ' + item.count + (item.count === 1 ? ' restaurant' : ' restaurants');
+
+    const name = document.createElement('span');
+    name.className = 'lab-name';
+    name.textContent = visibleName;
+    const count = document.createElement('span');
+    count.className = 'lab-count';
+    count.textContent = item.count;
+    label.append(name, count);
+
+    const activate = event => {
       event.stopPropagation();
       if (state.levelMorphing) return;
-      state.view === 'world' ? select(p.id) : selectRegion(p.id);
+      state.view === 'world' ? select(item.id) : selectRegion(item.id);
     };
-    d.onclick = activateLabel;
-    d.onkeydown = event => {
+    label.onclick = activate;
+    label.onkeydown = event => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
-      activateLabel(event);
+      activate(event);
     };
-    const fullLabel = p.name + '<span>' + p.count + '</span>';
-    d.innerHTML = fullLabel;
-    d.style.left = '0px';
-    d.style.top = '-999px';
-    host.appendChild(d);
-    const bx = p.ox * CELL, by = p.oy * CELL, bw = p.w * CELL, bh = p.h * CELL;
-
-    if (isMobileCountry) {
-      const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
-      const centerY = (p.oy + d3.mean(p.cells, cell => cell[1] + 0.5)) * CELL;
-      const fullRegionName = p.regionName || p.name;
-      const shortRegionName = fullRegionName
-        .replace(/\s+culinary family$/i, '')
-        .replace(/\s+noodles$/i, '')
-        .split('/')[0]
-        .trim();
-      d.className = 'lab lab-in lab-mobile-region';
-      d.dataset.mapX = centerX;
-      d.dataset.mapY = centerY;
-      d.dataset.centered = 'true';
-      d.title = fullRegionName + ' · ' + p.count;
-      d.innerHTML = shortRegionName + '<span>' + p.count + '</span>';
-      d.style.left = '0px';
-      d.style.top = '0px';
-      continue;
-    }
-
-    if (isSecondLevel) {
-      const centerX = (p.ox + d3.mean(p.cells, cell => cell[0] + 0.5)) * CELL;
-      const centerY = (p.oy + d3.mean(p.cells, cell => cell[1] + 0.5)) * CELL;
-      const possibleCenters = [
-        [centerX, centerY],
-        ...p.cells
-          .map(([dx, dy]) => [(p.ox + dx + 0.5) * CELL, (p.oy + dy + 0.5) * CELL])
-          .sort((a, b) => Math.hypot(a[0] - centerX, a[1] - centerY) - Math.hypot(b[0] - centerX, b[1] - centerY))
-      ];
-      let interior = null;
-      for (const html of [fullLabel, p.name]) {
-        d.innerHTML = html;
-        const insideWidth = d.offsetWidth + 2;
-        const insideHeight = d.offsetHeight + 1;
-        for (const center of possibleCenters) {
-          const candidate = {
-            x: center[0] - insideWidth / 2,
-            y: center[1] - insideHeight / 2,
-            w: insideWidth,
-            h: insideHeight
-          };
-          if (overlap(candidate) || !insideOwner(candidate, p.id)) continue;
-          interior = candidate;
-          break;
-        }
-        if (interior) break;
-      }
-      if (interior) {
-        d.className = 'lab lab-in';
-        d.dataset.mapX = interior.x;
-        d.dataset.mapY = interior.y;
-        d.style.left = '0px';
-        d.style.top = '0px';
-        boxes.push({ x: interior.x - 3, y: interior.y - 3, w: interior.w + 6, h: interior.h + 6 });
-        continue;
-      }
-      d.innerHTML = fullLabel;
-    }
-
-    const lw = d.offsetWidth + 2, lh = d.offsetHeight + 1;
-
-    const cands = [];
-    for (let ring = 0; ring < (isSecondLevel ? 14 : 26); ring++) {
-      // A finer search interval keeps callouts beside their country instead of
-      // jumping across the dense European and eastern Mediterranean clusters.
-      const g = ring * 4;
-      cands.push([bx + bw / 2 - lw / 2, by + bh + 2 + g]);
-      cands.push([bx + bw + 3 + g * 0.6, by + bh / 2 - lh / 2 + g * 0.3]);
-      cands.push([bx - lw - 3 - g * 0.6, by + bh / 2 - lh / 2 + g * 0.3]);
-      cands.push([bx + bw / 2 - lw / 2, by - lh - 2 - g]);
-      cands.push([bx + bw + 3 + g * 0.6, by - lh - 2 - g * 0.4]);
-      cands.push([bx - lw - 3 - g * 0.6, by - lh - 2 - g * 0.4]);
-      cands.push([bx + bw + 3 + g * 0.6, by + bh + 2 + g * 0.4]);
-      cands.push([bx - lw - 3 - g * 0.6, by + bh + 2 + g * 0.4]);
-    }
-    // distance from a point to this country's own silhouette
-    const nearestOwnPoint = (px, py) => {
-      let best = { distance: Infinity, x: bx + bw / 2, y: by + bh / 2 };
-      for (const [dx, dy] of p.cells) {
-        const cx = (p.ox + dx + 0.5) * CELL, cy = (p.oy + dy + 0.5) * CELL;
-        const dd = Math.hypot(cx - px, cy - py);
-        if (dd < best.distance) best = { distance: dd, x: cx, y: cy };
-      }
-      return best;
-    };
-    const ownDist = (px, py) => nearestOwnPoint(px, py).distance;
-    // owner of the nearest inked cell to a point (ring search on the grid)
-    const nearestOwner = (px, py) => {
-      const gx = Math.floor(px / CELL), gy = Math.floor(py / CELL);
-      for (let r = 0; r <= 30; r++) {
-        let bestD = Infinity, bestId = null;
-        for (let y = gy - r; y <= gy + r; y++) {
-          if (y < 0 || y >= state.rows) continue;
-          for (let x = gx - r; x <= gx + r; x++) {
-            if (x < 0 || x >= state.cols) continue;
-            if (Math.max(Math.abs(x - gx), Math.abs(y - gy)) !== r) continue;
-            const id = state.lookup[y * state.cols + x];
-            if (!id) continue;
-            const dd = Math.hypot((x + 0.5) * CELL - px, (y + 0.5) * CELL - py);
-            if (dd < bestD) { bestD = dd; bestId = id; }
-          }
-        }
-        if (bestId) return bestId;
-      }
-      return null;
-    };
-    let pick = null, pickScore = Infinity, fallback = null, fallbackScore = Infinity;
-    for (const c of cands) {
-      const r = { x: c[0], y: c[1], w: lw, h: lh };
-      if (r.x < 3 || r.y < 3 || r.x + r.w > W - 3 || r.y + r.h > H - 3) continue;
-      if (overlap(r)) continue;
-      if (inkHit(r) > 0) continue;
-      const cx = c[0] + lw / 2, cy = c[1] + lh / 2;
-      // probe from the edge of the label facing the shape as well as its centre
-      const dOwn = Math.min(ownDist(cx, cy), ownDist(c[0], cy), ownDist(c[0] + lw, cy), ownDist(cx, c[1]), ownDist(cx, c[1] + lh));
-      const owner = nearestOwner(cx, cy);
-      const unambiguous = owner === p.id;
-      const target = nearestOwnPoint(cx, cy);
-      const start = lineStartAtLabelEdge(r, target);
-      const lineDistance = Math.hypot(target.x - start.x, target.y - start.y);
-      if (isSecondLevel && (lineDistance > 44 || leaderConflicts(p.id, start, target))) continue;
-      const score = dOwn + lineDistance * 0.35 + (unambiguous ? 0 : 260);
-      const choice = { position: c, target, start, lineDistance };
-      if (unambiguous && score < pickScore) { pickScore = score; pick = choice; }
-      if (score < fallbackScore) { fallbackScore = score; fallback = choice; }
-    }
-    const ambiguous = !pick;
-    if (!pick) {
-      if (isSecondLevel && !fallback) {
-        d.remove();
-        continue;
-      }
-      pick = fallback || {
-        position: [Math.min(W - lw - 4, Math.max(4, bx)), Math.min(H - lh - 4, by + bh + 4)]
-      };
-    }
-    const pickPosition = pick.position;
-    d.dataset.mapX = pickPosition[0];
-    d.dataset.mapY = pickPosition[1];
-    d.style.left = '0px';
-    d.style.top = '0px';
-    boxes.push({ x: pickPosition[0] - 3, y: pickPosition[1] - 3, w: lw + 6, h: lh + 6 });
-
-    const lcx = pickPosition[0] + lw / 2, lcy = pickPosition[1] + lh / 2;
-    const target = pick.target || nearestOwnPoint(lcx, lcy);
-    const tx = target.x, ty = target.y, bestD = target.distance;
-    if (bestD > 9 || ambiguous) {
-      state.leaders.push({
-        id: p.id,
-        labelX: pickPosition[0],
-        labelY: pickPosition[1],
-        labelWidth: lw,
-        labelHeight: lh,
-        targetX: tx,
-        targetY: ty,
-        lineStart: pick.start || lineStartAtLabelEdge({ x: pickPosition[0], y: pickPosition[1], w: lw, h: lh }, target),
-        dot: ambiguous || bestD > 30
-      });
-    }
+    host.append(label);
   }
+
   updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
 }
 
@@ -1449,6 +1231,7 @@ function resetMapTransform() {
       state.continuityCityAnchor
     );
     if (continuityTransform) {
+      if (!state.labelReferenceScales.world) state.labelReferenceScales.world = continuityTransform.k;
       d3.select(wrap).call(state.zoomBehavior.transform, continuityTransform);
       return;
     }
@@ -1484,6 +1267,7 @@ function resetMapTransform() {
   const transform = d3.zoomIdentity
     .translate(usableWidth / 2 - focusX * scale, usableHeight / 2 - focusY * scale)
     .scale(scale);
+  state.labelReferenceScales[state.view] = transform.k;
   d3.select(wrap).call(state.zoomBehavior.transform, transform);
 }
 
@@ -1491,20 +1275,28 @@ function updateMapLabelPresentation(transform) {
   const host = el('labels');
   const wrap = el('mapwrap');
   if (!host || !wrap) return;
+
   const detailPanel = state.view === 'country' ? document.querySelector('aside')?.getBoundingClientRect() : null;
-  const mobileDetail = state.view === 'country' && wrap.clientWidth <= MOBILE_BREAKPOINT;
-  const visibleRight = mobileDetail ? wrap.clientWidth : wrap.clientWidth - (detailPanel?.width || 0);
-  const visibleBottom = mobileDetail ? wrap.clientHeight - (detailPanel?.height || 0) : wrap.clientHeight;
+  const compact = wrap.clientWidth <= MOBILE_BREAKPOINT;
+  const visibleRight = compact ? wrap.clientWidth : wrap.clientWidth - (detailPanel?.width || 0);
+  const visibleBottom = compact
+    ? wrap.clientHeight - Math.min(detailPanel?.height || 0, wrap.clientHeight * 0.56)
+    : wrap.clientHeight;
   const k = Math.max(0.01, transform?.k || 1);
+  const referenceScale = Math.max(0.01, state.labelReferenceScales[state.view] || k);
+  const relativeZoom = k / referenceScale;
   const snap = value => Math.round(value * dpr) / dpr;
-  const isActiveLabel = label => label.dataset.id === state.sel || label.dataset.id === state.hover;
-  const isPriorityLabel = label => state.labelPriorityIds?.has(label.dataset.id);
-  const labels = [...host.querySelectorAll('.lab')];
-  labels.forEach(label => { label.hidden = false; });
-  labels.sort((a, b) =>
-    Number(isActiveLabel(b)) - Number(isActiveLabel(a)) ||
-    Number(isPriorityLabel(b)) - Number(isPriorityLabel(a))
+  const isActive = label => label.dataset.id === state.sel || label.dataset.id === state.hover;
+  const isPriority = label => state.labelPriorityIds?.has(label.dataset.id);
+
+  const labels = [...host.querySelectorAll('.lab')].sort((a, b) =>
+    Number(isActive(b)) - Number(isActive(a)) ||
+    Number(isPriority(b)) - Number(isPriority(a)) ||
+    Number(a.dataset.revealRatio || 1) - Number(b.dataset.revealRatio || 1) ||
+    Number(b.dataset.count || 0) - Number(a.dataset.count || 0) ||
+    Number(a.dataset.rank || 0) - Number(b.dataset.rank || 0)
   );
+
   const wrapRect = wrap.getBoundingClientRect();
   const headRect = el('head')?.getBoundingClientRect();
   const occupied = headRect?.width ? [{
@@ -1514,68 +1306,24 @@ function updateMapLabelPresentation(transform) {
     height: headRect.height + 12
   }] : [];
   const visibleLabelIds = new Set();
-  const gap = 5;
-  const hitsLand = (rect, labelId) => {
-    if (!state.labelInk) return false;
-    const x0 = Math.floor((rect.x - (transform?.x || 0)) / k / CELL);
-    const y0 = Math.floor((rect.y - (transform?.y || 0)) / k / CELL);
-    const x1 = Math.ceil((rect.x + rect.width - (transform?.x || 0)) / k / CELL);
-    const y1 = Math.ceil((rect.y + rect.height - (transform?.y || 0)) / k / CELL);
-    for (let y = Math.max(0, y0); y < Math.min(state.rows, y1); y++) {
-      for (let x = Math.max(0, x0); x < Math.min(state.cols, x1); x++) {
-        const offset = y * state.cols + x;
-        if (state.labelInk[offset] && state.labelOwner?.[offset] !== labelId) return true;
-      }
-    }
-    return false;
-  };
+  const gap = compact ? 2 : 4;
+
   for (const label of labels) {
+    label.hidden = false;
     const width = label.offsetWidth;
     const height = label.offsetHeight;
     const mapX = Number(label.dataset.mapX);
     const mapY = Number(label.dataset.mapY);
-    if (!Number.isFinite(mapX) || !Number.isFinite(mapY)) continue;
-    const centered = label.dataset.centered === 'true';
-    const isMobileRegion = label.classList.contains('lab-mobile-region');
-    const anchorX = (transform?.x || 0) + mapX * k;
-    const anchorY = (transform?.y || 0) + mapY * k;
-    let screenX = centered ? anchorX - width / 2 : anchorX;
-    let screenY = centered ? anchorY - height / 2 : anchorY;
-    if (isMobileRegion) {
-      const offsets = [[0, 0]];
-      for (const radius of [18, 32, 48, 64, 80]) {
-        offsets.push(
-          [0, -radius], [radius, 0], [0, radius], [-radius, 0],
-          [radius * 0.72, -radius * 0.72], [radius * 0.72, radius * 0.72],
-          [-radius * 0.72, radius * 0.72], [-radius * 0.72, -radius * 0.72]
-        );
-      }
-      const choice = offsets
-        .map(([dx, dy]) => ({
-          x: anchorX + dx - width / 2,
-          y: anchorY + dy - height / 2
-        }))
-        .find(candidate => {
-          const candidateRect = {
-            x: candidate.x - gap,
-            y: candidate.y - gap,
-            width: width + gap * 2,
-            height: height + gap * 2
-          };
-          const outside = candidateRect.x < 2 || candidateRect.y < 2 ||
-            candidateRect.x + candidateRect.width > visibleRight - 2 ||
-            candidateRect.y + candidateRect.height > visibleBottom - 2;
-          const collision = occupied.some(box =>
-            candidateRect.x < box.x + box.width && candidateRect.x + candidateRect.width > box.x &&
-            candidateRect.y < box.y + box.height && candidateRect.y + candidateRect.height > box.y
-          );
-          return !outside && !collision;
-        });
-      if (choice) {
-        screenX = choice.x;
-        screenY = choice.y;
-      }
+    const revealRatio = Number(label.dataset.revealRatio || 1);
+    const active = isActive(label);
+    const eligible = active || relativeZoom + 0.001 >= revealRatio;
+    if (!eligible || !Number.isFinite(mapX) || !Number.isFinite(mapY)) {
+      label.hidden = true;
+      continue;
     }
+
+    const screenX = (transform?.x || 0) + mapX * k - width / 2;
+    const screenY = (transform?.y || 0) + mapY * k - height / 2;
     label.style.transform = 'translate(' + snap(screenX) + 'px,' + snap(screenY) + 'px)';
     const rect = {
       x: screenX - gap,
@@ -1583,22 +1331,26 @@ function updateMapLabelPresentation(transform) {
       width: width + gap * 2,
       height: height + gap * 2
     };
-    const active = isActiveLabel(label);
-    const priority = isPriorityLabel(label);
-    const isInterior = label.classList.contains('lab-in');
-    const outside = rect.x < 2 || rect.y < 2 || rect.x + rect.width > visibleRight - 2 || rect.y + rect.height > visibleBottom - 2;
+    const outside = rect.x < 2 || rect.y < 2 ||
+      rect.x + rect.width > visibleRight - 2 ||
+      rect.y + rect.height > visibleBottom - 2;
     const collision = occupied.some(box =>
       rect.x < box.x + box.width && rect.x + rect.width > box.x &&
       rect.y < box.y + box.height && rect.y + rect.height > box.y
     );
-    const landConflict = !isInterior && hitsLand({ x: screenX, y: screenY, width, height }, label.dataset.id);
-    label.hidden = outside || (!isMobileRegion && !active && (collision || (landConflict && !priority)));
-    if (!label.hidden) {
-      occupied.push(rect);
-      visibleLabelIds.add(label.dataset.id);
-    }
+    label.hidden = outside || (!active && collision);
+    if (label.hidden) continue;
+    occupied.push(rect);
+    visibleLabelIds.add(label.dataset.id);
   }
+
   state.visibleLabelIds = visibleLabelIds;
+  document.body.dataset.labelStats = JSON.stringify({
+    view: state.view,
+    visible: visibleLabelIds.size,
+    total: labels.length,
+    relativeZoom: Math.round(relativeZoom * 100) / 100
+  });
   updateSharpOverlay(transform);
 }
 
@@ -2293,6 +2045,7 @@ function renderCountryAtlas(country, options = {}) {
       options.referenceTransform || state.currentTransform || d3.zoomIdentity,
       countryBackdrop
     );
+    state.labelReferenceScales.country = appliedTransform.k;
     d3.select(el('mapwrap')).call(state.zoomBehavior.transform, appliedTransform);
   } else {
     resetMapTransform();
