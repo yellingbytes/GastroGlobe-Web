@@ -20,6 +20,8 @@
     --display: 'Jersey 10', Impact, sans-serif;
     --body: 'Atkinson Hyperlegible', Arial, sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --detail-panel-width: min(420px, 34vw);
+    --detail-panel-height: min(56dvh, 520px);
   }
   * { box-sizing: border-box; }
   html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; }
@@ -59,23 +61,74 @@
     background-size: 4px 4px;
     background-position: 0 0;
     overflow: hidden;
-    touch-action: none;
+    touch-action: auto;
     cursor: grab;
   }
   #mapwrap.is-panning { cursor: grabbing; }
   #google-map-view {
     position: absolute;
     z-index: 7;
-    inset: 0 min(420px, 34vw) 0 0;
+    inset: 0 var(--detail-panel-width) 0 0;
     display: none;
     overflow: hidden;
     background: #e5e0d6;
-    touch-action: auto;
+    touch-action: none;
+    overscroll-behavior: contain;
+    cursor: grab;
   }
+  #google-map-view.is-panning { cursor: grabbing; }
   body.google-map-open #google-map-view { display: block; }
   body.google-map-open #head,
   body.google-map-open #ctrls { visibility: hidden; }
-  #google-map-frame { display: block; width: 100%; height: 100%; border: 0; }
+  #google-map-canvas { position: absolute; inset: 0; }
+  #google-map-canvas:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; }
+  #google-map-status {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    top: 50%;
+    max-width: min(320px, calc(100% - 32px));
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(35,32,27,0.35);
+    background: rgba(239,234,224,0.94);
+    padding: 10px 13px;
+    color: var(--ink-soft);
+    font: 600 11px/1.4 var(--mono);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+  }
+  #google-map-status[hidden] { display: none; }
+  .google-place-preview {
+    min-width: min(230px, 68vw);
+    max-width: 280px;
+    padding: 2px 2px 4px;
+    color: #23201b;
+    font-family: var(--sans);
+  }
+  .google-place-preview h2 {
+    margin: 0 0 5px;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .google-place-preview p {
+    margin: 0;
+    color: #615b50;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .google-place-preview a {
+    display: inline-flex;
+    min-height: 32px;
+    margin-top: 9px;
+    align-items: center;
+    color: #23201b;
+    font: 700 11px/1 var(--mono);
+    letter-spacing: 0.02em;
+    text-underline-offset: 3px;
+  }
   #mapscene { position: absolute; left: 0; top: 0; flex: none; transform-origin: 0 0; will-change: transform; }
   #morphcv {
     position: absolute;
@@ -178,8 +231,46 @@
   #ctrls { display: none; }
   #ctrls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   #ghost-control { display: none !important; }
-  aside { position: absolute; z-index: 9; top: 0; right: 0; bottom: 0; width: min(420px, 34vw); background: rgba(229,222,206,0.97); border-left: 2px solid var(--ink); padding: 30px 28px 26px; display: none; flex-direction: column; gap: 16px; height: 100%; box-shadow: -10px 0 30px rgba(35,32,27,0.12); }
+  aside { position: absolute; z-index: 9; top: 0; right: 0; bottom: 0; width: var(--detail-panel-width); background: rgba(229,222,206,0.97); border-left: 0; padding: 30px 28px 26px; display: none; flex-direction: column; gap: 16px; height: 100%; box-shadow: -8px 0 24px rgba(35,32,27,0.10); }
   body.country-detail-open aside { display: flex; }
+  body.panel-resizing { cursor: ew-resize; user-select: none; }
+  body.panel-resizing #google-map-view,
+  body.panel-resizing #mapwrap { pointer-events: none; }
+  .panel-drag-handle {
+    position: absolute;
+    z-index: 3;
+    left: -22px;
+    top: 50%;
+    display: flex;
+    width: 44px;
+    height: 64px;
+    transform: translateY(-50%);
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-soft);
+    box-shadow: none;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+  .panel-drag-handle:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .panel-drag-grip {
+    display: block;
+    width: 5px;
+    height: 34px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.32;
+    transition-property: opacity, scale;
+    transition-duration: 120ms;
+    transition-timing-function: ease-out;
+  }
+  .panel-drag-handle:active .panel-drag-grip { opacity: 0.62; scale: 0.96; }
+  @media (hover: hover) {
+    .panel-drag-handle:hover .panel-drag-grip { opacity: 0.5; }
+  }
   .stats { display: flex; gap: 24px; }
   .stat b { font-family: var(--mono); font-weight: 600; font-size: 30px; line-height: 1; display: block; }
   .stat span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
@@ -199,6 +290,7 @@
   #detail .ds { display: none; }
   #detail > div:first-child > div { min-width: 0; }
   #detail .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  #detail .chips[hidden] { display: none; }
   #detail .chip { font: inherit; font-size: 14px; color: inherit; background: var(--paper); border: 1px solid var(--rule); padding: 3px 8px; cursor: pointer; }
   #detail .chip:hover, #detail .chip[aria-pressed="true"] { border-color: var(--ink); background: #f7f3ea; }
   #detail .list { overflow-y: auto; min-height: 0; flex: 1; border-top: 1px solid var(--rule); padding-top: 8px; }
@@ -213,7 +305,6 @@
   #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
   button.close { flex: 0 0 auto; background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; line-height: 1.25; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; padding: 6px 9px; cursor: pointer; }
   button.close:hover { border-color: var(--ink); color: var(--ink); }
-  .sheet-toggle { display: none; }
   footer { font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
   @media (max-width: 900px) {
     h1 { font-size: 44px; }
@@ -223,56 +314,43 @@
       width: calc(100% - max(82px, calc(env(safe-area-inset-left) + 82px)));
     }
     #map-subtitle { max-width: 320px; margin-top: 17px; font-size: 11px; line-height: 1.55; }
-    #google-map-view { inset: 0 0 min(56dvh, 520px); }
-    body:has(aside.sheet-expanded) #google-map-view { bottom: min(86dvh, 720px); }
+    #google-map-view { inset: 0 0 var(--detail-panel-height); }
+    body:has(aside.sheet-expanded) #google-map-view { bottom: var(--detail-panel-height); }
     aside {
       top: auto;
       width: 100%;
-      height: min(56dvh, 520px);
+      height: var(--detail-panel-height);
       max-height: calc(100dvh - max(12px, env(safe-area-inset-top)));
-      border-top: 2px solid var(--ink);
+      border-top: 0;
       border-left: 0;
-      padding: 12px max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+      padding: 24px max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
       gap: 8px;
+      box-shadow: 0 -8px 24px rgba(35,32,27,0.10);
       overscroll-behavior: contain;
       transition: height 260ms cubic-bezier(0.22, 1, 0.36, 1);
     }
-    aside.sheet-expanded { height: min(86dvh, 720px); }
-    .sheet-toggle {
-      position: absolute;
-      right: max(12px, env(safe-area-inset-right));
-      top: -50px;
-      display: inline-flex;
-      width: 44px;
+    aside.sheet-expanded { height: var(--detail-panel-height); }
+    body.panel-resizing { cursor: ns-resize; }
+    body.panel-resizing aside { transition: none; }
+    .panel-drag-handle {
+      left: 50%;
+      top: -10px;
+      width: 72px;
       height: 44px;
-      min-height: 44px;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      border: 1px solid rgba(35,32,27,0.56);
-      border-radius: 50%;
-      background: rgba(239,234,224,0.96);
-      color: var(--ink);
-      box-shadow: 0 4px 16px rgba(35,32,27,0.16);
-      touch-action: manipulation;
-      cursor: pointer;
+      transform: translateX(-50%);
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      box-shadow: none;
+      cursor: ns-resize;
     }
-    .sheet-toggle svg {
-      width: 22px;
-      height: 22px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    aside.sheet-expanded .sheet-toggle svg { transform: rotate(180deg); }
+    .panel-drag-grip { width: 36px; height: 3px; }
     .stats { flex: 0 0 auto; gap: 16px; }
     .stat b { font-size: 23px; }
     .stat span { font-size: 9px; letter-spacing: 0.1em; }
     .sec { padding-top: 8px; gap: 7px; }
     #detail { gap: 7px; }
+    #detail.sec { border-top: 0; padding-top: 0; }
     #detail .dh { font-size: 21px; }
     #detail .chips {
       flex: 0 0 auto;
@@ -292,14 +370,14 @@
     #detail .li { min-height: 40px; align-items: center; }
     #detail .li-main small { max-width: 52vw; }
     button.close { min-width: 44px; min-height: 44px; }
-    .sheet-toggle:focus-visible, #detail .chip:focus-visible, button.close:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    #detail .chip:focus-visible, button.close:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
     footer { display: none; }
   }
   @media (max-width: 900px) and (max-height: 500px) {
     h1 { font-size: 44px; }
     #head { top: 12px; }
-    aside { height: min(72dvh, 320px); }
-    aside.sheet-expanded { height: calc(100dvh - 8px); }
+    aside { height: var(--detail-panel-height); }
+    aside.sheet-expanded { height: var(--detail-panel-height); }
     .stats { display: none; }
     #detail .ds { display: none; }
   }
@@ -324,7 +402,8 @@
       <div id="labels"></div>
       <div id="tip"></div>
       <div id="google-map-view" aria-hidden="true">
-        <iframe id="google-map-frame" title="Google map of the selected restaurants" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        <div id="google-map-canvas" role="application" aria-label="Interactive Google map of the selected restaurants" tabindex="0"></div>
+        <div id="google-map-status" role="status">Loading interactive Google map…</div>
       </div>
     </div>
     <div id="ctrls">
@@ -333,9 +412,9 @@
     </div>
   </div>
   <aside aria-label="Cuisine and restaurant details">
-    <button type="button" class="sheet-toggle" id="sheet-toggle" aria-controls="d-list" aria-expanded="false" aria-label="Expand the restaurant list" title="Expand the restaurant list">
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6"></path></svg>
-    </button>
+    <div class="panel-drag-handle" id="panel-drag-handle" role="separator" aria-label="Resize restaurant panel" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="680" tabindex="0">
+      <span class="panel-drag-grip" aria-hidden="true"></span>
+    </div>
     <div class="sec" id="ranksec">
       <h2>Ranked by restaurants — click a country</h2>
       <div id="rank"></div>
@@ -370,6 +449,8 @@ const CITY_ID = (() => {
   return requested && liveCityIds.includes(requested) ? requested : liveCityIds[0];
 })();
 const CITY_NAME = metropolitanEditions.find((edition) => edition.id === CITY_ID)?.name ?? CITY_ID;
+const CITY_META = metropolitanEditions.find((edition) => edition.id === CITY_ID)
+  ?? { id: CITY_ID, name: CITY_NAME, lat: 48.1351, lng: 11.582 };
 const CITY_SUBTITLE = 'FOOD CULTURES FROM AROUND THE WORLD, AS FOUND ACROSS ' + CITY_NAME.toUpperCase() + '.';
 const SOURCE_COUNTRIES = countriesForCity(CITY_ID);
 const SOURCE_META = datasetMetaForCity(CITY_ID);
@@ -573,6 +654,11 @@ const state = {
   morphColors: new Map(),
   lastMorphStats: null,
   googleMapOpen: false,
+  googleMap: null,
+  googleInfoWindow: null,
+  googleMapMarkers: [],
+  googleMapFailed: false,
+  googleMapRenderToken: 0,
   activeRestaurants: [],
   activeRegion: null
 };
@@ -2171,23 +2257,143 @@ function buildWorldStats() {
   el('s-share-label').textContent = 'Not German';
 }
 
-function setMobileSheetExpanded(expanded) {
-  const panel = document.querySelector('aside');
-  const button = el('sheet-toggle');
-  const active = Boolean(expanded && window.matchMedia('(max-width: 900px)').matches);
-  panel?.classList.toggle('sheet-expanded', active);
-  if (!button) return;
-  button.setAttribute('aria-expanded', String(active));
-  const label = active ? 'Show more of the map' : 'Expand the restaurant list';
-  button.setAttribute('aria-label', label);
-  button.setAttribute('title', label);
+function panelResizeMode() {
+  return window.matchMedia('(max-width: 900px)').matches ? 'mobile' : 'desktop';
 }
 
-el('sheet-toggle').onclick = () => {
+function panelSizeBounds(mode = panelResizeMode()) {
+  if (mode === 'mobile') {
+    return {
+      min: Math.max(190, Math.round(window.innerHeight * 0.3)),
+      max: Math.max(240, Math.min(720, Math.round(window.innerHeight * 0.86)))
+    };
+  }
+  return {
+    min: 300,
+    max: Math.max(340, Math.min(680, Math.round(window.innerWidth * 0.58)))
+  };
+}
+
+function defaultPanelSize(mode = panelResizeMode(), expanded = false) {
+  const bounds = panelSizeBounds(mode);
+  const desired = mode === 'mobile'
+    ? window.innerHeight * (expanded ? 0.86 : 0.56)
+    : Math.min(420, window.innerWidth * 0.34);
+  return clamp(Math.round(desired), bounds.min, bounds.max);
+}
+
+function setPanelSize(size, { expanded = false, live = false } = {}) {
+  const mode = panelResizeMode();
+  const bounds = panelSizeBounds(mode);
+  const next = clamp(Math.round(size), bounds.min, bounds.max);
   const panel = document.querySelector('aside');
-  setMobileSheetExpanded(!panel?.classList.contains('sheet-expanded'));
-  window.setTimeout(() => updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity), 280);
+  const handle = el('panel-drag-handle');
+  if (mode === 'mobile') {
+    document.documentElement.style.setProperty('--detail-panel-height', next + 'px');
+    panel?.classList.toggle('sheet-expanded', expanded || next > defaultPanelSize('mobile', false) + 24);
+  } else {
+    document.documentElement.style.setProperty('--detail-panel-width', next + 'px');
+    panel?.classList.remove('sheet-expanded');
+  }
+  if (handle) {
+    handle.setAttribute('aria-orientation', mode === 'mobile' ? 'horizontal' : 'vertical');
+    handle.setAttribute('aria-valuemin', bounds.min);
+    handle.setAttribute('aria-valuemax', bounds.max);
+    handle.setAttribute('aria-valuenow', next);
+    handle.setAttribute('aria-valuetext', next + ' pixels');
+  }
+  if (!live && state.googleMap && window.google?.maps?.event) {
+    window.google.maps.event.trigger(state.googleMap, 'resize');
+  }
+  if (!live) updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
+  return next;
+}
+
+function setMobileSheetExpanded(expanded) {
+  const panel = document.querySelector('aside');
+  const active = Boolean(expanded && window.matchMedia('(max-width: 900px)').matches);
+  if (panelResizeMode() === 'mobile') setPanelSize(defaultPanelSize('mobile', active), { expanded: active });
+  else {
+    panel?.classList.remove('sheet-expanded');
+    setPanelSize(defaultPanelSize('desktop'));
+  }
+}
+
+let panelDrag = null;
+const panelDragHandle = el('panel-drag-handle');
+panelDragHandle?.addEventListener('pointerdown', event => {
+  if (event.button !== 0) return;
+  const mode = panelResizeMode();
+  const panelRect = document.querySelector('aside')?.getBoundingClientRect();
+  panelDrag = {
+    mode,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startSize: mode === 'mobile' ? panelRect?.height || defaultPanelSize(mode) : panelRect?.width || defaultPanelSize(mode),
+    nextSize: null,
+    frame: 0
+  };
+  panelDragHandle.setPointerCapture(event.pointerId);
+  document.body.classList.add('panel-resizing');
+  event.preventDefault();
+});
+
+panelDragHandle?.addEventListener('pointermove', event => {
+  if (!panelDrag || event.pointerId !== panelDrag.pointerId) return;
+  const delta = panelDrag.mode === 'mobile'
+    ? panelDrag.startY - event.clientY
+    : panelDrag.startX - event.clientX;
+  panelDrag.nextSize = panelDrag.startSize + delta;
+  if (panelDrag.frame) return;
+  panelDrag.frame = requestAnimationFrame(() => {
+    if (!panelDrag) return;
+    panelDrag.frame = 0;
+    setPanelSize(panelDrag.nextSize, { live: true });
+  });
+});
+
+const finishPanelDrag = event => {
+  if (!panelDrag) return;
+  if (Number.isFinite(event?.pointerId) && event.pointerId !== panelDrag.pointerId) return;
+  const drag = panelDrag;
+  const finalSize = drag.nextSize ?? drag.startSize;
+  if (drag.frame) cancelAnimationFrame(drag.frame);
+  panelDrag = null;
+  if (panelDragHandle.hasPointerCapture(drag.pointerId)) panelDragHandle.releasePointerCapture(drag.pointerId);
+  document.body.classList.remove('panel-resizing');
+  setPanelSize(finalSize);
 };
+panelDragHandle?.addEventListener('pointerup', finishPanelDrag);
+panelDragHandle?.addEventListener('pointercancel', finishPanelDrag);
+panelDragHandle?.addEventListener('lostpointercapture', finishPanelDrag);
+window.addEventListener('blur', finishPanelDrag);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) finishPanelDrag();
+});
+
+panelDragHandle?.addEventListener('keydown', event => {
+  const mode = panelResizeMode();
+  const panelRect = document.querySelector('aside')?.getBoundingClientRect();
+  const current = mode === 'mobile' ? panelRect?.height : panelRect?.width;
+  const bounds = panelSizeBounds(mode);
+  let next = null;
+  if (event.key === 'Home') next = bounds.min;
+  if (event.key === 'End') next = bounds.max;
+  if (mode === 'mobile' && event.key === 'ArrowUp') next = current + 24;
+  if (mode === 'mobile' && event.key === 'ArrowDown') next = current - 24;
+  if (mode === 'desktop' && event.key === 'ArrowLeft') next = current + 24;
+  if (mode === 'desktop' && event.key === 'ArrowRight') next = current - 24;
+  if (!Number.isFinite(next)) return;
+  event.preventDefault();
+  setPanelSize(next);
+});
+
+window.addEventListener('resize', () => {
+  if (!document.body.classList.contains('country-detail-open')) return;
+  const panelRect = document.querySelector('aside')?.getBoundingClientRect();
+  setPanelSize(panelResizeMode() === 'mobile' ? panelRect?.height : panelRect?.width);
+});
 
 function mapsSearchUrl(query) {
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query) +
@@ -2370,19 +2576,266 @@ function renderRestaurantList(restaurants) {
   sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken);
 }
 
-function renderGoogleMapView() {
-  if (!state.activeCountry) return;
-  const query = activeGoogleMapQuery();
-  const embedUrl = 'https://maps.google.com/maps?q=' + encodeURIComponent(query) + '&hl=en&z=12&output=embed';
-  const frame = el('google-map-frame');
-  if (frame.dataset.query !== query) {
-    frame.dataset.query = query;
-    frame.src = embedUrl;
-  }
-  frame.title = 'Google map for ' + query;
-  if (state.googleMapOpen) notifyParentGoogleMapVisibility(true);
+let googleMapsApiPromise = null;
+let googleMapsLibrariesPromise = null;
+
+function activeMapRestaurants() {
+  return (state.activeRestaurants.length
+    ? state.activeRestaurants
+    : state.activeCountry?.restaurants || [])
+    .filter(restaurant => Number.isFinite(restaurant.lat) && Number.isFinite(restaurant.lng));
 }
 
+function loadGoogleMapsApi() {
+  if (window.google?.maps?.importLibrary) return Promise.resolve(window.google.maps);
+  if (googleMapsApiPromise) return googleMapsApiPromise;
+  googleMapsApiPromise = fetch('/api/google-maps-config', { headers: { Accept: 'application/json' } })
+    .then(async response => {
+      if (!response.ok) throw new Error('Google Maps browser key is not configured');
+      const payload = await response.json();
+      if (!payload.apiKey) throw new Error('Google Maps browser key is missing');
+      return new Promise((resolve, reject) => {
+        const callback = '__gastroGlobeGoogleMapsReady';
+        const script = document.createElement('script');
+        window.gm_authFailure = () => {
+          state.googleMap = null;
+          state.googleMapFailed = true;
+          if (state.googleMapOpen) showGoogleMapUnavailable(activeGoogleMapQuery());
+        };
+        window[callback] = () => {
+          delete window[callback];
+          resolve(window.google.maps);
+        };
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' +
+          encodeURIComponent(payload.apiKey) + '&v=weekly&loading=async&callback=' + callback;
+        script.async = true;
+        script.onerror = () => {
+          delete window[callback];
+          reject(new Error('Google Maps JavaScript API failed to load'));
+        };
+        document.head.appendChild(script);
+      });
+    });
+  return googleMapsApiPromise;
+}
+
+async function googleMapsLibraries() {
+  if (googleMapsLibrariesPromise) return googleMapsLibrariesPromise;
+  googleMapsLibrariesPromise = loadGoogleMapsApi().then(async () => {
+    const [{ Map, InfoWindow }, { AdvancedMarkerElement, PinElement }] = await Promise.all([
+      window.google.maps.importLibrary('maps'),
+      window.google.maps.importLibrary('marker')
+    ]);
+    return { Map, InfoWindow, AdvancedMarkerElement, PinElement };
+  });
+  return googleMapsLibrariesPromise;
+}
+
+function restaurantInfoWindowContent(restaurant) {
+  const card = document.createElement('article');
+  card.className = 'google-place-preview';
+
+  const title = document.createElement('h2');
+  title.textContent = restaurant.name;
+  card.appendChild(title);
+
+  if (restaurant.address) {
+    const address = document.createElement('p');
+    address.textContent = restaurant.address;
+    card.appendChild(address);
+  }
+
+  const link = document.createElement('a');
+  link.href = restaurantMapUrl(restaurant);
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'Open in Google Maps ↗';
+  card.appendChild(link);
+  return card;
+}
+
+function installGoogleMapPointerPan(canvas) {
+  if (canvas.dataset.pointerPanInstalled === 'true') return;
+  canvas.dataset.pointerPanInstalled = 'true';
+  let gesture = null;
+
+  const targetsGoogleControl = event => event.composedPath().some(node =>
+    node instanceof Element && node.matches('a, button, [role="button"], gmp-advanced-marker, .gm-style-iw')
+  );
+
+  const applyGesture = () => {
+    if (!gesture || !state.googleMap) return;
+    gesture.frame = 0;
+    const projection = state.googleMap.getProjection();
+    const center = gesture.center;
+    const zoom = state.googleMap.getZoom();
+    if (!projection || !center || !Number.isFinite(zoom)) return;
+    const scale = Math.pow(2, zoom);
+    const dx = gesture.x - gesture.startX;
+    const dy = gesture.y - gesture.startY;
+    const point = new window.google.maps.Point(
+      center.x - dx / scale,
+      center.y - dy / scale
+    );
+    state.googleMap.setCenter(projection.fromPointToLatLng(point, true));
+  };
+
+  const finishGesture = event => {
+    if (!gesture) return;
+    if (Number.isFinite(event?.pointerId) && event.pointerId !== gesture.pointerId) return;
+    if (gesture.frame) {
+      cancelAnimationFrame(gesture.frame);
+      applyGesture();
+    }
+    const pointerId = gesture.pointerId;
+    gesture = null;
+    el('google-map-view').classList.remove('is-panning');
+    if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+  };
+
+  canvas.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || targetsGoogleControl(event)) return;
+    if (gesture) {
+      finishGesture();
+      return;
+    }
+    const projection = state.googleMap?.getProjection();
+    const centerLatLng = state.googleMap?.getCenter();
+    if (!projection || !centerLatLng) return;
+    gesture = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      x: event.clientX,
+      y: event.clientY,
+      center: projection.fromLatLngToPoint(centerLatLng),
+      moved: false,
+      frame: 0
+    };
+    canvas.setPointerCapture(event.pointerId);
+  }, true);
+
+  canvas.addEventListener('pointermove', event => {
+    if (!gesture || event.pointerId !== gesture.pointerId) return;
+    gesture.x = event.clientX;
+    gesture.y = event.clientY;
+    const distance = Math.hypot(gesture.x - gesture.startX, gesture.y - gesture.startY);
+    if (!gesture.moved && distance < 4) return;
+    gesture.moved = true;
+    el('google-map-view').classList.add('is-panning');
+    event.preventDefault();
+    event.stopPropagation();
+    if (!gesture.frame) gesture.frame = requestAnimationFrame(applyGesture);
+  }, { capture: true, passive: false });
+
+  canvas.addEventListener('pointerup', finishGesture, true);
+  canvas.addEventListener('pointercancel', finishGesture, true);
+  canvas.addEventListener('lostpointercapture', finishGesture, true);
+  window.addEventListener('blur', finishGesture);
+}
+
+function showGoogleMapUnavailable(query) {
+  const canvas = el('google-map-canvas');
+  const status = el('google-map-status');
+  canvas.hidden = true;
+  status.hidden = false;
+  status.textContent = 'Google Maps needs browser API access. Enable Maps JavaScript API for this site and try again.';
+  status.setAttribute('aria-label', 'Google Maps unavailable for ' + query);
+}
+
+async function renderGoogleMapView() {
+  if (!state.activeCountry) return;
+  const token = ++state.googleMapRenderToken;
+  const query = activeGoogleMapQuery();
+  const canvas = el('google-map-canvas');
+  const status = el('google-map-status');
+  const restaurants = activeMapRestaurants();
+  canvas.hidden = false;
+  status.hidden = false;
+  status.textContent = 'Loading interactive Google map…';
+  canvas.setAttribute('aria-label', 'Interactive Google map for ' + query);
+
+  try {
+    const { Map, InfoWindow, AdvancedMarkerElement, PinElement } = await googleMapsLibraries();
+    if (token !== state.googleMapRenderToken) return;
+    if (state.googleMapFailed) throw new Error('Google Maps browser authorization failed');
+    if (!state.googleMap) {
+      state.googleMap = new Map(canvas, {
+        center: { lat: CITY_META.lat, lng: CITY_META.lng },
+        zoom: 12,
+        mapId: 'DEMO_MAP_ID',
+        disableDefaultUI: true,
+        draggable: true,
+        gestureHandling: 'greedy',
+        zoomControl: false,
+        cameraControl: false,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        keyboardShortcuts: true,
+        clickableIcons: false
+      });
+      state.googleMap.addListener('dragstart', () => el('google-map-view').classList.add('is-panning'));
+      state.googleMap.addListener('dragend', () => el('google-map-view').classList.remove('is-panning'));
+      installGoogleMapPointerPan(canvas);
+    }
+
+    if (!state.googleInfoWindow) state.googleInfoWindow = new InfoWindow({ disableAutoPan: true });
+    state.googleInfoWindow.close();
+
+    for (const marker of state.googleMapMarkers) marker.map = null;
+    state.googleMapMarkers = [];
+    if (!restaurants.length) {
+      showGoogleMapUnavailable(query);
+      return;
+    }
+
+    const bounds = new window.google.maps.LatLngBounds();
+    for (const restaurant of restaurants) {
+      const position = { lat: restaurant.lat, lng: restaurant.lng };
+      const pin = new PinElement({
+        background: '#23201b',
+        borderColor: '#efeae0',
+        glyphColor: '#efeae0',
+        scale: restaurants.length > 80 ? 0.62 : 0.86
+      });
+      const marker = new AdvancedMarkerElement({
+        map: state.googleMap,
+        position,
+        title: restaurant.name,
+        content: pin.element
+      });
+      const openRestaurantPreview = event => {
+        event?.domEvent?.stopPropagation?.();
+        state.googleInfoWindow.setContent(restaurantInfoWindowContent(restaurant));
+        state.googleInfoWindow.open({
+          map: state.googleMap,
+          anchor: marker,
+          shouldFocus: false
+        });
+      };
+      marker.addListener('click', openRestaurantPreview);
+      pin.element.addEventListener('click', openRestaurantPreview);
+      state.googleMapMarkers.push(marker);
+      bounds.extend(position);
+    }
+
+    if (restaurants.length === 1) {
+      state.googleMap.setCenter({ lat: restaurants[0].lat, lng: restaurants[0].lng });
+      state.googleMap.setZoom(16);
+    } else {
+      state.googleMap.fitBounds(bounds, { top: 72, right: 56, bottom: 72, left: 56 });
+      window.google.maps.event.addListenerOnce(state.googleMap, 'idle', () => {
+        if ((state.googleMap.getZoom() || 12) > 15) state.googleMap.setZoom(15);
+      });
+    }
+    status.hidden = true;
+    if (state.googleMapOpen) notifyParentGoogleMapVisibility(true);
+  } catch (error) {
+    console.warn('Interactive Google map unavailable.', error);
+    if (token === state.googleMapRenderToken) showGoogleMapUnavailable(query);
+  }
+}
 function notifyParentGoogleMapVisibility(open) {
   if (window.parent === window) return;
   window.parent.postMessage({
@@ -2394,12 +2847,15 @@ function notifyParentGoogleMapVisibility(open) {
 
 function showGoogleMapView() {
   if (state.view !== 'country' || !state.activeCountry) return;
+  finishPanelDrag();
+  document.body.classList.remove('panel-resizing');
   state.googleMapOpen = true;
   document.body.classList.add('google-map-open');
   el('google-map-view').setAttribute('aria-hidden', 'false');
   el('d-close').textContent = 'Show cuisine map';
   el('d-close').setAttribute('aria-pressed', 'true');
   setMobileSheetExpanded(false);
+  notifyParentGoogleMapVisibility(true);
   renderGoogleMapView();
 }
 
@@ -2410,10 +2866,13 @@ function hideGoogleMapView({ clear = false } = {}) {
   el('d-close').textContent = 'Show on Google map';
   el('d-close').setAttribute('aria-pressed', 'false');
   notifyParentGoogleMapVisibility(false);
+  state.googleInfoWindow?.close();
   if (clear) {
-    const frame = el('google-map-frame');
-    frame.removeAttribute('src');
-    delete frame.dataset.query;
+    state.googleMapRenderToken += 1;
+    for (const marker of state.googleMapMarkers) marker.map = null;
+    state.googleMapMarkers = [];
+    el('google-map-canvas').hidden = false;
+    el('google-map-status').hidden = true;
   }
 }
 
@@ -2444,10 +2903,13 @@ function buildSidebar() {
 function renderRegionFilterChips(country, selectedId = null) {
   const host = el('d-chips');
   host.replaceChildren();
-  country.regions
+  const visibleRegions = country.regions
     .filter(region => region.count > 0)
-    .slice(0, 10)
-    .forEach(region => {
+    .slice(0, 10);
+  const nationalOnly = visibleRegions.length === 1 && isNationalCuisine(visibleRegions[0].name);
+  host.hidden = nationalOnly;
+  if (nationalOnly) return;
+  visibleRegions.forEach(region => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'chip';
@@ -2456,7 +2918,7 @@ function renderRegionFilterChips(country, selectedId = null) {
       button.textContent = region.emoji + ' ' + region.name + ' · ' + region.count;
       button.onclick = () => selectRegion(region.id);
       host.appendChild(button);
-    });
+  });
 }
 
 async function select(id) {

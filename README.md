@@ -10,7 +10,7 @@ The original concept remains available at [yellingbytes/GastroGlobe](https://git
 npm run dev
 ```
 
-Then open `http://localhost:4317`.
+Then open `http://127.0.0.1:4318`.
 
 The prototype is framework-free.
 
@@ -21,6 +21,14 @@ official Places API (New); the score itself is not displayed. Set
 `GOOGLE_MAPS_API_KEY` in the Vercel project for Production, Preview, and Development, then
 redeploy. The key stays inside the serverless `/api/google-rating` function and is never sent to
 the browser. The key's Google Cloud project must have Places API (New) and billing enabled.
+
+The direct-gesture restaurant map uses a separate `GOOGLE_MAPS_BROWSER_API_KEY`. Enable Maps
+JavaScript API for that key and restrict it to the site's HTTP referrers, including
+`https://gastro-globe-web.vercel.app/*`, `http://127.0.0.1:4318/*`, and
+`http://localhost:4318/*`. Keep the Places key server-only; do not reuse it as the browser key in
+production. Browser API keys are visible to visitors by design, so referrer and API restrictions
+are required. The restaurant map uses the Google Maps JavaScript API directly and does not fall
+back to a restrictive iframe or a different map provider.
 
 The Munich edition currently includes **1,196 named restaurants across 43 country cuisines** from an OpenStreetMap snapshot dated 18 July 2026 plus a small, source-linked editorial update. Every included record has sourced latitude/longitude data and links back to its OSM object.
 

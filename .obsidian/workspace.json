@@ -188,6 +188,8 @@
   },
   "active": "daa23f738f83bcf2",
   "lastOpenFiles": [
+    "scripts/dev-server.mjs",
+    "api/google-maps-config.js",
     "api/google-rating.js",
     "api",
     "reports/berlin-audit-report.md",
@@ -199,8 +201,6 @@
     "data/berlin-regional-findings.js",
     "scripts/build-berlin-taxonomy.mjs",
     "data/berlin-restaurants.js",
-    "scripts/cities.mjs",
-    "scripts/cuisine-taxonomy.mjs",
     "assets/fonts/README.md",
     "Pasted image 20260726174255.png",
     "audit-report.md",
