@@ -289,6 +289,9 @@ h1 {
 
 .back-button {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 0;
   border: 0;
   background: transparent;
@@ -296,6 +299,15 @@ h1 {
   font: inherit;
   text-transform: inherit;
   letter-spacing: inherit;
+}
+
+.back-button svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .stage-caption { grid-column: 2; margin: 0; }
@@ -1249,11 +1261,17 @@ body.is-home-cuisine-returning .home-city-nodes {
   background: rgba(242, 239, 232, 0.96);
   color: var(--ink);
   cursor: pointer;
-  font-family: var(--mono);
-  font-size: 18px;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
   box-shadow: 0 4px 14px rgba(29, 33, 31, 0.1);
+}
+
+.city-world-back svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .scene.google-map-open .city-world-back {

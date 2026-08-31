@@ -1090,7 +1090,7 @@ function ensureCityBackButton() {
   const button = document.createElement("button");
   button.className = "city-world-back";
   button.type = "button";
-  button.innerHTML = `<span aria-hidden="true">←</span>`;
+  button.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" /></svg>`;
   button.title = "Back one map level";
   button.setAttribute("aria-label", "Back one map level");
   button.addEventListener("click", returnOneMapLevel);
@@ -1863,7 +1863,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=google-pan-preview-4&city=${encodeURIComponent(city.data.id)}"
+          src="./experiments/claude-cartogram.html?v=summary-chevron-1&city=${encodeURIComponent(city.data.id)}"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>

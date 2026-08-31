@@ -100,6 +100,47 @@
     pointer-events: none;
   }
   #google-map-status[hidden] { display: none; }
+  .map-mode-toggle {
+    position: absolute;
+    z-index: 8;
+    right: calc(var(--detail-panel-width) + 16px);
+    bottom: 16px;
+    display: none;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 14px/1 var(--sans);
+    letter-spacing: normal;
+    padding: 0 11px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition-property: background-color, border-color, scale;
+    transition-duration: 120ms;
+    transition-timing-function: ease-out;
+  }
+  body.country-detail-open .map-mode-toggle { display: inline-flex; }
+  .map-mode-toggle:hover { border-color: var(--ink); background: #f7f3ea; }
+  .map-mode-toggle:active { scale: 0.96; }
+  .map-mode-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .google-cluster-marker {
+    display: grid;
+    min-width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 2px solid #efeae0;
+    border-radius: 999px;
+    background: #23201b;
+    box-shadow: 0 3px 10px rgba(35,32,27,0.28);
+    color: #efeae0;
+    font: 700 11px/1 var(--mono);
+    padding-inline: 8px;
+    user-select: none;
+    cursor: pointer;
+  }
   .google-place-preview {
     min-width: min(230px, 68vw);
     max-width: 280px;
@@ -124,10 +165,13 @@
     min-height: 32px;
     margin-top: 9px;
     align-items: center;
+    border: 1px solid rgba(35,32,27,0.3);
+    border-radius: 8px;
     color: #23201b;
     font: 700 11px/1 var(--mono);
     letter-spacing: 0.02em;
-    text-underline-offset: 3px;
+    padding: 0 10px;
+    text-decoration: none;
   }
   #mapscene { position: absolute; left: 0; top: 0; flex: none; transform-origin: 0 0; will-change: transform; }
   #morphcv {
@@ -202,11 +246,11 @@
        0 0 4px rgba(247,244,236,0.9);
   }
   .lab[hidden] { display: none; }
-  .lab:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 2px; }
+  .lab:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
   .lab-name { display: inline-block; }
   .lab-count {
     display: inline-block;
-    border-radius: 2px;
+    border-radius: 8px;
     background: var(--ink);
     color: #f4f0e6;
     min-width: 18px;
@@ -271,9 +315,10 @@
   @media (hover: hover) {
     .panel-drag-handle:hover .panel-drag-grip { opacity: 0.5; }
   }
-  .stats { display: flex; gap: 24px; }
-  .stat b { font-family: var(--mono); font-weight: 600; font-size: 30px; line-height: 1; display: block; }
-  .stat span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+  .stats { display: flex; gap: 12px; margin-inline-start: auto; }
+  .stat { min-width: 0; }
+  .stat b { font-family: var(--mono); font-weight: 600; font-size: 18px; line-height: 1; display: block; font-variant-numeric: tabular-nums; }
+  .stat span { font-family: var(--mono); font-size: 8px; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
   .sec { border-top: 1px solid var(--rule); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
   .sec h2 { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; margin: 0; }
   #rank { overflow-y: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; padding-right: 4px; }
@@ -284,17 +329,16 @@
   .row .ct { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; color: var(--ink-soft); }
   #detail { display: none; flex-direction: column; gap: 11px; min-height: 0; flex: 1; }
   #detail.on { display: flex; }
-  #detail .detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  #detail .stats { border-top: 1px solid var(--rule); padding-top: 12px; }
-  #detail .dh { font-family: var(--display); font-size: 26px; line-height: 1.05; }
+  #detail .detail-heading { display: flex; align-items: center; gap: 12px; }
+  #detail .dh { font-family: var(--display); font-size: 18px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
   #detail .ds { display: none; }
   #detail > div:first-child > div { min-width: 0; }
   #detail .chips { display: flex; flex-wrap: wrap; gap: 5px; }
   #detail .chips[hidden] { display: none; }
-  #detail .chip { font: inherit; font-size: 14px; color: inherit; background: var(--paper); border: 1px solid var(--rule); padding: 3px 8px; cursor: pointer; }
+  #detail .chip { font: inherit; font-size: 14px; color: inherit; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 3px 8px; cursor: pointer; }
   #detail .chip:hover, #detail .chip[aria-pressed="true"] { border-color: var(--ink); background: #f7f3ea; }
   #detail .list { overflow-y: auto; min-height: 0; flex: 1; border-top: 1px solid var(--rule); padding-top: 8px; }
-  #detail .li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--rule); color: inherit; font-size: 15px; text-decoration: none; }
+  #detail .li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 6px; border-bottom: 1px dotted var(--rule); border-radius: 8px; color: inherit; font-size: 15px; text-decoration: none; }
   #detail a.li { cursor: pointer; }
   #detail a.li:hover, #detail a.li:focus-visible { color: var(--ink); background: rgba(247,243,234,0.72); }
   #detail .li-main { min-width: 0; }
@@ -303,7 +347,7 @@
   #detail .li-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
   #detail .li-arrow { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
   #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
-  button.close { flex: 0 0 auto; background: none; border: 1px solid #a9a08c; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; line-height: 1.25; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; padding: 6px 9px; cursor: pointer; }
+  button.close { flex: 0 0 auto; background: none; border: 1px solid #a9a08c; border-radius: 8px; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; line-height: 1.25; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; padding: 6px 9px; cursor: pointer; }
   button.close:hover { border-color: var(--ink); color: var(--ink); }
   footer { font-family: var(--mono); font-size: 11px; line-height: 1.45; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 10px; }
   @media (max-width: 900px) {
@@ -316,6 +360,12 @@
     #map-subtitle { max-width: 320px; margin-top: 17px; font-size: 11px; line-height: 1.55; }
     #google-map-view { inset: 0 0 var(--detail-panel-height); }
     body:has(aside.sheet-expanded) #google-map-view { bottom: var(--detail-panel-height); }
+    .map-mode-toggle {
+      right: max(12px, env(safe-area-inset-right));
+      bottom: calc(var(--detail-panel-height) + 12px);
+      min-height: 44px;
+      padding-inline: 12px;
+    }
     aside {
       top: auto;
       width: 100%;
@@ -345,7 +395,7 @@
       cursor: ns-resize;
     }
     .panel-drag-grip { width: 36px; height: 3px; }
-    .stats { flex: 0 0 auto; gap: 16px; }
+    .stats { flex: 0 0 auto; gap: 12px; }
     .stat b { font-size: 23px; }
     .stat span { font-size: 9px; letter-spacing: 0.1em; }
     .sec { padding-top: 8px; gap: 7px; }
@@ -378,7 +428,7 @@
     #head { top: 12px; }
     aside { height: var(--detail-panel-height); }
     aside.sheet-expanded { height: var(--detail-panel-height); }
-    .stats { display: none; }
+    .stat span { display: none; }
     #detail .ds { display: none; }
   }
   @media (hover: none) { #tip { display: none; } }
@@ -405,6 +455,7 @@
         <div id="google-map-canvas" role="application" aria-label="Interactive Google map of the selected restaurants" tabindex="0"></div>
         <div id="google-map-status" role="status">Loading interactive Google map…</div>
       </div>
+      <button class="map-mode-toggle" id="d-close" type="button" aria-pressed="false">Google map</button>
     </div>
     <div id="ctrls">
       <label id="ghost-control" hidden aria-hidden="true"><input type="checkbox" id="ghost" /> show true world outline underneath</label>
@@ -425,12 +476,11 @@
           <div class="dh" id="d-name"></div>
           <div class="ds" id="d-sum" aria-hidden="true"></div>
         </div>
-        <button class="close" id="d-close">Show on Google map</button>
-      </div>
-      <div class="stats">
-        <div class="stat"><b id="s-total">—</b><span id="s-total-label">Restaurants</span></div>
-        <div class="stat"><b id="s-count">—</b><span id="s-count-label">Countries</span></div>
-        <div class="stat"><b id="s-share">—</b><span id="s-share-label">Not German</span></div>
+        <div class="stats">
+          <div class="stat"><b id="s-total">—</b><span id="s-total-label">Restaurants</span></div>
+          <div class="stat"><b id="s-count">—</b><span id="s-count-label">Countries</span></div>
+          <div class="stat"><b id="s-share">—</b><span id="s-share-label">Not German</span></div>
+        </div>
       </div>
       <div class="chips" id="d-chips"></div>
       <div class="list" id="d-list" role="list" aria-label="Restaurants" tabindex="0"></div>
@@ -657,6 +707,8 @@ const state = {
   googleMap: null,
   googleInfoWindow: null,
   googleMapMarkers: [],
+  googleClusterListener: null,
+  googleClusterRenderFrame: 0,
   googleMapFailed: false,
   googleMapRenderToken: 0,
   activeRestaurants: [],
@@ -2178,7 +2230,7 @@ function commitWorldAtlas(transform = null) {
   el('ghost-control').hidden = false;
   el('ranksec').style.display = '';
   el('detail').classList.remove('on');
-  el('d-close').textContent = 'Show on Google map';
+  el('d-close').textContent = 'Google map';
   buildWorldStats();
   el('status').textContent = DATA.length + ' cuisines · ' + META.total + ' restaurants';
   if (transform && state.zoomBehavior) d3.select(el('mapwrap')).call(state.zoomBehavior.transform, transform);
@@ -2734,6 +2786,146 @@ function installGoogleMapPointerPan(canvas) {
   window.addEventListener('blur', finishGesture);
 }
 
+function clusteredRestaurants(restaurants, projection, zoom) {
+  if (zoom >= 15) return restaurants.map(restaurant => ({
+    restaurants: [restaurant],
+    lat: restaurant.lat,
+    lng: restaurant.lng
+  }));
+
+  const radius = zoom < 13 ? 72 : 60;
+  const scale = Math.pow(2, zoom);
+  const groups = [];
+  const cells = new Map();
+  const cellKey = (x, y) => x + ':' + y;
+
+  for (const restaurant of restaurants) {
+    const latLng = new window.google.maps.LatLng(restaurant.lat, restaurant.lng);
+    const point = projection.fromLatLngToPoint(latLng);
+    const x = point.x * scale;
+    const y = point.y * scale;
+    const cellX = Math.floor(x / radius);
+    const cellY = Math.floor(y / radius);
+    let match = null;
+    let matchDistance = Infinity;
+
+    for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+      for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+        for (const candidate of cells.get(cellKey(cellX + offsetX, cellY + offsetY)) || []) {
+          const distance = Math.hypot(x - candidate.x, y - candidate.y);
+          if (distance <= radius && distance < matchDistance) {
+            match = candidate;
+            matchDistance = distance;
+          }
+        }
+      }
+    }
+
+    if (!match) {
+      match = {
+        restaurants: [],
+        x,
+        y,
+        latTotal: 0,
+        lngTotal: 0,
+        seedCellX: cellX,
+        seedCellY: cellY
+      };
+      groups.push(match);
+      const key = cellKey(cellX, cellY);
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(match);
+    }
+
+    match.restaurants.push(restaurant);
+    match.latTotal += restaurant.lat;
+    match.lngTotal += restaurant.lng;
+    const count = match.restaurants.length;
+    match.x = (match.x * (count - 1) + x) / count;
+    match.y = (match.y * (count - 1) + y) / count;
+  }
+
+  return groups.map(group => ({
+    restaurants: group.restaurants,
+    lat: group.latTotal / group.restaurants.length,
+    lng: group.lngTotal / group.restaurants.length
+  }));
+}
+
+function clearGoogleMapMarkers() {
+  for (const marker of state.googleMapMarkers) marker.map = null;
+  state.googleMapMarkers = [];
+}
+
+function renderClusteredGoogleMarkers(restaurants, AdvancedMarkerElement, PinElement) {
+  if (!state.googleMap) return;
+  const projection = state.googleMap.getProjection();
+  const zoom = state.googleMap.getZoom();
+  if (!projection || !Number.isFinite(zoom)) return;
+
+  state.googleInfoWindow?.close();
+  clearGoogleMapMarkers();
+  const groups = clusteredRestaurants(restaurants, projection, zoom);
+
+  for (const group of groups) {
+    const position = { lat: group.lat, lng: group.lng };
+    if (group.restaurants.length === 1) {
+      const restaurant = group.restaurants[0];
+      const pin = new PinElement({
+        background: '#23201b',
+        borderColor: '#efeae0',
+        glyphColor: '#efeae0',
+        scale: 0.86
+      });
+      const marker = new AdvancedMarkerElement({
+        map: state.googleMap,
+        position,
+        title: restaurant.name,
+        content: pin.element
+      });
+      const openRestaurantPreview = event => {
+        event?.domEvent?.stopPropagation?.();
+        state.googleInfoWindow.setContent(restaurantInfoWindowContent(restaurant));
+        state.googleInfoWindow.open({
+          map: state.googleMap,
+          anchor: marker,
+          shouldFocus: false
+        });
+      };
+      marker.addListener('click', openRestaurantPreview);
+      pin.element.addEventListener('click', openRestaurantPreview);
+      state.googleMapMarkers.push(marker);
+      continue;
+    }
+
+    const cluster = document.createElement('span');
+    cluster.className = 'google-cluster-marker';
+    cluster.textContent = group.restaurants.length.toLocaleString('en-US');
+    const marker = new AdvancedMarkerElement({
+      map: state.googleMap,
+      position,
+      title: group.restaurants.length + ' restaurants. Zoom in to expand.',
+      content: cluster,
+      zIndex: 1000 + group.restaurants.length
+    });
+    const expandCluster = event => {
+      event?.domEvent?.stopPropagation?.();
+      state.googleInfoWindow?.close();
+      state.googleMap.panTo(position);
+      state.googleMap.setZoom(Math.min(15, Math.max(zoom + 2, 13)));
+    };
+    marker.addListener('click', expandCluster);
+    state.googleMapMarkers.push(marker);
+  }
+
+  el('google-map-canvas').dataset.markerStats = JSON.stringify({
+    zoom,
+    restaurants: restaurants.length,
+    markers: groups.length,
+    clusters: groups.filter(group => group.restaurants.length > 1).length
+  });
+}
+
 function showGoogleMapUnavailable(query) {
   const canvas = el('google-map-canvas');
   const status = el('google-map-status');
@@ -2783,42 +2975,27 @@ async function renderGoogleMapView() {
     if (!state.googleInfoWindow) state.googleInfoWindow = new InfoWindow({ disableAutoPan: true });
     state.googleInfoWindow.close();
 
-    for (const marker of state.googleMapMarkers) marker.map = null;
-    state.googleMapMarkers = [];
+    clearGoogleMapMarkers();
     if (!restaurants.length) {
       showGoogleMapUnavailable(query);
       return;
     }
 
     const bounds = new window.google.maps.LatLngBounds();
-    for (const restaurant of restaurants) {
-      const position = { lat: restaurant.lat, lng: restaurant.lng };
-      const pin = new PinElement({
-        background: '#23201b',
-        borderColor: '#efeae0',
-        glyphColor: '#efeae0',
-        scale: restaurants.length > 80 ? 0.62 : 0.86
+    for (const restaurant of restaurants) bounds.extend({ lat: restaurant.lat, lng: restaurant.lng });
+
+    const refreshMarkers = () => {
+      if (token !== state.googleMapRenderToken) return;
+      renderClusteredGoogleMarkers(restaurants, AdvancedMarkerElement, PinElement);
+    };
+    state.googleClusterListener?.remove();
+    state.googleClusterListener = state.googleMap.addListener('zoom_changed', () => {
+      if (state.googleClusterRenderFrame) cancelAnimationFrame(state.googleClusterRenderFrame);
+      state.googleClusterRenderFrame = requestAnimationFrame(() => {
+        state.googleClusterRenderFrame = 0;
+        refreshMarkers();
       });
-      const marker = new AdvancedMarkerElement({
-        map: state.googleMap,
-        position,
-        title: restaurant.name,
-        content: pin.element
-      });
-      const openRestaurantPreview = event => {
-        event?.domEvent?.stopPropagation?.();
-        state.googleInfoWindow.setContent(restaurantInfoWindowContent(restaurant));
-        state.googleInfoWindow.open({
-          map: state.googleMap,
-          anchor: marker,
-          shouldFocus: false
-        });
-      };
-      marker.addListener('click', openRestaurantPreview);
-      pin.element.addEventListener('click', openRestaurantPreview);
-      state.googleMapMarkers.push(marker);
-      bounds.extend(position);
-    }
+    });
 
     if (restaurants.length === 1) {
       state.googleMap.setCenter({ lat: restaurants[0].lat, lng: restaurants[0].lng });
@@ -2827,8 +3004,10 @@ async function renderGoogleMapView() {
       state.googleMap.fitBounds(bounds, { top: 72, right: 56, bottom: 72, left: 56 });
       window.google.maps.event.addListenerOnce(state.googleMap, 'idle', () => {
         if ((state.googleMap.getZoom() || 12) > 15) state.googleMap.setZoom(15);
+        refreshMarkers();
       });
     }
+    refreshMarkers();
     status.hidden = true;
     if (state.googleMapOpen) notifyParentGoogleMapVisibility(true);
   } catch (error) {
@@ -2852,7 +3031,7 @@ function showGoogleMapView() {
   state.googleMapOpen = true;
   document.body.classList.add('google-map-open');
   el('google-map-view').setAttribute('aria-hidden', 'false');
-  el('d-close').textContent = 'Show cuisine map';
+  el('d-close').textContent = 'Cuisine map';
   el('d-close').setAttribute('aria-pressed', 'true');
   setMobileSheetExpanded(false);
   notifyParentGoogleMapVisibility(true);
@@ -2863,7 +3042,7 @@ function hideGoogleMapView({ clear = false } = {}) {
   state.googleMapOpen = false;
   document.body.classList.remove('google-map-open');
   el('google-map-view').setAttribute('aria-hidden', 'true');
-  el('d-close').textContent = 'Show on Google map';
+  el('d-close').textContent = 'Google map';
   el('d-close').setAttribute('aria-pressed', 'false');
   notifyParentGoogleMapVisibility(false);
   state.googleInfoWindow?.close();
@@ -2935,7 +3114,7 @@ async function select(id) {
   setMobileSheetExpanded(false);
   el('ranksec').style.display = 'none';
   el('detail').classList.add('on');
-  el('d-close').textContent = 'Show on Google map';
+  el('d-close').textContent = 'Google map';
   el('d-name').textContent = d.flag + '  ' + d.name;
   el('d-sum').textContent = d.count + (d.count === 1 ? ' restaurant · ' : ' restaurants · ') +
     (Math.round(d.count / META.total * 1000) / 10) + '% of ' + CITY_NAME + '\u2019s mapped kitchens · ' + d.continent +
