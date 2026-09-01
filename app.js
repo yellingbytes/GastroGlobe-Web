@@ -130,7 +130,7 @@ const HOME_CITY_REVEAL_ZOOM = new Map([
   ["dubai", 1],
   ["singapore", 1],
   ["melbourne", 1],
-  ["berlin", 1.45],
+  ["berlin", 1],
   ["london", 1.45],
   ["mexico-city", 1.45],
   ["tokyo", 1.45],
@@ -181,14 +181,19 @@ function updateHomeCityVisibility(svgElement, items, transform, width, height, c
     const anchorX = transform.x + item.renderX * k;
     const anchorY = transform.y + item.anchorY * k;
     const labelWidth = item.labelWidth || 80;
+    const labelY = item.labelAbove
+      ? anchorY - hitRadius - labelGap - labelHeight
+      : anchorY + hitRadius + labelGap;
     const rect = {
-      x: anchorX - Math.max(hitRadius, labelWidth / 2),
-      y: anchorY - hitRadius,
-      width: Math.max(hitRadius, labelWidth / 2) * 2,
-      height: hitRadius + labelGap + labelHeight,
+      x: anchorX - labelWidth / 2,
+      y: labelY,
+      width: labelWidth,
+      height: labelHeight,
     };
-    const outside = rect.x < padding || rect.x + rect.width > width - padding ||
-      rect.y < (compact ? 126 : 54) || rect.y + rect.height > height - padding;
+    const outside = anchorX - hitRadius < padding || anchorX + hitRadius > width - padding ||
+      anchorY - hitRadius < (compact ? 126 : 54) || anchorY + hitRadius > height - padding ||
+      rect.x < padding || rect.x + rect.width > width - padding ||
+      rect.y < padding || rect.y + rect.height > height - padding;
     if (outside) continue;
     const distanceToCenter = Math.hypot(anchorX - width / 2, anchorY - height / 2);
     const previous = candidatesByCity.get(item.city.data.id);
@@ -240,7 +245,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   const projection = d3.geoMercator()
     .scale((width - mapInset * 2) / (Math.PI * 2))
     .translate([width / 2, height * (compact ? 0.5 : 0.54)])
-    .clipExtent([[mapInset, compact ? 132 : 62], [width - mapInset, height - (compact ? 138 : 24)]]);
+    .clipExtent([[mapInset, compact ? 0 : 62], [width - mapInset, height - (compact ? 0 : 24)]]);
   const targetWorldColumns = 306;
   const cellSize = Math.min(4, Math.max(1.2, (width - mapInset * 2) / targetWorldColumns));
   const pixelWorld = rasterizePixelWorld(projection, width, height, cellSize);
@@ -257,6 +262,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
       y: anchor[1],
       wheelRadius: METROPOLITAN_MARKER_RADIUS,
       revealZoom: homeCityRevealZoom(profile),
+      labelAbove: compact && profile.city.data.id === "berlin",
     };
   });
   const repeatedCityItems = worldOffsets.flatMap((worldOffset, repeatIndex) => cityItems.map((item) => ({
@@ -324,13 +330,10 @@ function renderGallery({ initialHomeTransform = null } = {}) {
     .join("path")
     .attr("d", (arc) => d3.arc().innerRadius(arc.innerRadius).outerRadius(arc.outerRadius).startAngle(arc.startAngle).endAngle(arc.endAngle)())
     .attr("fill", (arc) => CARTOGRAM_CONTINENT_COLORS[arc.continent]);
-  nodes.append("circle")
-    .attr("class", "home-city-center")
-    .attr("r", 2.8);
   const labels = nodes.append("foreignObject")
     .attr("class", "home-city-label")
     .attr("x", -100)
-    .attr("y", (item) => item.wheelRadius + 6)
+    .attr("y", (item) => item.labelAbove ? -item.wheelRadius - 34 : item.wheelRadius + 6)
     .attr("width", 200)
     .attr("height", 28);
   const labelWrap = labels.append("xhtml:div")
@@ -347,8 +350,8 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   measureHomeCityLabels(nodes);
   bindHomeWorldZoom(svg, width, height, worldWidth, {
     cellSize,
-    scale: 1,
-    focus: projection([0, 10]),
+    scale: compact ? 5 : 1,
+    focus: projection(compact ? [8, 26] : [0, 10]),
     transform: requestedHomeTransform,
     items: repeatedCityItems,
     compact,
@@ -366,12 +369,12 @@ function bindHomeWorldZoom(svg, width, height, worldWidth, initialView) {
   const initialTransform = requestedTransform
     ? d3.zoomIdentity
       .translate(requestedTransform.x, requestedTransform.y)
-      .scale(clamp(requestedTransform.k, 1, 8))
+      .scale(clamp(requestedTransform.k, 1, 24))
     : d3.zoomIdentity
       .translate(width / 2 - initialView.focus[0] * initialView.scale, height / 2 - initialView.focus[1] * initialView.scale)
       .scale(initialView.scale);
   const zoom = d3.zoom()
-    .scaleExtent([1, 8])
+    .scaleExtent([1, 24])
     .extent([[0, 0], [width, height]])
     .translateExtent([[-worldWidth * 1000, 0], [worldWidth * 1000, height]])
     .on("start", () => svg.classed("is-panning", true))
@@ -1863,7 +1866,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=summary-chevron-1&city=${encodeURIComponent(city.data.id)}"
+          src="./experiments/claude-cartogram.html?v=mobile-atlas-zoom-1&city=${encodeURIComponent(city.data.id)}"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
@@ -3713,7 +3716,7 @@ function regionalCuisineLabel(name, displayArea) {
 function bindMapZoom(svg, width, height) {
   const layer = svg.select(".map-zoom-layer");
   const zoom = d3.zoom()
-    .scaleExtent([1, 7])
+    .scaleExtent([1, 14])
     .translateExtent([[0, 0], [width, height]])
     .extent([[0, 0], [width, height]])
     .on("zoom", (event) => layer.attr("transform", event.transform));
@@ -3728,12 +3731,11 @@ function transitionScene(update) {
 }
 
 function showCursorLabel(event, text) {
-  cursorLabel.textContent = text;
-  cursorLabel.classList.add("is-visible");
-  moveCursorLabel(event);
+  hideCursorLabel();
 }
 
 function moveCursorLabel(event) {
+  if (!cursorLabel.classList.contains("is-visible")) return;
   cursorClientX = event.clientX;
   cursorClientY = event.clientY;
   if (cursorMoveFrame) return;

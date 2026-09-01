@@ -269,7 +269,7 @@
     .lab-region { font-size: 12px; }
     .lab-count { min-width: 17px; padding: 2px 3px; font-size: 10px; }
   }
-  #tip { position: absolute; z-index: 6; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s; background: var(--ink); color: #f4f0e6; padding: 7px 10px; border-radius: 3px; font-size: 15px; white-space: nowrap; box-shadow: 0 6px 18px rgba(35,32,27,0.25); }
+  #tip { display: none; }
   #tip b { font-weight: 600; }
   #tip s { text-decoration: none; font-family: var(--mono); font-size: 12px; color: #d8c9a8; margin-left: 8px; }
   #ctrls { display: none; }
@@ -329,8 +329,9 @@
   .row .ct { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; color: var(--ink-soft); }
   #detail { display: none; flex-direction: column; gap: 11px; min-height: 0; flex: 1; }
   #detail.on { display: flex; }
+  #detail.sec { border-top: 0; padding-top: 0; }
   #detail .detail-heading { display: flex; align-items: center; gap: 12px; }
-  #detail .dh { font-family: var(--display); font-size: 18px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
+  #detail .dh { font-family: var(--display); font-size: 32px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
   #detail .ds { display: none; }
   #detail > div:first-child > div { min-width: 0; }
   #detail .chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -400,8 +401,7 @@
     .stat span { font-size: 9px; letter-spacing: 0.1em; }
     .sec { padding-top: 8px; gap: 7px; }
     #detail { gap: 7px; }
-    #detail.sec { border-top: 0; padding-top: 0; }
-    #detail .dh { font-size: 21px; }
+    #detail .dh { font-size: 30px; }
     #detail .chips {
       flex: 0 0 auto;
       flex-wrap: nowrap;
@@ -1162,7 +1162,6 @@ function layoutLabels() {
     label.setAttribute('role', 'button');
     label.setAttribute('tabindex', '0');
     label.setAttribute('aria-label', fullName + ', ' + item.count + (item.count === 1 ? ' restaurant' : ' restaurants'));
-    label.title = fullName + ' · ' + item.count + (item.count === 1 ? ' restaurant' : ' restaurants');
 
     const name = document.createElement('span');
     name.className = 'lab-name';
@@ -2904,7 +2903,7 @@ function renderClusteredGoogleMarkers(restaurants, AdvancedMarkerElement, PinEle
     const marker = new AdvancedMarkerElement({
       map: state.googleMap,
       position,
-      title: group.restaurants.length + ' restaurants. Zoom in to expand.',
+      title: 'Restaurant cluster. Zoom in to expand.',
       content: cluster,
       zIndex: 1000 + group.restaurants.length
     });
@@ -3001,7 +3000,10 @@ async function renderGoogleMapView() {
       state.googleMap.setCenter({ lat: restaurants[0].lat, lng: restaurants[0].lng });
       state.googleMap.setZoom(16);
     } else {
-      state.googleMap.fitBounds(bounds, { top: 72, right: 56, bottom: 72, left: 56 });
+      const compactMap = window.matchMedia('(max-width: 900px)').matches;
+      state.googleMap.fitBounds(bounds, compactMap
+        ? { top: 28, right: 20, bottom: 28, left: 20 }
+        : { top: 72, right: 56, bottom: 72, left: 56 });
       window.google.maps.event.addListenerOnce(state.googleMap, 'idle', () => {
         if ((state.googleMap.getZoom() || 12) > 15) state.googleMap.setZoom(15);
         refreshMarkers();
@@ -3072,8 +3074,6 @@ function buildSidebar() {
     const col = (CONT[d.continent] || CONT.Europe).fill;
     row.innerHTML = '<span style="font-size:14px">' + d.flag + '</span><span style="min-width:0"><span class="nm">' + d.name +
       '</span><span class="bar" style="width:' + Math.max(3, Math.round(d.count / max * 100)) + '%;background:' + col + '"></span></span><span class="ct">' + d.count + '</span>';
-    row.onmouseenter = () => { state.hover = d.id; draw(); };
-    row.onmouseleave = () => { state.hover = null; draw(); };
     row.onclick = () => select(d.id);
     rank.appendChild(row);
   }
@@ -3187,35 +3187,10 @@ function mapHitAt(gx, gy) {
 }
 
 function attachHover() {
-  const wrap = el('mapwrap'), cv = el('cv'), tip = el('tip');
-  const clearHover = () => {
-    tip.style.opacity = 0;
-    wrap.style.cursor = '';
-    if (state.hover !== null) {
-      state.hover = null;
-      updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
-      draw();
-    }
-  };
-  wrap.onmousemove = ev => {
-    const r = cv.getBoundingClientRect();
-    const wr = wrap.getBoundingClientRect();
-    const gx = Math.floor((ev.clientX - r.left) / r.width * state.cols);
-    const gy = Math.floor((ev.clientY - r.top) / r.height * state.rows);
-    const { id, datum: d } = mapHitAt(gx, gy);
-    if (d) {
-      tip.style.opacity = 1;
-      tip.innerHTML = '<b>' + (d.flag || d.emoji || '') + ' ' + (d.regionName || d.name) + '</b><s>' + d.count + (d.count === 1 ? ' restaurant' : ' restaurants') + '</s>';
-      tip.style.transform = 'translate(' + (ev.clientX - wr.left + 14) + 'px,' + (ev.clientY - wr.top + 14) + 'px)';
-    } else tip.style.opacity = 0;
-    wrap.style.cursor = d ? 'pointer' : '';
-    if (id !== state.hover) {
-      state.hover = id;
-      updateMapLabelPresentation(state.currentTransform || d3.zoomIdentity);
-      draw();
-    }
-  };
-  wrap.onmouseleave = clearHover;
+  const wrap = el('mapwrap'), cv = el('cv');
+  wrap.onmousemove = null;
+  wrap.onmouseleave = null;
+  state.hover = null;
   wrap.onclick = ev => {
     if (ev.defaultPrevented) return;
     const r = cv.getBoundingClientRect();
@@ -3236,7 +3211,7 @@ function attachPanZoom() {
     wrap.style.backgroundPosition = snap(x) + 'px ' + snap(y) + 'px';
   };
   const zoom = d3.zoom()
-    .scaleExtent([0.2, 6])
+    .scaleExtent([0.2, 12])
     .on('start', () => wrap.classList.add('is-panning'))
     .on('zoom', event => {
       const { x, y, k } = event.transform;

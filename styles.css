@@ -1166,14 +1166,6 @@ body.is-home-cuisine-returning .home-city-nodes {
   transition: filter 160ms ease, opacity 160ms ease;
 }
 
-.home-city-center {
-  fill: var(--ink);
-  stroke: rgba(242, 239, 232, 0.98);
-  stroke-width: 1.15;
-  pointer-events: none;
-  vector-effect: non-scaling-stroke;
-}
-
 .home-city-node.is-preview .home-city-continent-ring path { opacity: 0.94; }
 
 .home-city-node:hover .home-city-continent-ring path,
