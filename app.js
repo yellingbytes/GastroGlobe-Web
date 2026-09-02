@@ -7,7 +7,7 @@ import {
   liveCityIds,
   metropolitanEditions,
   totalLiveRestaurants,
-} from "./restaurants.js?v=multi-city-4";
+} from "./restaurants.js?v=multi-city-5";
 
 const D3_URL = "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm";
@@ -76,6 +76,7 @@ const countryNameAliases = new Map([
   ["south korea", "south korea"],
   ["turkey", "türkiye"],
   ["united states of america", "united states"],
+  ["dominican rep", "dominican republic"],
 ]);
 
 async function initialize() {
@@ -292,7 +293,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
           <g class="home-city-nodes"></g>
         </g>
       </svg>
-      <p class="home-world-status" aria-live="polite">${cityNodes.length} metropolitan editions · ${profiles.filter((profile) => profile.live).length} verified dataset · Web Mercator</p>
+      <p class="home-world-status" aria-live="polite">${cityNodes.length} metropolitan editions · ${profiles.filter((profile) => profile.live).length} verified datasets · Web Mercator</p>
     </section>
   `;
 
@@ -1270,11 +1271,11 @@ function renderCountryMap() {
       </div>
       <svg class="world-map country-detail-map" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="country-map-title country-map-desc">
         <title id="country-map-title">${escapeHtml(country.data.name)} regional cuisine map</title>
-        <desc id="country-map-desc">Cuisine emojis are positioned by regional origin and sized by verified Munich restaurants. Empty rings indicate zero verified restaurants.</desc>
+        <desc id="country-map-desc">Cuisine emojis are positioned by regional origin and sized by verified ${escapeHtml(city.data.name)} restaurants. Empty rings indicate zero verified restaurants.</desc>
         <g class="country-focus-shape">${feature ? `<path d="${path(feature)}"></path>` : ""}</g>
         <g class="cuisine-markers"></g>
       </svg>
-      <p class="map-legend"><span class="legend-flag">${country.data.flag}</span><span>Emoji = cuisine tradition · size = Munich restaurants</span><span class="legend-action">Dashed rings are meaningful absences</span></p>
+      <p class="map-legend"><span class="legend-flag">${country.data.flag}</span><span>Emoji = cuisine tradition · size = ${escapeHtml(city.data.name)} restaurants</span><span class="legend-action">Dashed rings are meaningful absences</span></p>
       <aside class="cuisine-drawer" aria-live="polite"></aside>
       ${devMenuMarkup()}
     </section>
@@ -1370,6 +1371,8 @@ function cuisineMarkerPositions(cuisines, projection, width, height, radius) {
 }
 
 function selectCuisine(cuisine, rerender = true) {
+  const city = cityNodes.find((node) => node.data.id === state.cityId);
+  if (!city) return;
   state.cuisineId = cuisine.data.id;
   if (rerender) {
     d3.select(scene).selectAll(".cuisine-marker").classed("is-selected", (item) => item.node.data.id === cuisine.data.id);
@@ -1380,12 +1383,12 @@ function selectCuisine(cuisine, rerender = true) {
   drawer.classList.add("is-open");
   drawer.innerHTML = `
     <div class="cuisine-drawer-heading">
-      <p><span>${cuisine.data.emoji}</span><strong>${escapeHtml(cuisine.data.name)}</strong><small>${cuisine.data.available} verified in Munich</small></p>
+      <p><span>${cuisine.data.emoji}</span><strong>${escapeHtml(cuisine.data.name)}</strong><small>${cuisine.data.available} verified in ${escapeHtml(city.data.name)}</small></p>
       <button type="button" data-close-cuisine aria-label="Close cuisine details">×</button>
     </div>
     ${restaurants.length
       ? `<div class="restaurant-ribbon">${restaurants.map((restaurant) => `<a href="${googleMapsUrl(restaurant)}" target="_blank" rel="noreferrer"><span>${restaurant.symbol ?? cuisine.data.emoji}</span><strong>${escapeHtml(restaurant.name)}</strong><small>${escapeHtml(restaurant.address)}</small></a>`).join("")}</div>`
-      : `<p class="empty-cuisine">No dedicated restaurant is verified yet. The absence stays on the map as part of Munich’s culinary portrait.</p>`}
+      : `<p class="empty-cuisine">No dedicated restaurant is verified yet. The absence stays on the map as part of ${escapeHtml(city.data.name)}’s culinary portrait.</p>`}
   `;
   drawer.querySelector("[data-close-cuisine]").addEventListener("click", () => {
     state.cuisineId = null;
@@ -1519,7 +1522,8 @@ function activateTreeNode(datum, sourceById) {
   if (datum.kind === "restaurant") {
     drawer.innerHTML = `<span>${datum.symbol ?? datum.flag ?? "🍽️"}</span><strong>${escapeHtml(datum.name)}</strong><small>${escapeHtml(datum.address ?? datum.cuisine ?? "Restaurant")}</small><a href="${googleMapsUrl(datum)}" target="_blank" rel="noreferrer">Open in Google Maps ↗</a>`;
   } else {
-    drawer.innerHTML = `<span>${datum.emoji ?? datum.flag ?? "◌"}</span><strong>${escapeHtml(datum.name)}</strong><small>No dedicated restaurant is verified in Munich.</small>`;
+    const city = cityNodes.find((node) => node.data.id === state.cityId);
+    drawer.innerHTML = `<span>${datum.emoji ?? datum.flag ?? "◌"}</span><strong>${escapeHtml(datum.name)}</strong><small>No dedicated restaurant is verified in ${escapeHtml(city?.data.name ?? "this city")}.</small>`;
   }
 }
 

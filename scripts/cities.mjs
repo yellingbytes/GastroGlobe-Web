@@ -18,6 +18,14 @@ export const cities = {
     dataset: "../data/berlin-restaurants.js",
     snapshotDate: "2026-08-25",
   },
+  "new-york": {
+    id: "new-york",
+    name: "New York",
+    localName: "New York",
+    dataset: "../data/new-york-restaurants.js",
+    snapshotDate: "2026-08-30",
+    sourceKind: "google-places-csv",
+  },
 };
 
 export function requireCity(id) {

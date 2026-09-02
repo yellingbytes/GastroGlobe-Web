@@ -1,5 +1,6 @@
 import * as munichSource from "./data/munich-restaurants.js?v=2026-08-02-1";
 import * as berlinSource from "./data/berlin-restaurants.js?v=2026-08-26-2";
+import * as newYorkSource from "./data/new-york-restaurants.js?v=2026-08-30-1";
 import {
   applyMunichChinaEditorialUpdate,
   applyMunichChinaTaxonomyUpdate,
@@ -10,9 +11,18 @@ import {
 } from "./data/global-culinary-regions.js?v=2026-08-05-1";
 import { applyBerlinEditorialUpdate } from "./data/berlin-regional-findings.js?v=2026-08-26-2";
 
-// Every city is assembled the same way: an OpenStreetMap-derived base dataset, then any
-// hand-researched regional layers on top. Munich carries more of those layers than Berlin
-// only because it was audited first, not because the two are modelled differently.
+function compareNewYorkRestaurants(a, b) {
+  const ratingDifference = (Number.isFinite(b.rating) ? b.rating : -Infinity)
+    - (Number.isFinite(a.rating) ? a.rating : -Infinity);
+  if (ratingDifference) return ratingDifference;
+  const reviewDifference = (Number.isFinite(b.reviewCount) ? b.reviewCount : -Infinity)
+    - (Number.isFinite(a.reviewCount) ? a.reviewCount : -Infinity);
+  return reviewDifference || a.name.localeCompare(b.name);
+}
+
+// Every city is assembled the same way: a normalized base dataset, then any hand-researched
+// regional layers on top. A city without a separate editorial taxonomy still gets the full
+// country -> sourced region/style -> restaurant hierarchy from its normalized records.
 const editionSpecs = [
   {
     id: "munich",
@@ -34,6 +44,13 @@ const editionSpecs = [
       applyBerlinEditorialUpdate(dataset);
     },
   },
+  {
+    id: "new-york",
+    source: newYorkSource,
+    sortRestaurants(restaurants) {
+      restaurants.sort(compareNewYorkRestaurants);
+    },
+  },
 ];
 
 const regionalFoodEmoji = {
@@ -45,16 +62,27 @@ const regionalFoodEmoji = {
   "northeast-china": "🍲",
   "gansu-lanzhou": "🍜",
   "fujian-taiwan": "🐟",
-  hunan: "🥘",
   sichuan: "🌶️",
   "shanxi-shaanxi-noodles": "🍜",
   "xinjiang-uyghur": "🐑",
   yunnan: "🍄",
   tibetan: "🏔️",
   "jiangsu-zhejiang-shanghai": "🍤",
+  shanghai: "🍜",
+  fujian: "🐟",
+  hakka: "🥘",
+  "hong-kong": "🥟",
+  hunan: "🌶️",
   "northern-china": "🥟",
   "campania-pizza": "🍕",
+  campania: "🍕",
+  "northern-italy": "🍝",
+  "lazio-rome": "🍝",
   sardinia: "🐑",
+  sicily: "🍋",
+  "southern-italy": "🍝",
+  tuscany: "🍷",
+  veneto: "🥂",
   "sushi-tradition": "🍣",
   "ramen-tradition": "🍜",
   "noodle-traditions": "🍜",
@@ -63,7 +91,22 @@ const regionalFoodEmoji = {
   "central-anatolia": "🥟",
   "south-india": "🥞",
   bengali: "🐟",
+  goa: "🥥",
+  gujarat: "🥘",
+  hyderabad: "🍛",
+  "north-india": "🍛",
+  punjab: "🍛",
+  oaxaca: "🌮",
+  "louisiana-cajun": "🦐",
+  california: "🥑",
   hawaii: "🌺",
+  "new-england": "🦞",
+  "pacific-northwest": "🐟",
+  "soul-food": "🍗",
+  "southern-united-states": "🍗",
+  "southwestern-united-states": "🌶️",
+  "basque-country": "🍢",
+  galicia: "🐟",
 };
 
 const taxonomyCountryAliases = new Map([
@@ -187,6 +230,7 @@ function applyResearchedCountryTaxonomies(taxonomy, dataset) {
 }
 
 async function loadRegionalTaxonomy(url) {
+  if (!url) return { continents: [] };
   const response = await fetch(new URL(url, import.meta.url));
   if (!response.ok) {
     throw new Error(`Regional cuisine taxonomy could not load (${response.status}) for ${url}.`);
@@ -240,6 +284,7 @@ async function createEdition(spec) {
       cuisine: cuisineLabel(restaurant.cuisine),
     };
   });
+  spec.sortRestaurants?.(restaurants);
 
   const countries = dataset.countryTaxonomy.map((country) => {
     const countryRestaurants = restaurants.filter((restaurant) => restaurant.countryId === country.id);
@@ -303,12 +348,12 @@ export const datasetMeta = datasetMetaForCity("munich");
 export const totalLiveRestaurants = editionList.reduce((sum, edition) => sum + edition.restaurants.length, 0);
 
 export const metropolitanEditions = [
-  { id: "munich", name: "Munich", country: "Germany", lat: 48.1351, lng: 11.582 },
+  { id: "munich", name: "Munich", country: "Germany", countryCode: "DE", lat: 48.1351, lng: 11.582 },
   { id: "london", name: "London", country: "United Kingdom", lat: 51.5072, lng: -0.1276 },
-  { id: "berlin", name: "Berlin", country: "Germany", lat: 52.52, lng: 13.405 },
+  { id: "berlin", name: "Berlin", country: "Germany", countryCode: "DE", lat: 52.52, lng: 13.405 },
   { id: "paris", name: "Paris", country: "France", lat: 48.8566, lng: 2.3522 },
   { id: "barcelona", name: "Barcelona", country: "Spain", lat: 41.3874, lng: 2.1686 },
-  { id: "new-york", name: "New York", country: "United States", lat: 40.7128, lng: -74.006 },
+  { id: "new-york", name: "New York", country: "United States", countryCode: "US", lat: 40.7128, lng: -74.006 },
   { id: "san-francisco", name: "San Francisco", country: "United States", lat: 37.7749, lng: -122.4194 },
   { id: "los-angeles", name: "Los Angeles", country: "United States", lat: 34.0522, lng: -118.2437 },
   { id: "toronto", name: "Toronto", country: "Canada", lat: 43.6532, lng: -79.3832 },
@@ -487,6 +532,10 @@ function buildLegacyRegionChildren(country, regionTaxonomy) {
 }
 
 export function googleMapsUrl(restaurant) {
+  if (restaurant.placeId) {
+    const query = [restaurant.name, restaurant.address].filter(Boolean).join(", ");
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}&query_place_id=${encodeURIComponent(restaurant.placeId)}`;
+  }
   // OSM leaves roughly a fifth of records without addr:street, so their address is just the city
   // and a name search drops the pin anywhere in it. Every record does carry exact coordinates,
   // so pin those instead and keep the name search only where the street is actually known.

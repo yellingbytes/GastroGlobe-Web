@@ -188,6 +188,8 @@
   },
   "active": "daa23f738f83bcf2",
   "lastOpenFiles": [
+    "data/new-york-restaurants.js",
+    "scripts/normalize-google-places-csv.mjs",
     "scripts/dev-server.mjs",
     "api/google-maps-config.js",
     "api/google-rating.js",
@@ -199,8 +201,6 @@
     "reports",
     "data/berlin-regional-cuisine-taxonomy.json",
     "data/berlin-regional-findings.js",
-    "scripts/build-berlin-taxonomy.mjs",
-    "data/berlin-restaurants.js",
     "assets/fonts/README.md",
     "Pasted image 20260726174255.png",
     "audit-report.md",

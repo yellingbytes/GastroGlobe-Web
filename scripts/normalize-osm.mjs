@@ -22,6 +22,10 @@ if (!cityId) {
   process.exit(1);
 }
 const city = requireCity(cityId);
+if (!city.boundary) {
+  console.error(`City "${cityId}" is not configured for OpenStreetMap boundary normalization.`);
+  process.exit(1);
+}
 const boundary = JSON.parse(readFileSync(new URL(city.boundary, import.meta.url), "utf8"))[0].geojson;
 
 function tokens(raw) {

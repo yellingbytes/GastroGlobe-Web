@@ -485,12 +485,12 @@
       <div class="chips" id="d-chips"></div>
       <div class="list" id="d-list" role="list" aria-label="Restaurants" tabindex="0"></div>
     </div>
-    <footer id="source-note">Source: OpenStreetMap restaurants plus curated regional-cuisine updates; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.</footer>
+    <footer id="source-note">Source: normalized city restaurant data; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.</footer>
   </aside>
 </div>
 
 <script type="module">
-import { countriesForCity, datasetMetaForCity, liveCityIds, metropolitanEditions, googleMapsUrl } from '../restaurants.js?v=multi-city-4';
+import { countriesForCity, datasetMetaForCity, liveCityIds, metropolitanEditions, googleMapsUrl } from '../restaurants.js?v=multi-city-5';
 
 // Which edition this frame is showing. The host page passes ?city=<id>; fall back to the
 // first edition that actually has a dataset so the page still works when opened directly.
@@ -537,7 +537,10 @@ function restaurantSummary(restaurant) {
     cuisine: restaurant.cuisine,
     address: restaurant.address,
     lat: restaurant.lat,
-    lng: restaurant.lng
+    lng: restaurant.lng,
+    placeId: restaurant.placeId,
+    rating: restaurant.rating,
+    reviewCount: restaurant.reviewCount
   };
 }
 
@@ -633,8 +636,8 @@ document.title = CITY_NAME + ' Eats the World — a cuisine cartogram';
   if (subtitle) subtitle.textContent = CITY_SUBTITLE;
   const note = document.getElementById('source-note');
   if (note) {
-    note.textContent = 'Source: OpenStreetMap restaurants in ' + CITY_NAME
-      + ' plus curated regional-cuisine updates, snapshot ' + SOURCE_META.snapshotDate
+    note.textContent = 'Source: ' + SOURCE_META.source + ', ' + CITY_NAME
+      + ' snapshot ' + SOURCE_META.snapshotDate
       + '; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.';
   }
 }
@@ -661,7 +664,8 @@ const CONT = {
 const ALIAS = {
   'united-states': 'United States of America', 'turkiye': 'Turkey', 'south-korea': 'South Korea',
   'bosnia-herzegovina': 'Bosnia and Herz.', 'czechia': 'Czechia', 'sri-lanka': 'Sri Lanka',
-  'united-kingdom': 'United Kingdom', 'kyrgyzstan': 'Kyrgyzstan'
+  'united-kingdom': 'United Kingdom', 'kyrgyzstan': 'Kyrgyzstan',
+  'dominican-republic': 'Dominican Rep.'
 };
 
 const el = id => document.getElementById(id);
@@ -2508,6 +2512,7 @@ function fetchGoogleRating(restaurant) {
     name: restaurant.name,
     address: restaurant.address || '',
     city: CITY_NAME,
+    region: CITY_META.countryCode || SOURCE_META.countryCode || '',
   });
   if (Number.isFinite(restaurant.lat)) params.set('lat', restaurant.lat);
   if (Number.isFinite(restaurant.lng)) params.set('lng', restaurant.lng);
@@ -2541,6 +2546,13 @@ function pumpGoogleRatingQueue() {
 }
 
 function googleRatingFor(restaurant) {
+  if (Number.isFinite(restaurant.rating)) {
+    return Promise.resolve({
+      rating: restaurant.rating,
+      googleMapsUri: googleMapsUrl(restaurant),
+      placeId: restaurant.placeId || null,
+    });
+  }
   if (googleRatingServiceUnavailable) return Promise.resolve(null);
   const key = googleRatingRequestKey(restaurant);
   if (!googleRatingRequests.has(key)) {
@@ -2566,7 +2578,10 @@ async function sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken) 
   }
   ranked.sort((a, b) => {
     const ratingDifference = (b.result?.rating ?? -Infinity) - (a.result?.rating ?? -Infinity);
-    return ratingDifference || a.restaurant.name.localeCompare(b.restaurant.name);
+    const reviewDifference = CITY_ID === 'new-york'
+      ? (b.restaurant.reviewCount ?? -Infinity) - (a.restaurant.reviewCount ?? -Infinity)
+      : 0;
+    return ratingDifference || reviewDifference || a.restaurant.name.localeCompare(b.restaurant.name);
   });
   for (const entry of ranked) {
     const row = rows.get(googleRatingRequestKey(entry.restaurant));
