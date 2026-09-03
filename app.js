@@ -1870,7 +1870,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=mobile-atlas-zoom-1&city=${encodeURIComponent(city.data.id)}"
+          src="./experiments/claude-cartogram.html?v=nyc-rating-chip-1&city=${encodeURIComponent(city.data.id)}"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>

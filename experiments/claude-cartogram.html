@@ -346,6 +346,24 @@
   #detail .li-main span { display: block; }
   #detail .li-main small { display: block; overflow: hidden; margin-top: 2px; color: var(--ink-faint); font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   #detail .li-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+  #detail .rating-chip {
+    display: inline-flex;
+    min-height: 22px;
+    align-items: center;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+  #detail a.li:hover .rating-chip,
+  #detail a.li:focus-visible .rating-chip { border-color: rgba(35,32,27,0.45); }
   #detail .li-arrow { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
   #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
   button.close { flex: 0 0 auto; background: none; border: 1px solid #a9a08c; border-radius: 8px; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; line-height: 1.25; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; padding: 6px 9px; cursor: pointer; }
@@ -2615,7 +2633,14 @@ function renderRestaurantList(restaurants) {
     link.href = restaurantMapUrl(restaurant);
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    link.setAttribute('aria-label', restaurant.name + ' — open in Google Maps');
+    const rating = Number(restaurant.rating);
+    const hasRating = CITY_ID === 'new-york' && Number.isFinite(rating) && rating > 0;
+    link.setAttribute(
+      'aria-label',
+      hasRating
+        ? `${restaurant.name}, rated ${rating.toFixed(1)} out of 5 — open in Google Maps`
+        : restaurant.name + ' — open in Google Maps'
+    );
 
     const main = document.createElement('span');
     main.className = 'li-main';
@@ -2630,6 +2655,13 @@ function renderRestaurantList(restaurants) {
 
     const meta = document.createElement('span');
     meta.className = 'li-meta';
+    if (hasRating) {
+      const ratingChip = document.createElement('span');
+      ratingChip.className = 'rating-chip';
+      ratingChip.setAttribute('aria-hidden', 'true');
+      ratingChip.textContent = `★ ${rating.toFixed(1)}`;
+      meta.appendChild(ratingChip);
+    }
     const arrow = document.createElement('span');
     arrow.className = 'li-arrow';
     arrow.setAttribute('aria-hidden', 'true');
