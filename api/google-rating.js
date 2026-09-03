@@ -40,6 +40,8 @@ export default async function handler(request, response) {
   const name = String(firstQueryValue(request.query?.name) ?? "").trim().slice(0, 180);
   const address = String(firstQueryValue(request.query?.address) ?? "").trim().slice(0, 240);
   const city = String(firstQueryValue(request.query?.city) ?? "").trim().slice(0, 100);
+  const requestedRegion = String(firstQueryValue(request.query?.region) ?? "").trim().toUpperCase();
+  const regionCode = /^[A-Z]{2}$/.test(requestedRegion) ? requestedRegion : "DE";
   const latitude = finiteCoordinate(request.query?.lat);
   const longitude = finiteCoordinate(request.query?.lng);
 
@@ -52,7 +54,7 @@ export default async function handler(request, response) {
     textQuery: [name, address || city].filter(Boolean).join(", "),
     pageSize: 1,
     languageCode: "en",
-    regionCode: "DE",
+    regionCode,
   };
 
   if (latitude !== null && longitude !== null) {

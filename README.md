@@ -36,6 +36,14 @@ The Munich edition currently includes **1,196 named restaurants across 43 countr
 
 The generated snapshot lives in `data/munich-restaurants.js`; `data/munich-regional-cuisine-taxonomy.json` supplies the researched regional hierarchy for China, Japan, Italy, India, Thailand, Mexico, Türkiye, Korea, Vietnam, France, and Spain. Evidence-backed Munich assignments are applied by the China and rich-cuisine editorial override modules. Regional identity requires either an explicit first-party claim or a restaurant centered on an iconic dish with well-established regional provenance; a dish merely appearing on a broad menu is not enough. Restaurants without sufficient evidence remain in the visible `National` category. `scripts/normalize-osm.mjs` contains the municipal-boundary filter, national cuisine normalization, exclusions, and de-duplication rules. Data is © OpenStreetMap contributors and available under the ODbL.
 
+The New York edition includes **7,321 qualifying places across 73 cuisine origins** from the supplied Google Maps listing export dated 30 August 2026. The reproducible importer in `scripts/normalize-google-places-csv.mjs` parses multiline CSV fields, extracts exact map coordinates and Place IDs, checks NYC postal coverage, and applies the same one-origin rule as the OSM editions. Temporarily closed, non-NYC, fusion, generic-only, multi-country, and duplicate rows are excluded. Google’s explicit regional and country-origin categories supply the regional/style layer; restaurants without one remain in `National cuisine`. New York restaurant rows are ordered by rating, then review count, then name; the other editions keep their existing ordering behavior.
+
+To rebuild the New York snapshot from a fresh export:
+
+```bash
+node scripts/normalize-google-places-csv.mjs /path/to/restaurant-in-new-york-city.csv data/new-york-restaurants.js
+```
+
 ## Interaction model
 
 The home screen presents one card per metropolitan edition, using a quiet continent-level treemap preview as its thumbnail. The current prototype seeds a different randomized composition for each city; these thumbnail areas are decorative and do not claim restaurant counts. Selecting a card opens the city atlas, which follows the [D3 zoomable treemap pattern](https://observablehq.com/@d3/zoomable-treemap):
@@ -52,4 +60,4 @@ Rectangle area represents the number of loaded restaurant records. At the region
 
 Continents use the five Olympic-ring hues as a GastroGlobe palette: Europe blue, Asia yellow, Africa black, Oceania green, and the Americas red. This color-to-continent mapping is a product convention, not an official Olympic assignment.
 
-Continent, country, and regional/style layers can open directly on an interactive OpenStreetMap basemap. National/general restaurants use their country flag; recognized regional traditions use a representative food emoji. Nearby coordinates collapse into numbered clusters, and selecting a cluster zooms the map until more individual restaurants separate. The plotted points are native map layers, so they remain anchored to their OSM coordinates while panning or zooming. Every selected restaurant links to both its OSM source and Google Maps search.
+Continent, country, and regional/style layers can open directly on an interactive map. National/general restaurants use their country flag; recognized regional traditions use a representative food emoji. Nearby coordinates collapse into numbered clusters, and selecting a cluster zooms the map until more individual restaurants separate. The plotted points remain anchored to their source coordinates while panning or zooming. Every selected restaurant links to Google Maps; OSM-derived records also retain their OSM source URL in the normalized dataset.

@@ -346,6 +346,24 @@
   #detail .li-main span { display: block; }
   #detail .li-main small { display: block; overflow: hidden; margin-top: 2px; color: var(--ink-faint); font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   #detail .li-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+  #detail .rating-chip {
+    display: inline-flex;
+    min-height: 22px;
+    align-items: center;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+  #detail a.li:hover .rating-chip,
+  #detail a.li:focus-visible .rating-chip { border-color: rgba(35,32,27,0.45); }
   #detail .li-arrow { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
   #detail .li em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
   button.close { flex: 0 0 auto; background: none; border: 1px solid #a9a08c; border-radius: 8px; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; line-height: 1.25; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; padding: 6px 9px; cursor: pointer; }
@@ -485,12 +503,12 @@
       <div class="chips" id="d-chips"></div>
       <div class="list" id="d-list" role="list" aria-label="Restaurants" tabindex="0"></div>
     </div>
-    <footer id="source-note">Source: OpenStreetMap restaurants plus curated regional-cuisine updates; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.</footer>
+    <footer id="source-note">Source: normalized city restaurant data; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.</footer>
   </aside>
 </div>
 
 <script type="module">
-import { countriesForCity, datasetMetaForCity, liveCityIds, metropolitanEditions, googleMapsUrl } from '../restaurants.js?v=multi-city-4';
+import { countriesForCity, datasetMetaForCity, liveCityIds, metropolitanEditions, googleMapsUrl } from '../restaurants.js?v=multi-city-5';
 
 // Which edition this frame is showing. The host page passes ?city=<id>; fall back to the
 // first edition that actually has a dataset so the page still works when opened directly.
@@ -537,7 +555,10 @@ function restaurantSummary(restaurant) {
     cuisine: restaurant.cuisine,
     address: restaurant.address,
     lat: restaurant.lat,
-    lng: restaurant.lng
+    lng: restaurant.lng,
+    placeId: restaurant.placeId,
+    rating: restaurant.rating,
+    reviewCount: restaurant.reviewCount
   };
 }
 
@@ -633,8 +654,8 @@ document.title = CITY_NAME + ' Eats the World — a cuisine cartogram';
   if (subtitle) subtitle.textContent = CITY_SUBTITLE;
   const note = document.getElementById('source-note');
   if (note) {
-    note.textContent = 'Source: OpenStreetMap restaurants in ' + CITY_NAME
-      + ' plus curated regional-cuisine updates, snapshot ' + SOURCE_META.snapshotDate
+    note.textContent = 'Source: ' + SOURCE_META.source + ', ' + CITY_NAME
+      + ' snapshot ' + SOURCE_META.snapshotDate
       + '; fusion, generic and multi-country venues excluded. Country outlines: Natural Earth.';
   }
 }
@@ -661,7 +682,8 @@ const CONT = {
 const ALIAS = {
   'united-states': 'United States of America', 'turkiye': 'Turkey', 'south-korea': 'South Korea',
   'bosnia-herzegovina': 'Bosnia and Herz.', 'czechia': 'Czechia', 'sri-lanka': 'Sri Lanka',
-  'united-kingdom': 'United Kingdom', 'kyrgyzstan': 'Kyrgyzstan'
+  'united-kingdom': 'United Kingdom', 'kyrgyzstan': 'Kyrgyzstan',
+  'dominican-republic': 'Dominican Rep.'
 };
 
 const el = id => document.getElementById(id);
@@ -2508,6 +2530,7 @@ function fetchGoogleRating(restaurant) {
     name: restaurant.name,
     address: restaurant.address || '',
     city: CITY_NAME,
+    region: CITY_META.countryCode || SOURCE_META.countryCode || '',
   });
   if (Number.isFinite(restaurant.lat)) params.set('lat', restaurant.lat);
   if (Number.isFinite(restaurant.lng)) params.set('lng', restaurant.lng);
@@ -2541,6 +2564,13 @@ function pumpGoogleRatingQueue() {
 }
 
 function googleRatingFor(restaurant) {
+  if (Number.isFinite(restaurant.rating)) {
+    return Promise.resolve({
+      rating: restaurant.rating,
+      googleMapsUri: googleMapsUrl(restaurant),
+      placeId: restaurant.placeId || null,
+    });
+  }
   if (googleRatingServiceUnavailable) return Promise.resolve(null);
   const key = googleRatingRequestKey(restaurant);
   if (!googleRatingRequests.has(key)) {
@@ -2566,7 +2596,10 @@ async function sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken) 
   }
   ranked.sort((a, b) => {
     const ratingDifference = (b.result?.rating ?? -Infinity) - (a.result?.rating ?? -Infinity);
-    return ratingDifference || a.restaurant.name.localeCompare(b.restaurant.name);
+    const reviewDifference = CITY_ID === 'new-york'
+      ? (b.restaurant.reviewCount ?? -Infinity) - (a.restaurant.reviewCount ?? -Infinity)
+      : 0;
+    return ratingDifference || reviewDifference || a.restaurant.name.localeCompare(b.restaurant.name);
   });
   for (const entry of ranked) {
     const row = rows.get(googleRatingRequestKey(entry.restaurant));
@@ -2600,7 +2633,14 @@ function renderRestaurantList(restaurants) {
     link.href = restaurantMapUrl(restaurant);
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    link.setAttribute('aria-label', restaurant.name + ' — open in Google Maps');
+    const rating = Number(restaurant.rating);
+    const hasRating = CITY_ID === 'new-york' && Number.isFinite(rating) && rating > 0;
+    link.setAttribute(
+      'aria-label',
+      hasRating
+        ? `${restaurant.name}, rated ${rating.toFixed(1)} out of 5 — open in Google Maps`
+        : restaurant.name + ' — open in Google Maps'
+    );
 
     const main = document.createElement('span');
     main.className = 'li-main';
@@ -2615,6 +2655,13 @@ function renderRestaurantList(restaurants) {
 
     const meta = document.createElement('span');
     meta.className = 'li-meta';
+    if (hasRating) {
+      const ratingChip = document.createElement('span');
+      ratingChip.className = 'rating-chip';
+      ratingChip.setAttribute('aria-hidden', 'true');
+      ratingChip.textContent = `★ ${rating.toFixed(1)}`;
+      meta.appendChild(ratingChip);
+    }
     const arrow = document.createElement('span');
     arrow.className = 'li-arrow';
     arrow.setAttribute('aria-hidden', 'true');
