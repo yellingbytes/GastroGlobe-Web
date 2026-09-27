@@ -56,6 +56,7 @@ let hierarchyRoot;
 let cityNodes = [];
 let countryNodes = [];
 const defaultLiveCityId = liveCityIds[0] ?? "munich";
+const visibleCityIds = new Set(["berlin", "munich", "new-york"]);
 let resizeTimer;
 let cursorMoveFrame = 0;
 let cursorClientX = 0;
@@ -104,7 +105,7 @@ async function initialize() {
 function buildDataIndex() {
   hierarchyRoot = d3.hierarchy(buildAtlasHierarchy());
   hierarchyRoot.sum((datum) => datum.layoutValue ?? 0);
-  cityNodes = hierarchyRoot.children ?? [];
+  cityNodes = (hierarchyRoot.children ?? []).filter((node) => visibleCityIds.has(node.data.id));
   focusCountryNodesOn(defaultLiveCityId);
 }
 
@@ -126,22 +127,7 @@ function activeCityId() {
 const HOME_CITY_REVEAL_ZOOM = new Map([
   ["munich", 1],
   ["new-york", 1],
-  ["sao-paulo", 1],
-  ["cape-town", 1],
-  ["dubai", 1],
-  ["singapore", 1],
-  ["melbourne", 1],
   ["berlin", 1],
-  ["london", 1.45],
-  ["mexico-city", 1.45],
-  ["tokyo", 1.45],
-  ["paris", 1.8],
-  ["toronto", 1.8],
-  ["beijing", 1.8],
-  ["barcelona", 2.3],
-  ["san-francisco", 2.3],
-  ["los-angeles", 2.3],
-  ["shanghai", 2.3],
 ]);
 
 function homeCityRevealZoom(profile) {
@@ -263,7 +249,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
       y: anchor[1],
       wheelRadius: METROPOLITAN_MARKER_RADIUS,
       revealZoom: homeCityRevealZoom(profile),
-      labelAbove: compact && profile.city.data.id === "berlin",
+      labelAbove: profile.city.data.id === "berlin",
     };
   });
   const repeatedCityItems = worldOffsets.flatMap((worldOffset, repeatIndex) => cityItems.map((item) => ({
