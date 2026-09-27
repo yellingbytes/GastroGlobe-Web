@@ -5,6 +5,7 @@ const GOOGLE_PLACE_FIELDS = [
   "places.formattedAddress",
   "places.location",
   "places.rating",
+  "places.userRatingCount",
   "places.googleMapsUri",
 ].join(",");
 
@@ -78,7 +79,12 @@ export default async function handler(request, response) {
     });
 
     if (!googleResponse.ok) {
-      sendJson(response, 502, { error: "google_places_request_failed" });
+      const failure = await googleResponse.json().catch(() => null);
+      sendJson(response, 502, {
+        error: "google_places_request_failed",
+        upstreamStatus: googleResponse.status,
+        upstreamCode: failure?.error?.status ?? null,
+      });
       return;
     }
 
@@ -91,6 +97,7 @@ export default async function handler(request, response) {
 
     sendJson(response, 200, {
       rating: place.rating,
+      reviewCount: Number.isFinite(place.userRatingCount) ? place.userRatingCount : null,
       googleMapsUri: place.googleMapsUri ?? null,
       placeId: place.id ?? null,
     });

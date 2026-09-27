@@ -103,14 +103,10 @@ a:focus-visible,
 }
 
 .wordmark-mark {
-  display: grid;
-  place-items: center;
-  width: 27px;
-  height: 27px;
-  border: 1px solid var(--ink);
-  border-radius: 50%;
-  font-family: var(--serif);
-  font-size: 11px;
+  display: block;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
 }
 
 .edition,
@@ -1056,10 +1052,20 @@ h1 {
 }
 
 .home-world-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 0 12px;
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.home-world-brand-mark {
+  display: block;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
 }
 
 .home-world-heading h1 {

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>GastroGlobe</title>
+  <desc>A pixel-edged globe with a fork carved into its center.</desc>
+  <path fill="#23201b" fill-rule="evenodd" d="M24 4H40V8H48V12H52V16H56V24H60V40H56V48H52V52H48V56H40V60H24V56H16V52H12V48H8V40H4V24H8V16H12V12H16V8H24ZM22 16H26V28H30V16H34V28H38V16H42V32H38V36H34V48H30V36H26V32H22ZM12 30H18V34H12ZM46 30H52V34H46Z"/>
+</svg>

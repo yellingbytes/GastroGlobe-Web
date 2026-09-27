@@ -2517,6 +2517,7 @@ function activeGoogleMapQuery() {
 const googleRatingRequests = new Map();
 const googleRatingQueue = [];
 const GOOGLE_RATING_CONCURRENCY = 4;
+const RATING_CHIP_CITY_IDS = new Set(['munich', 'new-york']);
 let googleRatingRequestsInFlight = 0;
 let googleRatingServiceUnavailable = false;
 let restaurantListRenderToken = 0;
@@ -2536,12 +2537,15 @@ function fetchGoogleRating(restaurant) {
   if (Number.isFinite(restaurant.lng)) params.set('lng', restaurant.lng);
   return fetch('/api/google-rating?' + params, { headers: { Accept: 'application/json' } })
     .then(async response => {
+      const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        if (response.status === 503) googleRatingServiceUnavailable = true;
+        if (
+          response.status === 503
+          || [401, 403, 429].includes(payload?.upstreamStatus)
+        ) googleRatingServiceUnavailable = true;
         return null;
       }
-      const payload = await response.json();
-      return Number.isFinite(payload.rating) ? payload : null;
+      return Number.isFinite(payload?.rating) ? payload : null;
     })
     .catch(() => null);
 }
@@ -2567,6 +2571,7 @@ function googleRatingFor(restaurant) {
   if (Number.isFinite(restaurant.rating)) {
     return Promise.resolve({
       rating: restaurant.rating,
+      reviewCount: restaurant.reviewCount ?? null,
       googleMapsUri: googleMapsUrl(restaurant),
       placeId: restaurant.placeId || null,
     });
@@ -2583,10 +2588,13 @@ function googleRatingFor(restaurant) {
 }
 
 async function sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken) {
-  const ranked = await Promise.all(restaurants.map(async restaurant => ({
-    restaurant,
-    result: await googleRatingFor(restaurant),
-  })));
+  const ranked = await Promise.all(restaurants.map(async restaurant => {
+    const result = await googleRatingFor(restaurant);
+    if (renderToken === restaurantListRenderToken && Number.isFinite(result?.rating)) {
+      updateRestaurantRatingChip(rows.get(googleRatingRequestKey(restaurant)), restaurant, result.rating);
+    }
+    return { restaurant, result };
+  }));
   const host = el('d-list');
   if (renderToken !== restaurantListRenderToken || !host.isConnected) return;
   const rated = ranked.filter(entry => Number.isFinite(entry.result?.rating));
@@ -2596,8 +2604,9 @@ async function sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken) 
   }
   ranked.sort((a, b) => {
     const ratingDifference = (b.result?.rating ?? -Infinity) - (a.result?.rating ?? -Infinity);
-    const reviewDifference = CITY_ID === 'new-york'
-      ? (b.restaurant.reviewCount ?? -Infinity) - (a.restaurant.reviewCount ?? -Infinity)
+    const reviewDifference = RATING_CHIP_CITY_IDS.has(CITY_ID)
+      ? (b.result?.reviewCount ?? b.restaurant.reviewCount ?? -Infinity)
+        - (a.result?.reviewCount ?? a.restaurant.reviewCount ?? -Infinity)
       : 0;
     return ratingDifference || reviewDifference || a.restaurant.name.localeCompare(b.restaurant.name);
   });
@@ -2609,6 +2618,25 @@ async function sortRestaurantRowsByGoogleRating(restaurants, rows, renderToken) 
   }
   host.setAttribute('aria-label', 'Restaurants, sorted by Google Maps rating');
   host.setAttribute('aria-busy', 'false');
+}
+
+function updateRestaurantRatingChip(row, restaurant, rawRating) {
+  const rating = Number(rawRating);
+  if (!row || !RATING_CHIP_CITY_IDS.has(CITY_ID) || !Number.isFinite(rating) || rating <= 0) return;
+  const formattedRating = rating.toFixed(1);
+  row.setAttribute(
+    'aria-label',
+    `${restaurant.name}, Google Maps rating ${formattedRating} out of 5 — open in Google Maps`
+  );
+  let ratingChip = row.querySelector('.rating-chip');
+  if (!ratingChip) {
+    ratingChip = document.createElement('span');
+    ratingChip.className = 'rating-chip';
+    ratingChip.setAttribute('aria-hidden', 'true');
+    row.querySelector('.li-meta')?.insertBefore(ratingChip, row.querySelector('.li-arrow'));
+  }
+  ratingChip.textContent = `★ ${formattedRating}`;
+  ratingChip.title = `Google Maps rating: ${formattedRating} out of 5`;
 }
 
 function renderRestaurantList(restaurants) {
@@ -2633,14 +2661,7 @@ function renderRestaurantList(restaurants) {
     link.href = restaurantMapUrl(restaurant);
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    const rating = Number(restaurant.rating);
-    const hasRating = CITY_ID === 'new-york' && Number.isFinite(rating) && rating > 0;
-    link.setAttribute(
-      'aria-label',
-      hasRating
-        ? `${restaurant.name}, rated ${rating.toFixed(1)} out of 5 — open in Google Maps`
-        : restaurant.name + ' — open in Google Maps'
-    );
+    link.setAttribute('aria-label', restaurant.name + ' — open in Google Maps');
 
     const main = document.createElement('span');
     main.className = 'li-main';
@@ -2655,19 +2676,13 @@ function renderRestaurantList(restaurants) {
 
     const meta = document.createElement('span');
     meta.className = 'li-meta';
-    if (hasRating) {
-      const ratingChip = document.createElement('span');
-      ratingChip.className = 'rating-chip';
-      ratingChip.setAttribute('aria-hidden', 'true');
-      ratingChip.textContent = `★ ${rating.toFixed(1)}`;
-      meta.appendChild(ratingChip);
-    }
     const arrow = document.createElement('span');
     arrow.className = 'li-arrow';
     arrow.setAttribute('aria-hidden', 'true');
     arrow.textContent = '↗';
     meta.appendChild(arrow);
     link.append(main, meta);
+    updateRestaurantRatingChip(link, restaurant, restaurant.rating);
     host.appendChild(link);
     rows.set(googleRatingRequestKey(restaurant), link);
   }

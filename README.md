@@ -16,11 +16,15 @@ The prototype is framework-free.
 
 ## Google Maps ratings
 
-Restaurant rows are sorted from highest to lowest by a hidden live Google Maps rating from the
-official Places API (New); the score itself is not displayed. Set
+Restaurant rows are sorted from highest to lowest by a live Google Maps rating from the official
+Places API (New). New York uses ratings supplied in its dated source export; Munich retrieves its
+ratings on demand and displays them as compact chips as each lookup completes. Set
 `GOOGLE_MAPS_API_KEY` in the Vercel project for Production, Preview, and Development, then
 redeploy. The key stays inside the serverless `/api/google-rating` function and is never sent to
-the browser. The key's Google Cloud project must have Places API (New) and billing enabled.
+the browser. The key's Google Cloud project must have Places API (New) and billing enabled. Rating
+requests use the Text Search Enterprise SKU; its free monthly usage cap is shared by the whole
+billing account, so configure Google Cloud quotas and billing alerts rather than assuming every
+deployment has 1,000 unused requests.
 
 The direct-gesture restaurant map uses a separate `GOOGLE_MAPS_BROWSER_API_KEY`. Enable Maps
 JavaScript API for that key and restrict it to the site's HTTP referrers, including
