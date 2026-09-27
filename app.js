@@ -276,7 +276,7 @@ function renderGallery({ initialHomeTransform = null } = {}) {
   scene.innerHTML = `
     <section class="home-world-atlas semantic-layer" aria-label="World atlas of metropolitan food cultures">
       <header class="home-world-heading">
-        <p class="home-world-kicker">GastroGlobe · Metropolitan food atlas</p>
+        <p class="home-world-kicker"><img class="home-world-brand-mark" src="/assets/brand/gastroglobe-mark.svg" width="32" height="32" alt="" /><span>GastroGlobe · Metropolitan food atlas</span></p>
         <h1>A city contains<br />a miniature world.</h1>
         <p>Choose a city to reveal the food cultures living inside it.</p>
       </header>
@@ -1870,7 +1870,7 @@ function renderClaudeEditorialCartogram() {
       <div class="claude-cartogram-frame-shell">
         <iframe
           class="claude-cartogram-frame${pendingCuisineClusterReveal ? " is-cluster-reveal-pending" : ""}"
-          src="./experiments/claude-cartogram.html?v=nyc-rating-chip-1&city=${encodeURIComponent(city.data.id)}"
+          src="./experiments/claude-cartogram.html?v=munich-rating-chip-1&city=${encodeURIComponent(city.data.id)}"
           title="${escapeHtml(city.data.name)} Eats the World editorial cuisine cartogram"
         ></iframe>
       </div>
